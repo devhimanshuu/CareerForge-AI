@@ -14,12 +14,9 @@ const MainLayout = async ({
     redirect("/");
   }
   return (
-    <div
-      className="w-full h-auto min-h-screen
-     !bg-[#f8f8f8] dark:!bg-background"
-    >
+    <div className="w-full h-auto min-h-screen bg-background">
       <Header />
-      <div>{children}</div>
+      <main>{children}</main>
     </div>
   );
 };
