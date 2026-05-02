@@ -5,6 +5,7 @@ import {
   SignUpButton,
 } from "@clerk/nextjs";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 const NavBar = () => {
@@ -13,9 +14,13 @@ const NavBar = () => {
       <div className="w-full mx-auto max-w-7xl px-5 py-3 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-all duration-300">
-            <FileText size="16px" className="text-white" />
-          </div>
+          <Image
+            src="/logo.svg"
+            alt="Resumify Logo"
+            width={32}
+            height={32}
+            className="shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-all duration-300 rounded-lg"
+          />
           <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
             Resumify
           </span>
@@ -53,20 +58,18 @@ const NavBar = () => {
 
         {/* Auth Buttons */}
         <div className="flex items-center gap-3">
-          <SignInButton mode="modal">
-            <Button
-              variant="ghost"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              Sign In
-            </Button>
-          </SignInButton>
-          <SignUpButton mode="modal">
-            <Button className="text-sm font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all duration-300 gap-1.5">
+          <Link
+            href="/sign-in"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Sign In
+          </Link>
+          <Button asChild className="text-sm font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all duration-300 gap-1.5 rounded-xl px-5">
+            <Link href="/sign-up">
               <Sparkles size="14px" />
               Get Started Free
-            </Button>
-          </SignUpButton>
+            </Link>
+          </Button>
         </div>
       </div>
     </nav>

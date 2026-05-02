@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { FileText, ShieldX } from "lucide-react";
 import React from "react";
+import Image from "next/image";
 
 const Error = () => {
   return (
@@ -19,9 +20,13 @@ const Error = () => {
       </div>
 
       <div className="flex items-center gap-2 text-muted-foreground">
-        <div className="w-6 h-6 rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-          <FileText size="12px" className="text-white" />
-        </div>
+        <Image
+          src="/logo.svg"
+          alt="Resumify Logo"
+          width={24}
+          height={24}
+          className="rounded-md"
+        />
         <span className="text-sm font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
           Resumify
         </span>

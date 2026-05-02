@@ -234,6 +234,10 @@ body {
   }
 }
 
+.dark {
+  --background: 222 47% 2%;
+}
+
 @layer base {
   * {
     @apply border-border;

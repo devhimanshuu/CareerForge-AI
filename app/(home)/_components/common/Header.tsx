@@ -12,6 +12,8 @@ import {
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 
+import Image from "next/image";
+
 const Header = () => {
   const { setTheme } = useTheme();
   const { user, isLoaded } = useUser();
@@ -24,9 +26,13 @@ const Header = () => {
             href="/dashboard"
             className="flex items-center gap-2 group"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/30 transition-all duration-300">
-              <FileText size="16px" className="text-white" />
-            </div>
+            <Image
+              src="/logo.svg"
+              alt="Resumify Logo"
+              width={32}
+              height={32}
+              className="shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/30 transition-all duration-300 rounded-lg"
+            />
             <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
               Resumify
             </span>
