@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { documentTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const { documentId, type } = await request.json();

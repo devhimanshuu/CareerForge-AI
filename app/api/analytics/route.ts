@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { documentTable } from "@/db/schema";
-import { eq, sum } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
