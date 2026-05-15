@@ -36,8 +36,8 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
-    href: "/dashboard/jobs",
-    label: "Job Board",
+    href: "/dashboard/applications",
+    label: "Job Tracker",
     icon: Briefcase,
   },
   {
@@ -46,6 +46,7 @@ const navItems = [
     icon: BarChart3,
   },
 ];
+
 
 const Header = () => {
   const { setTheme } = useTheme();

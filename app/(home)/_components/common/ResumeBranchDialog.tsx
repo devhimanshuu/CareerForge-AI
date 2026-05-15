@@ -46,7 +46,7 @@ const ResumeBranchDialog = ({ documentId, title, children }: PropType) => {
             Branch Resume
           </DialogTitle>
           <DialogDescription>
-            Create a targeted version of "{title}" for a specific role or application.
+            Create a targeted version of &quot;{title}&quot; for a specific role or application.
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center space-x-2 py-4">

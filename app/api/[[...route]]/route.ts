@@ -3,6 +3,8 @@ import { handle } from "hono/vercel";
 import { logger } from "hono/logger";
 import { HTTPException } from "hono/http-exception";
 import documentRoute from "./document";
+import applicationRoute from "./application";
+
 
 export const runtime = "edge";
 
@@ -17,7 +19,11 @@ app.onError((err, c) => {
   return c.json({ error: "internal error" });
 });
 
-const routes = app.basePath("/api").route("/document", documentRoute);
+const routes = app
+  .basePath("/api")
+  .route("/document", documentRoute)
+  .route("/application", applicationRoute);
+
 
 app.get("/", (c) => {
   return c.json({
@@ -30,3 +36,5 @@ export type AppType = typeof routes;
 export const GET = handle(app);
 export const POST = handle(app);
 export const PATCH = handle(app);
+export const DELETE = handle(app);
+

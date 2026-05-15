@@ -231,12 +231,12 @@ const AnalyticsDashboard = () => {
                 <ul className="space-y-3 text-sm text-indigo-100">
                   <li className="flex gap-2">
                     <ArrowRight size={16} className="shrink-0" />
-                    Your "Frontend Role" branch has 20% higher engagement than
+                    Your &quot;Frontend Role&quot; branch has 20% higher engagement than
                     the base.
                   </li>
                   <li className="flex gap-2">
                     <ArrowRight size={16} className="shrink-0" />
-                    Try using more "Action Verbs" in your experience summary to
+                    Try using more &quot;Action Verbs&quot; in your experience summary to
                     boost reach.
                   </li>
                 </ul>

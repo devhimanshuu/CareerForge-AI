@@ -14,6 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Loader2, Copy, CheckCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const CoverLetterGenerator = () => {
   const { resumeInfo } = useResumeContext();
@@ -22,6 +23,8 @@ const CoverLetterGenerator = () => {
   const [loading, setLoading] = useState(false);
   const [coverLetter, setCoverLetter] = useState("");
   const [copied, setCopied] = useState(false);
+  const [tone, setTone] = useState<"Confident" | "Enthusiastic" | "Formal" | "Direct">("Formal");
+
 
   const handleGenerate = async () => {
     if (!jobDescription.trim()) {
@@ -40,14 +43,18 @@ const CoverLetterGenerator = () => {
         Review the following Resume Data and the Job Description.
         
         Write a compelling, professional cover letter for this specific job based on the candidate's resume.
+        
+        TONE: ${tone}
+        
         The cover letter should:
-        1. Have a strong opening hook.
+        1. Have a strong opening hook using a ${tone} tone.
         2. Highlight relevant experience and skills that match the job description.
         3. Explain why the candidate is a great fit for the company.
         4. End with a strong call to action.
         
         Output ONLY the text of the cover letter. Do not include any JSON formatting or intro text like "Here is the cover letter".
         Make it ready to copy-paste. Include placeholders like [Company Name] or [Hiring Manager Name] if not provided.
+
 
         Resume Data:
         ${JSON.stringify(resumeInfo)}
@@ -114,9 +121,29 @@ const CoverLetterGenerator = () => {
                 placeholder="Paste the target job description here..."
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
-                className="min-h-[250px] resize-none"
+                className="min-h-[200px] resize-none"
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select Tone</label>
+              <div className="grid grid-cols-2 gap-2">
+                {(["Confident", "Enthusiastic", "Formal", "Direct"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTone(t)}
+                    className={cn(
+                      "px-3 py-2 rounded-lg text-xs font-bold border transition-all",
+                      tone === t 
+                        ? "bg-primary border-primary text-white shadow-md shadow-primary/20" 
+                        : "bg-background border-border hover:border-primary/30"
+                    )}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <Button
               onClick={handleGenerate}
               disabled={loading || !jobDescription.trim()}
