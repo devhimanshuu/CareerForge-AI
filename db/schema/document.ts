@@ -90,6 +90,7 @@ export const createDocumentTableSchema = createInsertSchema(documentTable, {
   branchName: true,
   responses: true,
   settings: true,
+  template: true,
 });
 
 
