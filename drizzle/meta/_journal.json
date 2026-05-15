@@ -15,6 +15,13 @@
       "when": 1730172513996,
       "tag": "0001_medical_zarek",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778851889494,
+      "tag": "0002_nappy_energizer",
+      "breakpoints": true
     }
   ]
 }

@@ -88,7 +88,7 @@ const ThemeColor = () => {
         },
       }
     );
-  }, [selectedColor]);
+  }, [selectedColor, mutateAsync]);
 
   return (
     <Popover>

@@ -1,9 +1,20 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useResumeContext } from "@/context/resume-info-provider";
 import useUpdateDocument from "@/features/document/use-update-document";
 import useOrigin from "@/hooks/use-origin";
@@ -16,6 +27,8 @@ import {
   Globe,
   Loader,
   ShareIcon,
+  Settings2,
+  ExternalLink,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import React, { useCallback, useState } from "react";
@@ -30,16 +43,22 @@ const Share = () => {
   const origin = useOrigin();
 
   const [copied, setCopied] = useState(false);
+  const [slug, setSlug] = useState(resumeInfo?.slug || "");
+  const [template, setTemplate] = useState(resumeInfo?.template || "modern");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const url = `${origin}/preview/${documentId}/resume`;
+  // Fallback to internal preview link if no slug is set, otherwise use the public portfolio link
+  const publicUrl = resumeInfo?.slug
+    ? `${origin}/p/${resumeInfo.slug}`
+    : `${origin}/preview/${documentId}/resume`;
 
   const onCopy = () => {
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(publicUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 1000);
   };
 
-  const handleClick = useCallback(
+  const handleStatusUpdate = useCallback(
     async (status: StatusType) => {
       if (!resumeInfo) return;
       await mutateAsync(
@@ -57,116 +76,190 @@ const Share = () => {
               description: `Status set to ${status} successfully`,
             });
           },
-          onError() {
-            toast({
-              title: "Error",
-              description: "Failed to update status",
-              variant: "destructive",
-            });
-          },
-        }
+        },
       );
     },
-    [mutateAsync, onUpdate, resumeInfo]
+    [mutateAsync, onUpdate, resumeInfo],
   );
+
+  const handleSettingsUpdate = async () => {
+    if (!resumeInfo) return;
+    setIsSaving(true);
+    try {
+      await mutateAsync(
+        {
+          slug: slug.toLowerCase().replace(/\s+/g, "-"),
+          template: template as any,
+        },
+        {
+          onSuccess: () => {
+            onUpdate({
+              ...resumeInfo,
+              slug: slug.toLowerCase().replace(/\s+/g, "-"),
+              template: template as any,
+            });
+            toast({
+              title: "Settings Updated",
+              description: "Your portfolio link and template have been saved.",
+            });
+          },
+        },
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Popover>
-      <PopoverTrigger
-        disabled={resumeInfo?.status === "archived" ? true : false}
-        asChild
-      >
+      <PopoverTrigger disabled={resumeInfo?.status === "archived"} asChild>
         <Button
-          disabled={
-            isLoading || resumeInfo?.status === "archived" ? true : false
-          }
+          disabled={isLoading || resumeInfo?.status === "archived"}
           variant="secondary"
-          className="bg-white border gap-1
-                   dark:bg-gray-800 !p-2
-                    lg:w-auto lg:p-4"
+          className="bg-white border gap-1 dark:bg-gray-800 !p-2 lg:w-auto lg:p-4"
         >
           <div className="flex items-center gap-1">
             <ShareIcon size="17px" />
-            <span className="flex">Share</span>
+            <span className="hidden lg:inline">Share Portfolio</span>
           </div>
           <ChevronDown size="14px" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="bg-background"
+        className="bg-background w-[320px] p-4"
         align="end"
         alignOffset={0}
-        forceMount
       >
         {resumeInfo?.status === "public" ? (
-          <div className="space-y-3">
-            <div
-              className="
-                        flex gap-x-2 items-center
-                      "
-            >
-              <Globe size="15px" className="text-primary animate-pulse" />
-              <p className="font-medium text-xs text-primary">
-                This resume is shareable, copy the link!
+          <div className="space-y-4">
+            <div className="flex gap-x-2 items-center">
+              <Globe size="16px" className="text-emerald-500 animate-pulse" />
+              <p className="font-bold text-xs text-emerald-500 uppercase tracking-wider">
+                Portfolio is Live
               </p>
             </div>
-            <div className="flex items-center">
-              <input
-                className="flex-1 px-2 text-xs 
-              border rounded-l-md
-              h-8 bg-muted truncate
-              "
-                value={url}
-              />
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  className="flex-1 px-3 py-1.5 text-xs border rounded-lg bg-muted/50 truncate focus:outline-none"
+                  readOnly
+                  value={publicUrl}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={onCopy}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 shrink-0"
+                  asChild
+                >
+                  <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink size={14} />
+                  </a>
+                </Button>
+              </div>
+            </div>
+
+            <hr className="border-border/50" />
+
+            {/* Customization Settings */}
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Settings2 size={14} className="text-muted-foreground" />
+                <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Portfolio Settings
+                </h4>
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="slug"
+                  className="text-[10px] font-bold uppercase"
+                >
+                  Custom Slug
+                </Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">/p/</span>
+                  <Input
+                    id="slug"
+                    placeholder="your-name"
+                    className="h-8 text-xs"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase">
+                  Web Template
+                </Label>
+                <Select value={template} onValueChange={(v) => setTemplate(v)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="modern">Modern Professional</SelectItem>
+                    <SelectItem value="dark">Sleek Dark Mode</SelectItem>
+                    <SelectItem value="glassmorphic">
+                      Glassmorphic Glow
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button
-                className="h-8 rounded-l-none"
-                disabled={copied}
-                onClick={onCopy}
+                size="sm"
+                className="w-full h-8 text-xs font-bold"
+                onClick={handleSettingsUpdate}
+                disabled={isSaving || isPending}
               >
-                {copied ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <Copy className="w-4 h-4" />
+                {(isSaving || isPending) && (
+                  <Loader size={14} className="animate-spin mr-2" />
                 )}
+                Save Portfolio Settings
               </Button>
             </div>
-            <hr className="border-muted !mb-0" />
+
+            <hr className="border-border/50" />
+
             <Button
               size="sm"
-              variant="outline"
-              className="w-full border-primary 
-              text-primary  
-              text-xs font-semibold"
-              onClick={() => handleClick("private")}
+              variant="ghost"
+              className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors"
+              onClick={() => handleStatusUpdate("private")}
               disabled={isPending}
             >
-              {isPending && <Loader size="15px" className="animate-spin" />}
-              Private
+              Unpublish Portfolio
             </Button>
           </div>
         ) : (
-          <div
-            className="w-full flex flex-col gap-2
-          items-center justify-center"
-          >
-            <Globe size="40px" />
-            <div className="text-center mb-1">
-              <h5 className="font-semibold text-sm">Set to Public</h5>
-              <p className="text-xs text-muted-foreground">
-                To share it with others, you need to make it public.
+          <div className="flex flex-col gap-4 items-center justify-center py-2 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+              <Globe size={24} />
+            </div>
+            <div className="space-y-1">
+              <h5 className="font-bold text-sm">Launch Your Portfolio</h5>
+              <p className="text-xs text-muted-foreground px-2">
+                Create a stunning, interactive personal website from your resume
+                in one click.
               </p>
             </div>
             <Button
-              className="
-            w-full h-8 !bg-black text-xs 
-            dark:!bg-primary
-            gap-1 font-semibold text-white
-            "
-              type="button"
-              onClick={() => handleClick("public")}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+              onClick={() => handleStatusUpdate("public")}
+              disabled={isPending}
             >
-              {isPending && <Loader size="15px" className="animate-spin" />}
-              Public
+              {isPending && (
+                <Loader size="14px" className="animate-spin mr-2" />
+              )}
+              Publish Now
             </Button>
           </div>
         )}

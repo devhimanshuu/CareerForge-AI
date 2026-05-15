@@ -17,6 +17,8 @@ import { z } from "zod";
 
 export const statusEnum = pgEnum("status", ["archived", "private", "public"]);
 
+
+
 export const documentTable = pgTable("document", {
   id: serial("id").notNull().primaryKey(),
   documentId: varchar("document_id").unique().notNull(),
@@ -29,12 +31,16 @@ export const documentTable = pgTable("document", {
   thumbnail: text("thumbnail"),
   currentPosition: integer("current_position").notNull().default(1),
   status: statusEnum("status").notNull().default("private"),
+  slug: varchar("slug", { length: 255 }),
+  template: varchar("template", { length: 255 }).notNull().default("modern"),
+
   authorName: varchar("author_name", { length: 255 }).notNull(),
   authorEmail: varchar("author_email", { length: 255 }).notNull(),
   // Analytics
   views: integer("views").notNull().default(0),
   uniqueVisitors: integer("unique_visitors").notNull().default(0),
   clickThroughs: integer("click_throughs").notNull().default(0),
+
   
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
@@ -63,7 +69,10 @@ export const createDocumentTableSchema = createInsertSchema(documentTable, {
   themeColor: true,
   thumbnail: true,
   currentPosition: true,
+  slug: true,
+  template: true,
 });
+
 
 export const updateCombinedSchema = z.object({
   title: createDocumentTableSchema.shape.title.optional(),
@@ -72,7 +81,10 @@ export const updateCombinedSchema = z.object({
   summary: createDocumentTableSchema.shape.summary.optional(),
   themeColor: createDocumentTableSchema.shape.themeColor.optional(),
   currentPosition: createDocumentTableSchema.shape.currentPosition.optional(),
+  slug: createDocumentTableSchema.shape.slug.optional(),
+  template: createDocumentTableSchema.shape.template.optional(),
   personalInfo: personalInfoTableSchema.optional(),
+
   education: z.array(educationTableSchema).optional(),
   experience: z.array(experienceTableSchema).optional(),
   skills: z.array(skillsTableSchema).optional(),

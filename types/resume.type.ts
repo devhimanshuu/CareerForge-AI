@@ -52,8 +52,11 @@ export type ResumeDataType = {
   themeColor?: string | null;
   currentPosition?: number | null;
   summary: string | null;
+  slug?: string | null;
+  template?: string | null;
   experiences?: ExperienceType[] | null;
   educations?: EducationType[] | null;
   skills?: SkillType[] | null;
   updatedAt?: string;
 };
+

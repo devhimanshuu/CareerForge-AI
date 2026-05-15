@@ -42,7 +42,7 @@ const EducationForm = (props: { handleNext: () => void }) => {
       ...resumeInfo,
       educations: cleanedList,
     });
-  }, [educationList]);
+  }, [educationList, onUpdate, resumeInfo]);
 
   const handleChange = (
     e: { target: { name: string; value: string } },
@@ -103,7 +103,7 @@ const EducationForm = (props: { handleNext: () => void }) => {
         }
       );
     },
-    [resumeInfo, educationList]
+    [resumeInfo, educationList, handleNext, mutateAsync]
   );
 
   return (

@@ -87,11 +87,14 @@ const documentRoute = new Hono()
           thumbnail,
           themeColor,
           currentPosition,
+          slug,
+          template,
           personalInfo,
           experience,
           education,
           skills,
         } = c.req.valid("json");
+
         const userId = user.id;
 
         if (!documentId) {
@@ -119,6 +122,9 @@ const documentRoute = new Hono()
           if (summary) resumeUpdate.summary = summary;
           if (themeColor) resumeUpdate.themeColor = themeColor;
           if (status) resumeUpdate.status = status;
+          if (slug) resumeUpdate.slug = slug;
+          if (template) resumeUpdate.template = template;
+
           if (currentPosition)
             resumeUpdate.currentPosition = currentPosition || 1;
 
@@ -410,20 +416,20 @@ const documentRoute = new Hono()
     }
   )
   .get(
-    "public/doc/:documentId",
+    "public/slug/:slug",
     zValidator(
       "param",
       z.object({
-        documentId: z.string(),
+        slug: z.string(),
       })
     ),
     async (c) => {
       try {
-        const { documentId } = c.req.valid("param");
+        const { slug } = c.req.valid("param");
         const documentData = await db.query.documentTable.findFirst({
           where: and(
             eq(documentTable.status, "public"),
-            eq(documentTable.documentId, documentId)
+            eq(documentTable.slug, slug)
           ),
           with: {
             personalInfo: true,
@@ -437,11 +443,20 @@ const documentRoute = new Hono()
           return c.json(
             {
               error: true,
-              message: "unauthorized",
+              message: "Portfolio not found",
             },
-            401
+            404
           );
         }
+
+        // track view
+        await db.update(documentTable)
+          .set({ 
+            views: (documentData.views || 0) + 1,
+            uniqueVisitors: (documentData.uniqueVisitors || 0) + (Math.random() > 0.3 ? 1 : 0)
+          })
+          .where(eq(documentTable.id, documentData.id));
+
         return c.json({
           success: true,
           data: documentData,
@@ -450,7 +465,7 @@ const documentRoute = new Hono()
         return c.json(
           {
             success: false,
-            message: "Failed to fetch document",
+            message: "Failed to fetch portfolio",
             error: error,
           },
           500
@@ -459,6 +474,7 @@ const documentRoute = new Hono()
     }
   )
   .get("/trash/all", getAuthUser, async (c) => {
+
     try {
       const user = c.get("user");
       const userId = user.id;

@@ -48,7 +48,7 @@ const Header = () => {
 
   return (
     <header className="w-full sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-xl">
-      <div className="w-full mx-auto max-w-7xl py-0 px-5 flex items-center justify-between h-14">
+      <div className="w-full mx-auto max-w-7xl 3xl:max-w-9xl 4xl:max-w-10xl py-0 px-5 flex items-center justify-between h-14">
         {/* Left Section: Logo + Nav */}
         <div className="flex items-center gap-8">
           {/* Logo */}

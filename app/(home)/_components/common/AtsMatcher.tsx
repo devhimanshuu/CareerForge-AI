@@ -203,7 +203,7 @@ const AtsMatcher = () => {
                 <div className="p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/10 mt-4">
                   <p className="text-[11px] text-indigo-600 dark:text-indigo-400 leading-relaxed flex gap-2">
                     <Lightbulb size={14} className="shrink-0" />
-                    Note: Our AI will attempt to extract requirements from the link. If it fails due to site protections, please switch to 'Paste Text'.
+                    Note: Our AI will attempt to extract requirements from the link. If it fails due to site protections, please switch to &apos;Paste Text&apos;.
                   </p>
                 </div>
               </div>

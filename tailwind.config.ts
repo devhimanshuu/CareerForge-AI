@@ -8,6 +8,16 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    screens: {
+      "xs": "400px",
+      "sm": "640px",
+      "md": "768px",
+      "lg": "1024px",
+      "xl": "1280px",
+      "2xl": "1536px",
+      "3xl": "1920px",
+      "4xl": "2560px",
+    },
     extend: {
       colors: {
         background: "hsl(var(--background))",
@@ -67,6 +77,11 @@ const config: Config = {
       },
       animation: {
         "sparkle": "sparkle 3s ease infinite",
+      },
+      maxWidth: {
+        "8xl": "88rem",
+        "9xl": "96rem",
+        "10xl": "104rem",
       },
     },
   },

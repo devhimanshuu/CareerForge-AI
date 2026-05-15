@@ -63,7 +63,7 @@ const Page = () => {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="w-full mx-auto max-w-7xl py-8 px-5 relative z-10"
+        className="w-full mx-auto max-w-7xl 3xl:max-w-9xl 4xl:max-w-10xl py-8 px-5 relative z-10"
       >
         {/* ── Hero Section ── */}
         <motion.div variants={itemVariants} className="mb-10">
@@ -185,7 +185,7 @@ const Page = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 gap-6">
             <AddResume />
             <ResumeList />
           </div>

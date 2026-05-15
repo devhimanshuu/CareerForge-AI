@@ -51,7 +51,7 @@ const TopSection = () => {
         }
       );
     },
-    [resumeInfo, onUpdate]
+    [resumeInfo, onUpdate, mutateAsync]
   );
   return (
     <>

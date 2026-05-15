@@ -7,7 +7,7 @@ const EditResume = () => {
   return (
     <div className="relative w-full">
       <div
-        className="w-full mx-auto max-w-7xl
+        className="w-full mx-auto max-w-7xl 3xl:max-w-9xl 4xl:max-w-10xl
        py-4 px-5"
       >
         <TopSection />
