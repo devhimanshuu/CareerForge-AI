@@ -473,6 +473,56 @@ const documentRoute = new Hono()
       }
     }
   )
+  .get(
+    "public/doc/:documentId",
+    zValidator(
+      "param",
+      z.object({
+        documentId: z.string(),
+      })
+    ),
+    async (c) => {
+      try {
+        const { documentId } = c.req.valid("param");
+        const documentData = await db.query.documentTable.findFirst({
+          where: and(
+            eq(documentTable.status, "public"),
+            eq(documentTable.documentId, documentId)
+          ),
+          with: {
+            personalInfo: true,
+            experiences: true,
+            educations: true,
+            skills: true,
+          },
+        });
+
+        if (!documentData) {
+          return c.json(
+            {
+              error: true,
+              message: "Document not found or private",
+            },
+            404
+          );
+        }
+
+        return c.json({
+          success: true,
+          data: documentData,
+        });
+      } catch (error) {
+        return c.json(
+          {
+            success: false,
+            message: "Failed to fetch document",
+            error: error,
+          },
+          500
+        );
+      }
+    }
+  )
   .get("/trash/all", getAuthUser, async (c) => {
 
     try {
