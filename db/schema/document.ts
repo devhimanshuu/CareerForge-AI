@@ -8,6 +8,8 @@ import {
   timestamp,
   varchar,
 } from "drizzle-orm/pg-core";
+
+
 import { personalInfoTable, personalInfoTableSchema } from "./personal-info";
 import { experienceTable, experienceTableSchema } from "./experience";
 import { educationTable, educationTableSchema } from "./education";
@@ -46,6 +48,14 @@ export const documentTable = pgTable("document", {
   // Branching
   parentId: varchar("parent_id", { length: 255 }),
   branchName: varchar("branch_name", { length: 255 }),
+  settings: text("settings").default(JSON.stringify({
+    sectionOrder: ["personalInfo", "summary", "experience", "education", "skills"],
+    fontSize: "14px",
+    fontFamily: "font-open-sans",
+    sectionSpacing: "24px",
+    lineHeight: "1.5"
+  })),
+
 
   
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
@@ -76,11 +86,12 @@ export const createDocumentTableSchema = createInsertSchema(documentTable, {
   thumbnail: true,
   currentPosition: true,
   slug: true,
-  template: true,
   parentId: true,
   branchName: true,
   responses: true,
+  settings: true,
 });
+
 
 
 
@@ -97,6 +108,8 @@ export const updateCombinedSchema = z.object({
   parentId: createDocumentTableSchema.shape.parentId.optional(),
   branchName: createDocumentTableSchema.shape.branchName.optional(),
   responses: createDocumentTableSchema.shape.responses.optional(),
+  settings: z.string().optional(),
+
   personalInfo: personalInfoTableSchema.optional(),
 
 

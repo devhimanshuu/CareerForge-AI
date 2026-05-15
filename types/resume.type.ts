@@ -57,6 +57,7 @@ export type ResumeDataType = {
   experiences?: ExperienceType[] | null;
   educations?: EducationType[] | null;
   skills?: SkillType[] | null;
+  settings?: string | null;
   updatedAt?: string;
 };
 

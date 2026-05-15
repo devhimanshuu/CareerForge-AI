@@ -49,6 +49,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import useGetDocuments from "@/features/document/use-get-document";
 import DeleteApplicationDialog from "./_components/DeleteApplicationDialog";
+import InterviewPrepAssistant from "../../_components/common/InterviewPrepAssistant";
+import SkillGapAnalyzer from "../../_components/common/SkillGapAnalyzer";
+
 
 
 const STATUS_COLUMNS = [
@@ -102,6 +105,9 @@ const JobTrackerPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [appToDelete, setAppToDelete] = useState<any>(null);
+  const [fullResumeInfo, setFullResumeInfo] = useState<any>(null);
+  const [isFetchingResume, setIsFetchingResume] = useState(false);
+
 
 
   // Resume Data for linking
@@ -123,6 +129,26 @@ const JobTrackerPage = () => {
   useEffect(() => {
     fetchApplications();
   }, []);
+
+  useEffect(() => {
+    if (selectedApp?.documentId) {
+      fetchFullResume(selectedApp.documentId);
+    }
+  }, [selectedApp]);
+
+  const fetchFullResume = async (docId: string) => {
+    setIsFetchingResume(true);
+    try {
+      const res = await fetch(`/api/document/${docId}`);
+      const json = await res.json();
+      if (json.success) setFullResumeInfo(json.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsFetchingResume(false);
+    }
+  };
+
 
   const handleCreate = async () => {
     if (!newJob.jobTitle || !newJob.company || !newJob.documentId) {
@@ -479,20 +505,25 @@ const JobTrackerPage = () => {
                         )?.title || "Version 1"}
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="ml-auto rounded-xl"
-                      asChild
-                    >
-                      <a
-                        href={`/dashboard/document/${selectedApp.documentId}/edit`}
-                        target="_blank"
+                    <div className="ml-auto flex items-center gap-2">
+                      <InterviewPrepAssistant initialResumeInfo={fullResumeInfo} />
+                      <SkillGapAnalyzer initialResumeInfo={fullResumeInfo} />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-xl"
+                        asChild
                       >
-                        <ArrowRight size={16} />
-                      </a>
-                    </Button>
+                        <a
+                          href={`/dashboard/document/${selectedApp.documentId}/edit`}
+                          target="_blank"
+                        >
+                          <ArrowRight size={16} />
+                        </a>
+                      </Button>
+                    </div>
                   </div>
+
                 </div>
               </div>
 

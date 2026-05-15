@@ -14,6 +14,12 @@ import AtsMatcher from "./AtsMatcher";
 import CoverLetterGenerator from "./CoverLetterGenerator";
 import InterviewPrepAssistant from "./InterviewPrepAssistant";
 import AutoTailorEngine from "./AutoTailorEngine";
+import SkillGapAnalyzer from "./SkillGapAnalyzer";
+import TemplateSelector from "./TemplateSelector";
+import CustomLayoutBuilder from "./CustomLayoutBuilder";
+
+
+
 
 const TopSection = () => {
   const { resumeInfo, isLoading, onUpdate } = useResumeContext();
@@ -82,7 +88,13 @@ const TopSection = () => {
           <div className="flex items-center gap-1.5 flex-nowrap">
             <AutoTailorEngine />
             <InterviewPrepAssistant />
+            <SkillGapAnalyzer />
+            <TemplateSelector />
+            <CustomLayoutBuilder />
             <CoverLetterGenerator />
+
+
+
             <AtsMatcher />
             <ThemeColor />
             <PreviewModal />

@@ -2,11 +2,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useResumeContext } from "@/context/resume-info-provider";
 import { cn } from "@/lib/utils";
-import PersonalInfo from "@/components/preview/PersonalInfo";
-import SummaryPreview from "@/components/preview/SummaryPreview";
-import ExperiencePreview from "@/components/preview/ExperiencePreview";
-import EducationPreview from "@/components/preview/EducationPreview";
 import SkillPreview from "@/components/preview/SkillPreview";
+import ModernTemplate from "@/components/preview/templates/ModernTemplate";
+import ProfessionalTemplate from "@/components/preview/templates/ProfessionalTemplate";
+import CreativeTemplate from "@/components/preview/templates/CreativeTemplate";
+import CustomTemplate from "@/components/preview/templates/CustomTemplate";
+
 
 const ResumePreview = () => {
   const { resumeInfo, isLoading } = useResumeContext();
@@ -21,9 +22,9 @@ const ResumePreview = () => {
       // We check if the content exceeds this and scale down if necessary.
       const A4_HEIGHT = 1120;
       // Temporarily remove scaling to get true height
-      previewRef.current.style.transform = 'none';
+      previewRef.current.style.transform = "none";
       const contentHeight = previewRef.current.scrollHeight;
-      
+
       if (contentHeight > A4_HEIGHT) {
         // Calculate the scale needed to fit it into A4
         const newScale = Math.max(A4_HEIGHT / contentHeight, 0.75); // Don't shrink below 75%
@@ -55,25 +56,21 @@ const ResumePreview = () => {
         `)}
         style={{
           borderTop: `13px solid ${resumeInfo?.themeColor}`,
-          transform: scale < 1 ? `scale(${scale})` : 'none',
-          transformOrigin: 'top center',
-          marginBottom: scale < 1 ? `-${(1 - scale) * 1120}px` : '0',
+          transform: scale < 1 ? `scale(${scale})` : "none",
+          transformOrigin: "top center",
+          marginBottom: scale < 1 ? `-${(1 - scale) * 1120}px` : "0",
         }}
       >
-        {/* {Personnal Info} */}
-        <PersonalInfo isLoading={isLoading} resumeInfo={resumeInfo} />
+        {resumeInfo?.template === "professional" ? (
+          <ProfessionalTemplate isLoading={isLoading} resumeInfo={resumeInfo} />
+        ) : resumeInfo?.template === "creative" ? (
+          <CreativeTemplate isLoading={isLoading} resumeInfo={resumeInfo} />
+        ) : resumeInfo?.template === "custom" ? (
+          <CustomTemplate isLoading={isLoading} resumeInfo={resumeInfo} />
+        ) : (
+          <ModernTemplate isLoading={isLoading} resumeInfo={resumeInfo} />
+        )}
 
-        {/* {Summary} */}
-        <SummaryPreview isLoading={isLoading} resumeInfo={resumeInfo} />
-
-        {/* {Professional Exp} */}
-        <ExperiencePreview isLoading={isLoading} resumeInfo={resumeInfo} />
-
-        {/* {Educational Info} */}
-        <EducationPreview isLoading={isLoading} resumeInfo={resumeInfo} />
-
-        {/* {Skills} */}
-        <SkillPreview isLoading={isLoading} resumeInfo={resumeInfo} />
       </div>
     </div>
   );
