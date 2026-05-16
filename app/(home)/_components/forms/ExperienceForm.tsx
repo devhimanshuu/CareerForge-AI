@@ -10,6 +10,8 @@ import { Reorder, useDragControls } from "framer-motion";
 import { GripVertical } from "lucide-react";
 import { generateThumbnail } from "@/lib/helper";
 import { toast } from "@/hooks/use-toast";
+import VoiceToResume from "@/components/editor/VoiceToResume";
+
 
 const initialState = {
   id: undefined,
@@ -233,14 +235,22 @@ const ExperienceForm = (props: { handleNext: () => void }) => {
 
                 <div className="col-span-2 mt-1">
                   {/* {Work Summary} */}
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm">Work Summary</Label>
+                    <VoiceToResume 
+                        jobTitle={item.title || undefined}
+                        onGenerated={(content) => handEditor(content, "workSummary", index)} 
+                    />
+                  </div>
                   <RichTextEditor
-                    jobTitle={item.title}
+                    jobTitle={item.title || undefined}
                     initialValue={item.workSummary || ""}
                     onEditorChange={(value: string) =>
                       handEditor(value, "workSummary", index)
                     }
                   />
                 </div>
+
               </div>
 
               {index === experienceList.length - 1 &&

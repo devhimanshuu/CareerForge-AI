@@ -4,6 +4,8 @@ import { logger } from "hono/logger";
 import { HTTPException } from "hono/http-exception";
 import documentRoute from "./document";
 import applicationRoute from "./application";
+import audioRoute from "./audio";
+
 
 
 export const runtime = "edge";
@@ -22,7 +24,9 @@ app.onError((err, c) => {
 const routes = app
   .basePath("/api")
   .route("/document", documentRoute)
-  .route("/application", applicationRoute);
+  .route("/application", applicationRoute)
+  .route("/audio", audioRoute);
+
 
 
 app.get("/", (c) => {

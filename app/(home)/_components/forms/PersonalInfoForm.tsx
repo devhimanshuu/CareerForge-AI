@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from "react";
-import { Loader, Sparkles } from "lucide-react";
+import { Loader, Sparkles, Upload } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { useResumeContext } from "@/context/resume-info-provider";
 import { PersonalInfoType } from "@/types/resume.type";
@@ -10,6 +10,9 @@ import PersonalInfoSkeletonLoader from "@/components/skeleton-loader/personal-in
 import { generateThumbnail } from "@/lib/helper";
 import useUpdateDocument from "@/features/document/use-update-document";
 import { toast } from "@/hooks/use-toast";
+import GithubSync from "../common/GithubSync";
+import AIPhotoGenerator from "../common/AIPhotoGenerator";
+
 
 const initialState = {
   id: undefined,
@@ -45,6 +48,41 @@ const PersonalInfoForm = (props: { handleNext: () => void }) => {
       description: "Google profile image fetched!",
     });
   }, [user, resumeInfo, onUpdate]);
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024 * 2) {
+        toast({
+          title: "File too large",
+          description: "Please upload an image smaller than 2MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setPersonalInfo((prev) => ({ ...prev, userImage: base64String }));
+        if (!resumeInfo) return;
+        onUpdate({
+          ...resumeInfo,
+          personalInfo: {
+            ...resumeInfo.personalInfo,
+            userImage: base64String,
+          },
+        });
+        toast({
+          title: "Success",
+          description: "Photo uploaded!",
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const [personalInfo, setPersonalInfo] =
     React.useState<PersonalInfoType>(initialState);
@@ -118,10 +156,14 @@ const PersonalInfoForm = (props: { handleNext: () => void }) => {
 
   return (
     <div>
-      <div className="w-full">
-        <h2 className="font-bold text-lg">Personal Information</h2>
-        <p className="text-sm">Get Started with the personal information</p>
+      <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h2 className="font-bold text-lg">Personal Information</h2>
+            <p className="text-sm text-muted-foreground">Get Started with the personal information</p>
+        </div>
+        <GithubSync />
       </div>
+
       <div>
         <form onSubmit={handleSubmit}>
           <div
@@ -154,16 +196,34 @@ const PersonalInfoForm = (props: { handleNext: () => void }) => {
               <h3 className="text-sm font-bold">Profile Photo</h3>
               <p className="text-xs text-muted-foreground max-w-[200px]">Add a professional photo to your resume for better visibility.</p>
               <div className="flex flex-wrap gap-2 mt-1">
-                 <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-[10px] h-8 gap-1.5 border-indigo-500/30 hover:bg-indigo-500/5"
-                  onClick={handleFetchGoogleImage}
-                 >
-                   <Sparkles size={12} className="text-indigo-500" />
-                   Fetch Google Photo
-                 </Button>
+                 <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleFileUpload}
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-[10px] h-8 gap-1.5 border-border/50 hover:bg-muted"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload size={12} />
+                    Upload Photo
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-[10px] h-8 gap-1.5 border-indigo-500/30 hover:bg-indigo-500/5"
+                    onClick={handleFetchGoogleImage}
+                  >
+                    <Sparkles size={12} className="text-indigo-500" />
+                    Fetch Google Photo
+                  </Button>
+                  <AIPhotoGenerator />
               </div>
             </div>
           </div>

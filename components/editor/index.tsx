@@ -34,7 +34,7 @@ const REWRITE_PROMPTS = {
 };
 
 const RichTextEditor = (props: {
-  jobTitle: string | null;
+  jobTitle: string | null | undefined;
   initialValue: string;
   onEditorChange: (e: any) => void;
 }) => {
