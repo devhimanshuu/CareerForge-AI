@@ -17,13 +17,30 @@ const groqClient = new OpenAI({
 
 const aiRoute = new Hono()
   .post("/chat", getAuthUser, async (c) => {
-    // Existing chat logic...
-    const { prompt } = await c.req.json();
-    const response = await nvidiaClient.chat.completions.create({
-      model: "moonshotai/kimi-k2.6",
-      messages: [{ role: "user", content: prompt }],
-    });
-    return c.json({ text: response.choices[0].message.content || "" });
+    try {
+      const { prompt } = await c.req.json();
+      
+      try {
+        if (!nvidiaApiKey) throw new Error("Missing NVIDIA API Key");
+        const response = await nvidiaClient.chat.completions.create({
+          model: "moonshotai/kimi-k2.6",
+          messages: [{ role: "user", content: prompt }],
+        });
+        return c.json({ text: response.choices[0].message.content || "" });
+      } catch (error) {
+        console.warn("NVIDIA NIM failed in API, falling back to Groq:", error);
+        if (!groqApiKey) throw new Error("Missing Groq API Key");
+        
+        const response = await groqClient.chat.completions.create({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+        });
+        return c.json({ text: response.choices[0].message.content || "" });
+      }
+    } catch (error: any) {
+      console.error("AI Chat Error:", error);
+      return c.json({ error: error.message }, 500);
+    }
   })
   .post("/mind-reader", getAuthUser, async (c) => {
     try {

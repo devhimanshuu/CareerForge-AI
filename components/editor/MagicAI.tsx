@@ -65,7 +65,7 @@ const MagicAI = () => {
         {showTerminal && <TerminalEditor onClose={() => setShowTerminal(false)} />}
       </AnimatePresence>
       
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
 
         <DropdownMenuTrigger asChild>
           <Button className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-600 bg-[length:200%_auto] animate-gradient-x hover:scale-[1.02] active:scale-95 text-white font-black uppercase tracking-widest text-[10px] h-9 gap-2 px-4 rounded-xl shadow-lg shadow-indigo-500/25 border-none transition-all group">

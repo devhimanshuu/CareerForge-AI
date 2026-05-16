@@ -62,12 +62,13 @@ const AutoTailorEngine = () => {
       `;
 
       const aiResponse = await AIChatSession.sendMessage(prompt);
-      let responseText = aiResponse.response.text();
+      const responseText = aiResponse.response.text();
       
-      // Cleanup markdown formatting if present
-      responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+      // Extract JSON from response (robust against conversational filler)
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No valid JSON found in AI response");
       
-      const parsedData = JSON.parse(responseText);
+      const parsedData = JSON.parse(jsonMatch[0]);
       
       if (parsedData.summary || parsedData.experiences) {
         const updatedResume = {
