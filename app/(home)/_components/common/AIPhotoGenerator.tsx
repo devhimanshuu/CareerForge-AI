@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { Sparkles, Loader2, Camera, UserCircle, Wand2, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -144,7 +145,13 @@ const AIPhotoGenerator = () => {
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-20 h-20 rounded-2xl border-2 border-dashed flex items-center justify-center bg-muted/30 overflow-hidden">
                         {resumeInfo?.personalInfo?.userImage ? (
-                            <img src={resumeInfo.personalInfo.userImage} className="w-full h-full object-cover opacity-50" />
+                            <Image 
+                                src={resumeInfo.personalInfo.userImage} 
+                                alt="User headshot preview"
+                                width={80}
+                                height={80}
+                                className="w-full h-full object-cover opacity-50" 
+                            />
                         ) : <UserCircle className="text-muted-foreground" size={40} />}
                     </div>
                     <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest italic">Current Source Photo</p>
@@ -188,8 +195,11 @@ const AIPhotoGenerator = () => {
                 className="flex flex-col items-center justify-center py-6 space-y-6"
               >
                 <div className="w-32 h-32 rounded-3xl border-4 border-emerald-500 p-1 shadow-2xl shadow-emerald-500/20">
-                    <img 
+                    <Image 
                         src={resumeInfo?.personalInfo?.userImage || ""} 
+                        alt="AI Generated Professional Headshot"
+                        width={128}
+                        height={128}
                         className="w-full h-full object-cover rounded-2xl" 
                     />
                 </div>

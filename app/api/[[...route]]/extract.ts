@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { getAuthUser } from "@/lib/clerk";
-import { PDFParse } from "pdf-parse";
 import { AIChatSession } from "@/lib/groq-model";
 
 const extractRoute = new Hono()
   .post("/resume", getAuthUser, async (c) => {
     try {
+      // Dynamic import to avoid top-level bundling crashes
+      const { PDFParse } = await import("pdf-parse");
+      
       const formData = await c.req.formData();
       const file = formData.get("file") as File;
       

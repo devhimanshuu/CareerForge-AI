@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Bot, Zap, TrendingUp, Compass, Flame, MessageSquare, Wand2, Target, DollarSign, BrainCircuit, ChevronDown } from "lucide-react";
+import { Sparkles, Bot, Zap, TrendingUp, Compass, Flame, MessageSquare, Wand2, Target, DollarSign, BrainCircuit, ChevronDown, Eye, Clock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,9 @@ import SalaryEstimator from "../../app/(home)/_components/common/SalaryEstimator
 import CareerFortuneTeller from "../../app/(home)/_components/common/CareerFortuneTeller";
 import RecruiterRoast from "../../app/(home)/_components/common/RecruiterRoast";
 import ResumeImport from "../../app/(home)/_components/common/ResumeImport";
+import AttentionHeatmap from "../../app/(home)/_components/common/AttentionHeatmap";
+import TimeTraveler from "../../app/(home)/_components/common/TimeTraveler";
+
 
 
 const MagicAI = () => {
@@ -52,7 +55,7 @@ const MagicAI = () => {
         </div>
 
 
-        <div className="p-2">
+        <div className="p-2 max-h-[450px] overflow-y-auto custom-scrollbar">
             <div className="grid grid-cols-1 gap-1">
                 <MagicItem 
                     icon={<Zap size={18} />} 
@@ -78,7 +81,16 @@ const MagicAI = () => {
                     bgColor="bg-amber-500/10"
                     trigger={<SkillGapAnalyzer />}
                 />
+                <MagicItem 
+                    icon={<Eye size={18} />} 
+                    title="Mind-Reader" 
+                    description="Recruiter attention heatmap"
+                    color="text-red-400"
+                    bgColor="bg-red-500/10"
+                    trigger={<AttentionHeatmap />}
+                />
             </div>
+
 
             <DropdownMenuSeparator className="my-2 bg-white/5 mx-2" />
 
@@ -112,7 +124,16 @@ const MagicAI = () => {
                     bgColor="bg-red-500/10"
                     trigger={<RecruiterRoast />}
                 />
+                <MagicItem 
+                    icon={<Clock size={18} />} 
+                    title="Time-Traveler" 
+                    description="See your resume in 2030"
+                    color="text-purple-400"
+                    bgColor="bg-purple-500/10"
+                    trigger={<TimeTraveler />}
+                />
             </div>
+
         </div>
 
         {/* Footer */}

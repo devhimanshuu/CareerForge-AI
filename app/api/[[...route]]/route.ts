@@ -12,7 +12,7 @@ import aiRoute from "./ai";
 
 
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const app = new Hono();
 

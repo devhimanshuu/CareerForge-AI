@@ -20,7 +20,12 @@ const applicationRoute = new Hono()
       
       return c.json({ success: true, data: applications });
     } catch (error) {
-      return c.json({ success: false, message: "Failed to fetch applications" }, 500);
+      console.error("Fetch Applications Error:", error);
+      return c.json({ 
+        success: false, 
+        message: "Failed to fetch applications",
+        error: error instanceof Error ? error.message : error
+      }, 500);
     }
   })
   .post(
@@ -52,7 +57,12 @@ const applicationRoute = new Hono()
         
         return c.json({ success: true, data });
       } catch (error) {
-        return c.json({ success: false, message: "Failed to create application" }, 500);
+        console.error("Create Application Error:", error);
+        return c.json({ 
+            success: false, 
+            message: "Failed to create application",
+            error: error instanceof Error ? error.message : error
+        }, 500);
       }
     }
   )
@@ -84,7 +94,12 @@ const applicationRoute = new Hono()
         
         return c.json({ success: true, data });
       } catch (error) {
-        return c.json({ success: false, message: "Failed to update application" }, 500);
+        console.error("Update Application Error:", error);
+        return c.json({ 
+            success: false, 
+            message: "Failed to update application",
+            error: error instanceof Error ? error.message : error
+        }, 500);
       }
     }
   )

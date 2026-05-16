@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
-import { PDFParse } from "pdf-parse";
 import { AIChatSession } from "@/lib/groq-model";
 
 const IMPORT_PROMPT = `
@@ -64,6 +63,7 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(arrayBuffer);
     
     // Extract text using pdf-parse
+    const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: buffer });
     const pdfData = await parser.getText();
     await parser.destroy();

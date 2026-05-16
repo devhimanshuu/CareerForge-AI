@@ -18,9 +18,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import PortfolioChatbot from "@/components/portfolio/PortfolioChatbot";
+import ARPopOutViewer from "./ARPopOutViewer";
+
 
 const PublicPortfolio = () => {
   const { slug } = useParams();
@@ -281,7 +283,13 @@ const PublicPortfolio = () => {
 
         {/* Recruiter Chatbot */}
         <PortfolioChatbot resumeInfo={data} />
+
+        {/* AR Pop-out Viewer (Mobile Only) */}
+        <div className="md:hidden">
+            <ARPopOutViewer data={data} />
+        </div>
       </div>
+
     </div>
   );
 };
