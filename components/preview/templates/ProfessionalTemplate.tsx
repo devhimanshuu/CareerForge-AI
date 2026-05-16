@@ -16,21 +16,34 @@ const ProfessionalTemplate: FC<PropsType> = ({ resumeInfo, isLoading }) => {
 
   return (
     <div className="flex flex-col gap-6 p-2">
-      {/* Header - Left Aligned */}
-      <div className="border-b-2 pb-4" style={{ borderColor: themeColor }}>
-        <h1 className="text-3xl font-black uppercase tracking-tight" style={{ color: themeColor }}>
-          {resumeInfo?.personalInfo?.firstName} {resumeInfo?.personalInfo?.lastName}
-        </h1>
-        <p className="text-lg font-bold text-muted-foreground mt-1">
-          {resumeInfo?.personalInfo?.jobTitle}
-        </p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs font-medium text-muted-foreground">
-          <span>{resumeInfo?.personalInfo?.email}</span>
-          <span>•</span>
-          <span>{resumeInfo?.personalInfo?.phone}</span>
-          <span>•</span>
-          <span>{resumeInfo?.personalInfo?.address}</span>
+      {/* Header - Left Aligned with Image Option */}
+      <div className="border-b-2 pb-4 flex justify-between items-end" style={{ borderColor: themeColor }}>
+        <div>
+          <h1 className="text-3xl font-black uppercase tracking-tight" style={{ color: themeColor }}>
+            {resumeInfo?.personalInfo?.firstName} {resumeInfo?.personalInfo?.lastName}
+          </h1>
+          <p className="text-lg font-bold text-muted-foreground mt-1">
+            {resumeInfo?.personalInfo?.jobTitle}
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs font-medium text-muted-foreground">
+            <span>{resumeInfo?.personalInfo?.email}</span>
+            <span>•</span>
+            <span>{resumeInfo?.personalInfo?.phone}</span>
+            <span>•</span>
+            <span>{resumeInfo?.personalInfo?.address}</span>
+          </div>
         </div>
+        {resumeInfo?.personalInfo?.userImage && (
+          <div className="shrink-0">
+             {/* eslint-disable-next-line @next/next/no-img-element */}
+             <img 
+              src={resumeInfo.personalInfo.userImage} 
+              alt="Profile" 
+              className="w-24 h-24 rounded-lg object-cover border-2 shadow-sm"
+              style={{ borderColor: themeColor }}
+             />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-8">

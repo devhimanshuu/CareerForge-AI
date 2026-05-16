@@ -9,31 +9,32 @@ const EditResume = () => {
   const [activeTab, setActiveTab] = React.useState<"form" | "preview">("form");
 
   return (
-    <div className="relative w-full">
-      <div
-        className="w-full mx-auto max-w-7xl 3xl:max-w-9xl 4xl:max-w-10xl
-       py-4 px-5"
-      >
-        <TopSection />
+    <div className="relative w-full h-[calc(100vh-56px)] flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900/50">
+      {/* Top Navigation Bar */}
+      <div className="flex-none bg-background shadow-sm border-b border-border/50 z-20">
+         <div className="px-4 py-2">
+            <TopSection />
+         </div>
+      </div>
 
-        {/* Mobile Tab Switcher */}
-        <div className="flex lg:hidden justify-center my-4">
-          <div className="bg-muted/50 p-1 rounded-xl flex gap-1 border border-border/50">
+      {/* Mobile Tab Switcher */}
+      <div className="flex-none lg:hidden flex justify-center p-3 bg-background border-b border-border/50 z-20">
+          <div className="bg-muted/50 p-1 rounded-xl flex gap-1 w-full max-w-sm">
             <button
               onClick={() => setActiveTab("form")}
               className={cn(
-                "px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200",
+                "flex-1 py-2 rounded-lg text-sm font-bold transition-all duration-200",
                 activeTab === "form"
                   ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              Edit Form
+              Edit Details
             </button>
             <button
               onClick={() => setActiveTab("preview")}
               className={cn(
-                "px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200",
+                "flex-1 py-2 rounded-lg text-sm font-bold transition-all duration-200",
                 activeTab === "preview"
                   ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600 dark:text-indigo-400"
                   : "text-muted-foreground hover:text-foreground",
@@ -42,33 +43,29 @@ const EditResume = () => {
               Live Preview
             </button>
           </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden relative z-10">
+        
+        {/* Form Section Sidebar */}
+        <div
+          className={cn(
+            "w-full lg:w-[45%] h-full overflow-y-auto border-r border-border/50 bg-background relative z-10 custom-scrollbar",
+            activeTab === "form" ? "block" : "hidden lg:block",
+          )}
+        >
+          <ResumeForm />
         </div>
 
-        <div className="w-full mt-1">
-          <div
-            className="flex flex-col lg:flex-row
-                  items-start w-full py-3 gap-6"
-          >
-            {/* {Form Section} */}
-            <div
-              className={cn(
-                "flex-1 w-full lg:block",
-                activeTab === "form" ? "block" : "hidden",
-              )}
-            >
-              <ResumeForm />
-            </div>
-
-            {/* {Preview Section} */}
-            <div
-              className={cn(
-                "flex-1 w-full lg:block",
-                activeTab === "preview" ? "block" : "hidden",
-              )}
-            >
-              <ResumePreview />
-            </div>
-          </div>
+        {/* Live Preview Section */}
+        <div
+          className={cn(
+            "w-full lg:w-[55%] h-full overflow-y-auto relative justify-center pt-8 pb-16 px-4 custom-scrollbar",
+            activeTab === "preview" ? "flex" : "hidden lg:flex",
+          )}
+        >
+          <ResumePreview />
         </div>
       </div>
     </div>

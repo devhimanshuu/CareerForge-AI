@@ -15,6 +15,7 @@ export const personalInfoTable = pgTable("personal_info", {
   address: varchar("address", { length: 500 }),
   phone: varchar("phone", { length: 50 }),
   email: varchar("email", { length: 255 }),
+  userImage: varchar("user_image", { length: 1000 }),
 });
 
 export const personalInfoRelations = relations(
@@ -37,5 +38,6 @@ export const personalInfoTableSchema = createInsertSchema(personalInfoTable, {
   address: true,
   phone: true,
   email: true,
+  userImage: true,
 });
 export type PersonalSchema = z.infer<typeof personalInfoTableSchema>;

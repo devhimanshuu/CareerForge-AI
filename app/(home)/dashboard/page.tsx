@@ -10,6 +10,7 @@ import {
   FileText,
   TrendingUp,
   Zap,
+  Bot,
   ArrowRight,
   BarChart3,
   Briefcase,
@@ -20,6 +21,8 @@ import {
 import { motion, Variants } from "framer-motion";
 import Link from "next/link";
 import useGetDocuments from "@/features/document/use-get-document";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -40,7 +43,24 @@ const itemVariants: Variants = {
 
 const Page = () => {
   const { data, isLoading } = useGetDocuments();
-  
+  const [apps, setApps] = React.useState<any[]>([]);
+  const [isAppsLoading, setIsAppsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchApps = async () => {
+      try {
+        const res = await fetch("/api/application/all");
+        const json = await res.json();
+        if (json.success) setApps(json.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsAppsLoading(false);
+      }
+    };
+    fetchApps();
+  }, []);
+
   const resumes = useMemo(() => {
     if (data && Array.isArray(data.data)) {
       return data.data;
@@ -69,7 +89,7 @@ const Page = () => {
         <motion.div variants={itemVariants} className="mb-10">
           <div className="relative rounded-2xl overflow-hidden border border-border/40 bg-card/40 backdrop-blur-md">
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.05] via-transparent to-violet-500/[0.05]" />
-            
+
             <div className="relative z-10 p-6 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-3">
@@ -90,7 +110,8 @@ const Page = () => {
                   </div>
                 </div>
                 <p className="text-muted-foreground text-sm md:text-base max-w-lg leading-relaxed">
-                  Manage your professional portfolio and leverage AI to optimize your resumes for every application.
+                  Manage your professional portfolio and leverage AI to optimize
+                  your resumes for every application.
                 </p>
               </div>
 
@@ -122,19 +143,118 @@ const Page = () => {
           />
           <StatsCard
             icon={<Target size={18} />}
-            label="Avg. Score"
-            value="85%"
+            label="Applications"
+            value={isAppsLoading ? "..." : apps.length.toString()}
             accent="amber"
-            trend="ATS compatibility"
+            trend="Active pipeline"
           />
           <StatsCard
             icon={<Zap size={18} />}
-            label="AI Power"
-            value="∞"
+            label="Success Rate"
+            value={
+              apps.length > 0
+                ? `${Math.round((apps.filter((a) => ["interviewing", "offer"].includes(a.status)).length / apps.length) * 100)}%`
+                : "0%"
+            }
             accent="violet"
-            trend="Pro plan active"
+            trend="Interview rate"
           />
         </motion.div>
+
+        {/* ── Career Insights & Applications ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mb-12">
+          {/* AI Career Coach */}
+          <motion.div variants={itemVariants} className="lg:col-span-1">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/80 flex items-center gap-2">
+                <Sparkles size={14} className="text-indigo-500" />
+                Career Coach
+              </h2>
+            </div>
+            <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Bot size={80} />
+              </div>
+              <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+                Market Insight
+                <span className="text-[10px] bg-indigo-500 text-white px-2 py-0.5 rounded-full uppercase tracking-widest">
+                  New
+                </span>
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                &quot;Based on your recent applications, you have a high success
+                rate in <b>Fullstack Roles</b>. Consider adding <b>Next.js</b>{" "}
+                and <b>Drizzle ORM</b> to your main resume to increase your ATS
+                score by 15%.&quot;
+              </p>
+              <Button
+                variant="outline"
+                className="w-full bg-background/50 border-indigo-500/30 text-indigo-500 hover:bg-indigo-500 hover:text-white rounded-xl font-bold gap-2"
+              >
+                Get Full AI Review
+                <ArrowRight size={14} />
+              </Button>
+            </div>
+          </motion.div>
+
+          {/* Recent Activity / Applications */}
+          <motion.div variants={itemVariants} className="lg:col-span-2">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/80 flex items-center gap-2">
+                <Clock size={14} className="text-indigo-500" />
+                Recent Applications
+              </h2>
+              <Link
+                href="/dashboard/applications"
+                className="text-[11px] font-bold text-indigo-500 hover:underline uppercase tracking-widest"
+              >
+                View All
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {apps.length === 0 && !isAppsLoading && (
+                <div className="p-10 rounded-2xl border border-dashed flex flex-col items-center justify-center text-center opacity-50">
+                  <Briefcase size={24} className="mb-3" />
+                  <p className="text-sm font-bold">No applications yet</p>
+                  <p className="text-xs">Start tracking your journey today</p>
+                </div>
+              )}
+              {apps.slice(0, 3).map((app: any) => (
+                <div
+                  key={app.id}
+                  className="flex items-center justify-between p-4 rounded-2xl bg-card/30 border border-border/40 hover:border-indigo-500/30 transition-all group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
+                      <Briefcase size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold">{app.jobTitle}</h4>
+                      <p className="text-[10px] text-muted-foreground">
+                        {app.company} •{" "}
+                        {new Date(app.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className={cn(
+                      "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest",
+                      app.status === "applied"
+                        ? "bg-blue-500/10 text-blue-500"
+                        : app.status === "interviewing"
+                          ? "bg-amber-500/10 text-amber-500"
+                          : app.status === "offer"
+                            ? "bg-emerald-500/10 text-emerald-500"
+                            : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {app.status}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
 
         {/* ── Quick Actions ── */}
         <motion.div variants={itemVariants} className="mb-10">
@@ -238,14 +358,20 @@ const StatsCard: React.FC<StatsCardProps> = ({
   return (
     <div className="group relative rounded-2xl border border-border/40 bg-card/30 p-5 hover:bg-card/50 transition-all duration-300">
       <div className="flex items-center gap-3 mb-3">
-        <div className={`w-8 h-8 rounded-lg ${colors.bg} flex items-center justify-center ${colors.text}`}>
+        <div
+          className={`w-8 h-8 rounded-lg ${colors.bg} flex items-center justify-center ${colors.text}`}
+        >
           {icon}
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">{label}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+          {label}
+        </span>
       </div>
       <div className="flex flex-col">
         <p className="text-2xl font-bold text-foreground">{value}</p>
-        <p className="text-[10px] text-muted-foreground mt-1 font-medium">{trend}</p>
+        <p className="text-[10px] text-muted-foreground mt-1 font-medium">
+          {trend}
+        </p>
       </div>
     </div>
   );
@@ -273,7 +399,9 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({
     <Link href={href}>
       <div className="group relative rounded-2xl border border-border/40 bg-card/20 p-4 hover:bg-card/40 transition-all duration-300 cursor-pointer h-full">
         <div className="flex items-start justify-between mb-3">
-          <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center ${iconColor}`}>
+          <div
+            className={`w-9 h-9 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center ${iconColor}`}
+          >
             {icon}
           </div>
           <ArrowRight

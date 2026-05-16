@@ -275,7 +275,7 @@ const PublicPortfolio = () => {
           </p>
           <div className="flex items-center gap-2">
             Built with{" "}
-            <span className="text-indigo-500 font-bold">Resumify AI</span>
+            <span className="text-indigo-500 font-bold">CareerForge AI</span>
           </div>
         </footer>
 
@@ -360,7 +360,7 @@ const PortfolioError = ({ message }: { message: string | null }) => (
       </p>
     </div>
     <Button variant="outline" className="border-white/10 bg-white/5" asChild>
-      <a href="/">Back to Resumify</a>
+      <a href="/">Back to CareerForge AI</a>
     </Button>
   </div>
 );

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect } from "react";
-import { Loader } from "lucide-react";
+import { Loader, Sparkles } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 import { useResumeContext } from "@/context/resume-info-provider";
 import { PersonalInfoType } from "@/types/resume.type";
 import { Label } from "@/components/ui/label";
@@ -18,12 +19,32 @@ const initialState = {
   address: "",
   phone: "",
   email: "",
+  userImage: "",
 };
 
 const PersonalInfoForm = (props: { handleNext: () => void }) => {
   const { handleNext } = props;
   const { resumeInfo, isLoading, onUpdate } = useResumeContext();
   const { mutateAsync, isPending } = useUpdateDocument();
+  const { user } = useUser();
+
+  const handleFetchGoogleImage = useCallback(() => {
+    if (!user?.imageUrl) return;
+    
+    setPersonalInfo((prev) => ({ ...prev, userImage: user.imageUrl }));
+    if (!resumeInfo) return;
+    onUpdate({
+      ...resumeInfo,
+      personalInfo: {
+        ...resumeInfo.personalInfo,
+        userImage: user.imageUrl,
+      },
+    });
+    toast({
+      title: "Success",
+      description: "Google profile image fetched!",
+    });
+  }, [user, resumeInfo, onUpdate]);
 
   const [personalInfo, setPersonalInfo] =
     React.useState<PersonalInfoType>(initialState);
@@ -103,6 +124,50 @@ const PersonalInfoForm = (props: { handleNext: () => void }) => {
       </div>
       <div>
         <form onSubmit={handleSubmit}>
+          <div
+            className="flex flex-col sm:flex-row items-center gap-6 mt-6 p-4 rounded-2xl bg-muted/30 border border-border/50"
+          >
+            <div className="relative group">
+               <div className="w-24 h-24 rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-border/50 flex items-center justify-center">
+                 {personalInfo?.userImage ? (
+                   // eslint-disable-next-line @next/next/no-img-element
+                   <img 
+                    src={personalInfo.userImage} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                   />
+                 ) : (
+                   <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest text-center px-2">No Photo</span>
+                 )}
+               </div>
+               {personalInfo?.userImage && (
+                 <button 
+                  type="button"
+                  onClick={() => handleChange({ target: { name: "userImage", value: "" } } as any)}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                 >
+                   ×
+                 </button>
+               )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <h3 className="text-sm font-bold">Profile Photo</h3>
+              <p className="text-xs text-muted-foreground max-w-[200px]">Add a professional photo to your resume for better visibility.</p>
+              <div className="flex flex-wrap gap-2 mt-1">
+                 <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-[10px] h-8 gap-1.5 border-indigo-500/30 hover:bg-indigo-500/5"
+                  onClick={handleFetchGoogleImage}
+                 >
+                   <Sparkles size={12} className="text-indigo-500" />
+                   Fetch Google Photo
+                 </Button>
+              </div>
+            </div>
+          </div>
+
           <div
             className="grid grid-cols-2 
           mt-5 gap-3"

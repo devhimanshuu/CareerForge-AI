@@ -17,6 +17,17 @@ const PersonalInfo: FC<PropsType> = ({ resumeInfo, isLoading }) => {
   }
   return (
     <div className="w-full min-h-14">
+      {resumeInfo?.personalInfo?.userImage && (
+        <div className="flex justify-center mb-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={resumeInfo.personalInfo.userImage}
+            alt="Profile"
+            className="w-20 h-20 rounded-full object-cover border-2"
+            style={{ borderColor: themeColor }}
+          />
+        </div>
+      )}
       <h2
         className="
         font-bold text-xl text-center

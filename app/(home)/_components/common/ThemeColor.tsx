@@ -126,16 +126,28 @@ const ThemeColor = () => {
               role="button"
               key={index}
               onClick={() => onColorSelect(item)}
-              className={`h-5 w-8 rounded-[5px]
-                            hover:border-black border
-
-                          ${selectedColor === item && "border border-black"}
-                            `}
-              style={{
-                background: item,
-              }}
+              className={`h-5 w-8 rounded-[5px] hover:border-black border transition-all duration-200
+                ${selectedColor === item ? "border-2 border-primary scale-110" : "border-transparent shadow-sm"}
+              `}
+              style={{ background: item }}
             />
           ))}
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-border/50 flex flex-col gap-2">
+          <label className="text-xs font-semibold text-muted-foreground">Custom Color</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={selectedColor || INITIAL_THEME_COLOR}
+              onChange={(e) => onColorSelect(e.target.value)}
+              className="w-8 h-8 rounded-md cursor-pointer border-0 p-0 bg-transparent"
+              title="Choose custom color"
+            />
+            <span className="text-xs font-mono uppercase bg-muted/50 px-2 py-1 rounded-md border border-border/50 text-foreground font-medium">
+              {selectedColor || INITIAL_THEME_COLOR}
+            </span>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

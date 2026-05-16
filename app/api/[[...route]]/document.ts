@@ -30,7 +30,7 @@ const documentRoute = new Hono()
         const { title } = c.req.valid("json") as DocumentSchema;
         const userId = user.id;
         const authorName = `${user.given_name || ""} ${user?.family_name || ""}`.trim() || "Anonymous";
-        const authorEmail = user.email || "no-email@resumify.com";
+        const authorEmail = user.email || "no-email@careerforge.ai";
         const documentId = generateDocUUID();
 
         const newDoc = {

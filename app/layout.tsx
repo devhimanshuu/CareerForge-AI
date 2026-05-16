@@ -52,7 +52,7 @@ export default function RootLayout({
         elements: {
           footer: "hidden",
           userButtonPopoverFooter: "hidden",
-          logoBox: "flex items-center justify-center gap-2 after:content-['Resumify'] after:font-bold after:text-xl after:tracking-tight after:bg-gradient-to-r after:from-indigo-500 after:to-purple-600 after:bg-clip-text after:text-transparent",
+          logoBox: "flex items-center justify-center gap-2 after:content-['CareerForge_AI'] after:font-bold after:text-xl after:tracking-tight after:bg-gradient-to-r after:from-indigo-500 after:to-purple-600 after:bg-clip-text after:text-transparent",
           logoImage: "w-8 h-8 rounded-lg shadow-lg shadow-indigo-500/25",
         },
         layout: {

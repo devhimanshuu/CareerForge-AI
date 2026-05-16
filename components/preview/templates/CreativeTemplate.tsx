@@ -32,6 +32,17 @@ const CreativeTemplate: FC<PropsType> = ({ resumeInfo, isLoading }) => {
       <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
         <aside className="w-1/3 bg-slate-50 dark:bg-slate-800/50 p-6 space-y-8 border-r border-slate-100 dark:border-slate-800">
+          {resumeInfo?.personalInfo?.userImage && (
+            <div className="flex justify-center mb-6">
+               {/* eslint-disable-next-line @next/next/no-img-element */}
+               <img 
+                src={resumeInfo.personalInfo.userImage} 
+                alt="Profile" 
+                className="w-28 h-28 rounded-2xl object-cover border-4 shadow-xl -mt-16 bg-white"
+                style={{ borderColor: themeColor }}
+               />
+            </div>
+          )}
           <section className="space-y-4">
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Contact</h3>
             <div className="space-y-3 text-[11px] font-medium text-slate-600 dark:text-slate-400">

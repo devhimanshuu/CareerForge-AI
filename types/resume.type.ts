@@ -38,6 +38,7 @@ export type PersonalInfoType = {
   address?: string | null;
   phone?: string | null;
   email?: string | null;
+  userImage?: string | null;
 };
 
 export type StatusType = "archived" | "private" | "public" | undefined;
@@ -58,6 +59,7 @@ export type ResumeDataType = {
   educations?: EducationType[] | null;
   skills?: SkillType[] | null;
   settings?: string | null;
+  userId?: string;
   updatedAt?: string;
 };
 

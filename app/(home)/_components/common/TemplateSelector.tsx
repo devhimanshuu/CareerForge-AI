@@ -22,7 +22,7 @@ const TEMPLATES = [
   },
   {
     id: "professional",
-    name: "Executive Bold",
+    name: "Professional Bold",
     desc: "High-impact, left-aligned layout",
     preview: "bg-slate-800",
   },
@@ -31,6 +31,18 @@ const TEMPLATES = [
     name: "Modern Sidebar",
     desc: "Two-column creative arrangement",
     preview: "bg-indigo-500",
+  },
+  {
+    id: "minimalist",
+    name: "Minimalist Clean",
+    desc: "Elegant, centered, distraction-free",
+    preview: "bg-stone-100 border border-stone-300",
+  },
+  {
+    id: "executive",
+    name: "Executive Suite",
+    desc: "Heavy colored header, two-column body",
+    preview: "bg-emerald-900",
   },
 ];
 

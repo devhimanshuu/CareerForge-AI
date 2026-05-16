@@ -22,13 +22,13 @@ const Error = () => {
       <div className="flex items-center gap-2 text-muted-foreground">
         <Image
           src="/logo.svg"
-          alt="Resumify Logo"
+          alt="CareerForge AI Logo"
           width={24}
           height={24}
           className="rounded-md"
         />
         <span className="text-sm font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-          Resumify
+          CareerForge AI
         </span>
       </div>
     </div>

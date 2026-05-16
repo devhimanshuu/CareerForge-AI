@@ -28,10 +28,10 @@ const ResumeForm = () => {
   };
 
   return (
-    <div className="flex-1 w-full lg:sticky lg:top-16">
-      <div className="rounded-2xl bg-card border border-border/50 shadow-sm overflow-hidden">
+    <div className="w-full flex flex-col h-full">
+      <div className="flex-1 flex flex-col bg-background">
         {/* Step Progress Bar */}
-        <div className="px-4 py-3 border-b border-border/50 bg-muted/30">
+        <div className="sticky top-0 z-20 px-4 py-3 border-b border-border/50 bg-background/95 backdrop-blur-md">
           <div className="flex items-center gap-1">
             {steps.map((step, i) => (
               <div key={step.id} className="flex items-center flex-1">

@@ -66,14 +66,14 @@ const Header = () => {
             <div className="relative">
               <Image
                 src="/logo.svg"
-                alt="Resumify Logo"
+                alt="CareerForge AI Logo"
                 width={28}
                 height={28}
                 className="group-hover:scale-105 transition-transform duration-300 rounded-lg"
               />
             </div>
             <span className="font-bold text-base tracking-tight bg-gradient-to-r from-indigo-500 to-violet-600 bg-clip-text text-transparent">
-              Resumify
+              CareerForge AI
             </span>
           </Link>
 
@@ -140,7 +140,7 @@ const Header = () => {
                         height={24}
                       />
                       <span className="font-bold text-lg bg-gradient-to-r from-indigo-500 to-violet-600 bg-clip-text text-transparent">
-                        Resumify
+                        CareerForge AI
                       </span>
                     </Link>
                   </div>

@@ -50,7 +50,7 @@ const ResumeTitle: FC<ResumeTitleProps> = ({
           `
         text-[20px] px-1 text-gray-700
          dark:text-gray-300 font-semibold
-         opacity-100
+         opacity-100 whitespace-nowrap min-w-[50px] outline-none
                   `,
           {
             "!opacity-70 !pointer-events-none":
