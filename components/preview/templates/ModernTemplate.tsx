@@ -12,9 +12,14 @@ interface PropsType {
   isLoading: boolean;
 }
 
+import DynamicQR from "@/components/preview/DynamicQR";
+
 const ModernTemplate: FC<PropsType> = ({ resumeInfo, isLoading }) => {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 relative">
+      <div className="absolute top-0 right-0">
+         <DynamicQR />
+      </div>
       <PersonalInfo isLoading={isLoading} resumeInfo={resumeInfo} />
       <SummaryPreview isLoading={isLoading} resumeInfo={resumeInfo} />
       <ExperiencePreview isLoading={isLoading} resumeInfo={resumeInfo} />
@@ -23,5 +28,6 @@ const ModernTemplate: FC<PropsType> = ({ resumeInfo, isLoading }) => {
     </div>
   );
 };
+
 
 export default ModernTemplate;

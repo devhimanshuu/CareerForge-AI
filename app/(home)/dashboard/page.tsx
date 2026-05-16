@@ -23,6 +23,8 @@ import Link from "next/link";
 import useGetDocuments from "@/features/document/use-get-document";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import ResumeImport from "../_components/common/ResumeImport";
+
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -116,8 +118,10 @@ const Page = () => {
               </div>
 
               <div className="flex items-center gap-3 shrink-0">
+                <ResumeImport />
                 <TrashListBox />
               </div>
+
             </div>
           </div>
         </motion.div>

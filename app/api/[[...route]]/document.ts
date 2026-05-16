@@ -53,11 +53,12 @@ const documentRoute = new Hono()
           { status: 200 }
         );
       } catch (error) {
+        console.error("Create Document Error:", error);
         return c.json(
           {
             success: false,
             message: "Failed to create document",
-            error: error,
+            error: error instanceof Error ? error.message : error,
           },
           500
         );
@@ -268,11 +269,12 @@ const documentRoute = new Hono()
           { status: 200 }
         );
       } catch (error) {
+        console.error("Update Document Error:", error);
         return c.json(
           {
             success: false,
             message: "Failed to update document",
-            error: error,
+            error: error instanceof Error ? error.message : error,
           },
           500
         );
@@ -364,11 +366,12 @@ const documentRoute = new Hono()
         data: documents,
       });
     } catch (error) {
+      console.error("Fetch All Documents Error:", error);
       return c.json(
         {
           success: false,
           message: "Failed to fetch documents",
-          error: error,
+          error: error instanceof Error ? error.message : error,
         },
         500
       );
@@ -406,11 +409,12 @@ const documentRoute = new Hono()
           data: documentData,
         });
       } catch (error) {
+        console.error("Fetch Single Document Error:", error);
         return c.json(
           {
             success: false,
-            message: "Failed to fetch documents",
-            error: error,
+            message: "Failed to fetch document",
+            error: error instanceof Error ? error.message : error,
           },
           500
         );

@@ -1,24 +1,51 @@
 import OpenAI from "openai";
 
-const groqApiKey = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY;
-const nvidiaApiKey = process.env.NVIDIA_API_KEY || process.env.NEXT_PUBLIC_NVIDIA_API_KEY;
-
-const nvidiaClient = new OpenAI({
-  apiKey: nvidiaApiKey,
-  baseURL: "https://integrate.api.nvidia.com/v1",
-  dangerouslyAllowBrowser: true 
-});
-
-const groqClient = new OpenAI({
-  apiKey: groqApiKey,
-  baseURL: "https://api.groq.com/openai/v1",
-  dangerouslyAllowBrowser: true 
-});
-
 export const AIChatSession = {
   sendMessage: async (prompt: string) => {
+    // If running in the browser, call our internal API to keep keys secret
+    if (typeof window !== "undefined") {
+      try {
+        const response = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ prompt }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to get AI response");
+        }
+
+        const data = await response.json();
+        return {
+          response: {
+            text: () => data.text,
+          },
+        };
+      } catch (error) {
+        console.error("Client-side AI error:", error);
+        throw error;
+      }
+    }
+
+    // Server-side logic (runs in API routes or Server Actions)
+    const groqApiKey = process.env.GROQ_API_KEY;
+    const nvidiaApiKey = process.env.NVIDIA_KIMI_KEY;
+
+    const nvidiaClient = new OpenAI({
+      apiKey: nvidiaApiKey || "dummy",
+      baseURL: "https://integrate.api.nvidia.com/v1",
+    });
+
+    const groqClient = new OpenAI({
+      apiKey: groqApiKey || "dummy",
+      baseURL: "https://api.groq.com/openai/v1",
+    });
+
     try {
-      // Primary: NVIDIA Kimi 2.6
+      if (!nvidiaApiKey || nvidiaApiKey === "dummy") throw new Error("Missing NVIDIA API Key");
+      
       const response = await nvidiaClient.chat.completions.create({
         model: "moonshotai/kimi-k2.6",
         messages: [{ role: "user", content: prompt }],
@@ -33,7 +60,8 @@ export const AIChatSession = {
     } catch (error) {
       console.warn("NVIDIA API failed, falling back to Groq:", error);
       
-      // Fallback: Groq Llama 3.3
+      if (!groqApiKey || groqApiKey === "dummy") throw new Error("Missing Groq API Key");
+
       const response = await groqClient.chat.completions.create({
         model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],

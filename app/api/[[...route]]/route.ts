@@ -5,6 +5,10 @@ import { HTTPException } from "hono/http-exception";
 import documentRoute from "./document";
 import applicationRoute from "./application";
 import audioRoute from "./audio";
+import extractRoute from "./extract";
+import imageRoute from "./image";
+import aiRoute from "./ai";
+
 
 
 
@@ -25,7 +29,11 @@ const routes = app
   .basePath("/api")
   .route("/document", documentRoute)
   .route("/application", applicationRoute)
-  .route("/audio", audioRoute);
+  .route("/audio", audioRoute)
+  .route("/extract", extractRoute)
+  .route("/image", imageRoute)
+  .route("/ai", aiRoute);
+
 
 
 

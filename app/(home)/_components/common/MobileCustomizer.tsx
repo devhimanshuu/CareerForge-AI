@@ -63,7 +63,7 @@ const MobileCustomizer = () => {
 
           <div className="space-y-6">
             {/* Customization Section (only for edit page) */}
-            {isEditPage && (
+            {isEditPage && context && (
               <div className="space-y-4">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1">
                   Design & Optimization

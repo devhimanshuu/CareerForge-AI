@@ -58,7 +58,7 @@ export const useResumeContext = () => {
   const context = useContext(ResumeInfoContext);
   if (!context) {
     throw new Error(
-      "useCurrentUserContext must be used within a ResumeInfoProvider"
+      "useResumeContext must be used within a ResumeInfoProvider"
     );
   }
   return context;

@@ -37,20 +37,29 @@ const AIPhotoGenerator = () => {
     setStep(2);
 
     try {
-      // Simulate AI Processing time
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      const response = await fetch("/api/image/edit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image: resumeInfo.personalInfo.userImage,
+          prompt: "Enhance this person's photo to look like a professional studio headshot. Add professional formal attire (suit/blazer), clean studio background, and cinematic professional lighting. Ensure high consistency with the original face.",
+        }),
+      });
 
-      // In a real production app, we would send the current photo to an Image-to-Image API
-      // Here we simulate it by using a high-quality professional placeholder or AI generated sample
-      // For demo purposes, we'll use a professional-looking AI headshot URL
-      const professionalPhotoUrl = "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=256&h=256&auto=format&fit=crop";
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || "Failed to generate headshot");
+      }
 
       if (resumeInfo) {
         const updatedInfo = {
           ...resumeInfo,
           personalInfo: {
             ...resumeInfo.personalInfo,
-            userImage: professionalPhotoUrl
+            userImage: data.image
           }
         };
         onUpdate(updatedInfo);
@@ -61,12 +70,19 @@ const AIPhotoGenerator = () => {
 
         setStep(3);
         toast({
-          title: "AI Headshot Ready!",
-          description: "Your photo has been enhanced with professional attire and lighting.",
+          title: data.isFallback ? "Professional Profile Ready" : "AI Headshot Ready!",
+          description: data.isFallback 
+            ? "We've applied a professional standard profile for you while our AI studio is busy." 
+            : "Your photo has been enhanced with professional attire and lighting using Qwen AI.",
         });
       }
     } catch (error) {
         console.error(error);
+        toast({
+            title: "Generation Failed",
+            description: error instanceof Error ? error.message : "Something went wrong",
+            variant: "destructive"
+        });
         setStep(1);
     } finally {
       setLoading(false);

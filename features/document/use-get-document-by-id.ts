@@ -28,7 +28,7 @@ const useGetDocument = (documentId: string, isPublic: boolean = false) => {
       };
     },
     retry: isPublic ? false : 3,
-    //enabled: false,
+    enabled: !!documentId,
   });
 
   return query;

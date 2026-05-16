@@ -1,6 +1,6 @@
 "use client";
 import { useResumeContext } from "@/context/resume-info-provider";
-import { AlertCircle, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import React, { useCallback } from "react";
 import ResumeTitle from "./ResumeTitle";
 import useUpdateDocument from "@/features/document/use-update-document";
@@ -12,17 +12,28 @@ import Share from "./Share";
 import MoreOption from "./MoreOption";
 import AtsMatcher from "./AtsMatcher";
 import CoverLetterGenerator from "./CoverLetterGenerator";
-import InterviewPrepAssistant from "./InterviewPrepAssistant";
-import AutoTailorEngine from "./AutoTailorEngine";
-import SkillGapAnalyzer from "./SkillGapAnalyzer";
 import TemplateSelector from "./TemplateSelector";
-import CustomLayoutBuilder from "./CustomLayoutBuilder";
 import AutoPageFit from "./AutoPageFit";
+import CustomLayoutBuilder from "./CustomLayoutBuilder";
 import LanguageTranslator from "./LanguageTranslator";
-
-
-
-
+import MagicAI from "@/components/editor/MagicAI";
+import {
+  Wand2,
+  Layout,
+  FileEdit,
+  DownloadCloud,
+  ChevronDown,
+  MoreHorizontal,
+  Settings2,
+  PenTool,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 const TopSection = () => {
   const { resumeInfo, isLoading, onUpdate } = useResumeContext();
@@ -57,10 +68,10 @@ const TopSection = () => {
               variant: "destructive",
             });
           },
-        }
+        },
       );
     },
-    [resumeInfo, onUpdate, mutateAsync]
+    [resumeInfo, onUpdate, mutateAsync],
   );
   return (
     <>
@@ -78,54 +89,128 @@ const TopSection = () => {
           This resume is in the trash bin
         </div>
       )}
-      <div className="w-full flex flex-col xl:flex-row items-start xl:items-center justify-between border-b border-border/50 pb-4 gap-4">
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <ResumeTitle
-            isLoading={isLoading || isPending}
-            initialTitle={resumeInfo?.title || ""}
-            status={resumeInfo?.status}
-            onSave={(value) => handleTitle(value)}
-          />
-        </div>
-        <div className="w-full flex flex-col gap-2.5 pb-1 xl:ml-auto xl:max-w-fit">
-          {/* Top Row: Builder & Design */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth w-full justify-start xl:justify-end">
-            <div className="flex items-center gap-1.5 p-1 rounded-lg bg-indigo-500/5 border border-indigo-500/10 shrink-0">
-              <AutoTailorEngine />
-              <InterviewPrepAssistant />
-              <SkillGapAnalyzer />
+      <div className="w-full flex flex-col gap-4">
+        {/* Row 1: Title & Export Actions */}
+        <div className="flex flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <ResumeTitle
+              isLoading={isLoading || isPending}
+              initialTitle={resumeInfo?.title || ""}
+              status={resumeInfo?.status}
+              onSave={(value) => handleTitle(value)}
+            />
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 bg-indigo-500/5 backdrop-blur-sm rounded-xl p-1 border border-indigo-500/10">
+            <div className="px-2 hidden md:flex items-center gap-2 text-indigo-500 border-r border-indigo-500/10 mr-1">
+              <DownloadCloud size={14} />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                Export & Share
+              </span>
             </div>
-            
-            <div className="w-px h-6 bg-border/50 mx-1 shrink-0 hidden sm:block" />
-            
-            <div className="flex items-center gap-1.5 p-1 rounded-lg bg-muted/30 border border-border/50 shrink-0">
+            <PreviewModal />
+            <Download
+              title={resumeInfo?.title || "Untitled Resume"}
+              status={resumeInfo?.status}
+              isLoading={isLoading}
+            />
+            <Share />
+            <MoreOption />
+          </div>
+        </div>
+
+        {/* Row 2: AI & Design Tools */}
+        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
+          {/* AI Studio Group */}
+          <div className="flex items-center gap-2 pr-4 border-r border-border/50 shrink-0">
+            <MagicAI />
+          </div>
+
+          {/* Design Group */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/30 border border-border/50 shrink-0">
+            <div className="px-2 hidden xl:flex items-center gap-1.5 text-muted-foreground border-r border-border/50 mr-1">
+              <Layout size={14} />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                Design
+              </span>
+            </div>
+
+            <div className="hidden xl:flex items-center gap-1">
               <TemplateSelector />
               <AutoPageFit />
               <CustomLayoutBuilder />
               <ThemeColor />
+            </div>
 
+            {/* Mobile/Tablet Design Menu */}
+            <div className="xl:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-2 font-bold text-[10px] uppercase tracking-widest px-2"
+                  >
+                    <Layout size={14} className="text-muted-foreground" />
+                    Design
+                    <ChevronDown size={12} className="opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="p-2 min-w-[180px] space-y-1"
+                >
+                  <div className="flex flex-col gap-1">
+                    <TemplateSelector />
+                    <AutoPageFit />
+                    <CustomLayoutBuilder />
+                    <ThemeColor />
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
-          {/* Bottom Row: Utilities & Actions */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth w-full justify-start xl:justify-end">
-            <div className="flex items-center gap-1.5 p-1 rounded-lg bg-muted/30 border border-border/50 shrink-0">
-               <CoverLetterGenerator />
-               <AtsMatcher />
-               <LanguageTranslator />
+          {/* Content Utilities Group */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/30 border border-border/50 shrink-0">
+            <div className="px-2 hidden 2xl:flex items-center gap-2 text-muted-foreground border-r border-border/50 mr-1">
+              <FileEdit size={14} />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                Content Tools
+              </span>
             </div>
 
-            <div className="w-px h-6 bg-border/50 mx-1 shrink-0 hidden sm:block" />
-            
-            <div className="flex items-center gap-1.5 shrink-0 bg-background/50 backdrop-blur-sm rounded-lg p-1">
-              <PreviewModal />
-              <Download
-                title={resumeInfo?.title || "Untitled Resume"}
-                status={resumeInfo?.status}
-                isLoading={isLoading}
-              />
-              <Share />
-              <MoreOption />
+            <div className="hidden 2xl:flex items-center gap-1">
+              <CoverLetterGenerator />
+              <AtsMatcher />
+              <LanguageTranslator />
+            </div>
+
+            {/* Mobile/Tablet Tools Menu */}
+            <div className="2xl:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-2 font-bold text-[10px] uppercase tracking-widest px-2"
+                  >
+                    <PenTool size={14} className="text-muted-foreground" />
+                    Tools
+                    <ChevronDown size={12} className="opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="p-2 min-w-[180px] space-y-1"
+                >
+                  <div className="flex flex-col gap-1">
+                    <CoverLetterGenerator />
+                    <AtsMatcher />
+                    <LanguageTranslator />
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
