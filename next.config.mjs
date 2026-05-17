@@ -2,6 +2,9 @@
 import dotenv from "dotenv";
 dotenv.config();
 const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ["pdf-parse", "@napi-rs/canvas"],
+  },
   images: {
     remotePatterns: [
       {

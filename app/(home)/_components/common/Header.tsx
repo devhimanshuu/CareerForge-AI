@@ -90,7 +90,8 @@ const Header = () => {
           <div className="hidden md:block w-px h-5 bg-border/60" />
 
           {/* Navigation */}
-          <nav className="hidden items-center gap-1 overflow-x-auto md:flex">
+          <nav className="hidden md:flex items-center gap-1 overflow-x-auto min-w-0 md:flex-none scrollbar-none py-1">
+
             {navItems.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -101,7 +102,7 @@ const Header = () => {
                   key={item.href}
                   href={item.href}
                   className={`
-                    relative flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-all duration-200
+                    relative flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-all duration-200 shrink-0
                     ${
                       isActive
                         ? "bg-foreground text-background shadow-sm"

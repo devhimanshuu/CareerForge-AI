@@ -20,7 +20,10 @@ import {
   LayoutDashboard,
   Briefcase,
   BarChart3,
-  ChevronRight
+  ChevronRight,
+  Mic,
+  Globe,
+  Map
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -99,26 +102,44 @@ const MobileCustomizer = () => {
             {/* Navigation Section */}
             <div className="space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1">
-                Navigation
+                Workspace Modules
               </h3>
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
                 <MobileNavItem 
                   href="/dashboard" 
-                  icon={<LayoutDashboard size={18} />} 
+                  icon={<LayoutDashboard size={16} />} 
                   label="Dashboard" 
                   active={pathname === "/dashboard"} 
                 />
                 <MobileNavItem 
-                  href="/dashboard/jobs" 
-                  icon={<Briefcase size={18} />} 
-                  label="Job Board" 
-                  active={pathname === "/dashboard/jobs"} 
+                  href="/dashboard/applications" 
+                  icon={<Briefcase size={16} />} 
+                  label="Job Tracker" 
+                  active={pathname === "/dashboard/applications" || pathname?.startsWith("/dashboard/applications")} 
+                />
+                <MobileNavItem 
+                  href="/dashboard/interview" 
+                  icon={<Mic size={16} />} 
+                  label="Interview Lab" 
+                  active={pathname === "/dashboard/interview" || pathname?.startsWith("/dashboard/interview")} 
+                />
+                <MobileNavItem 
+                  href="/dashboard/market" 
+                  icon={<Globe size={16} />} 
+                  label="Market Data" 
+                  active={pathname === "/dashboard/market" || pathname?.startsWith("/dashboard/market")} 
+                />
+                <MobileNavItem 
+                  href="/dashboard/roadmap" 
+                  icon={<Map size={16} />} 
+                  label="Roadmap" 
+                  active={pathname === "/dashboard/roadmap" || pathname?.startsWith("/dashboard/roadmap")} 
                 />
                 <MobileNavItem 
                   href="/dashboard/analytics" 
-                  icon={<BarChart3 size={18} />} 
+                  icon={<BarChart3 size={16} />} 
                   label="Analytics" 
-                  active={pathname === "/dashboard/analytics"} 
+                  active={pathname === "/dashboard/analytics" || pathname?.startsWith("/dashboard/analytics")} 
                 />
               </div>
             </div>
@@ -151,19 +172,16 @@ const MobileCustomizer = () => {
 const MobileNavItem = ({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active: boolean }) => (
   <Link href={href} className="block">
     <div className={`
-      flex items-center justify-between p-4 rounded-2xl border transition-all duration-200
+      flex items-center gap-3 p-3 rounded-xl border transition-all duration-200
       ${active 
         ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 shadow-sm" 
         : "bg-background border-border/50 text-foreground active:bg-muted/50"
       }
     `}>
-      <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-xl ${active ? "bg-indigo-500 text-white" : "bg-muted text-muted-foreground"}`}>
-          {icon}
-        </div>
-        <span className="font-bold text-sm">{label}</span>
+      <div className={`p-2 rounded-lg shrink-0 ${active ? "bg-indigo-500 text-white" : "bg-muted text-muted-foreground"}`}>
+        {icon}
       </div>
-      <ChevronRight size={16} className={active ? "text-indigo-500" : "text-muted-foreground/30"} />
+      <span className="font-bold text-xs sm:text-sm truncate">{label}</span>
     </div>
   </Link>
 );

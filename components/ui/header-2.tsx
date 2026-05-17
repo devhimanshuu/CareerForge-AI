@@ -114,7 +114,7 @@ export function Header() {
 
 			<div
 				className={cn(
-					'bg-background/95 backdrop-blur-2xl fixed top-16 right-0 bottom-0 left-0 z-[9998] flex flex-col overflow-hidden border-y border-border/50 md:hidden',
+					'bg-background/95 backdrop-blur-2xl fixed top-16 right-0 bottom-0 left-0 z-[9998] flex flex-col overflow-y-auto scrollbar-none border-y border-border/50 md:hidden',
 					open ? 'block' : 'hidden',
 				)}
 			>

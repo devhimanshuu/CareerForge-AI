@@ -54,6 +54,13 @@ body {
   .font-serif {
     font-family: 'Lora', serif !important;
   }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 /* ===== Animated Gradient Background ===== */
