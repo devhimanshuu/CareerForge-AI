@@ -1,42 +1,13 @@
 import { Hono } from "hono";
 import { getAuthUser } from "@/lib/clerk";
-import OpenAI from "openai";
-
-const groqApiKey = process.env.GROQ_API_KEY;
-const nvidiaApiKey = process.env.NVIDIA_KIMI_KEY;
-
-const nvidiaClient = new OpenAI({
-  apiKey: nvidiaApiKey,
-  baseURL: "https://integrate.api.nvidia.com/v1",
-});
-
-const groqClient = new OpenAI({
-  apiKey: groqApiKey,
-  baseURL: "https://api.groq.com/openai/v1",
-});
+import { AIChatSession } from "@/lib/groq-model";
 
 const aiRoute = new Hono()
   .post("/chat", getAuthUser, async (c) => {
     try {
       const { prompt } = await c.req.json();
-      
-      try {
-        if (!nvidiaApiKey) throw new Error("Missing NVIDIA API Key");
-        const response = await nvidiaClient.chat.completions.create({
-          model: "moonshotai/kimi-k2.6",
-          messages: [{ role: "user", content: prompt }],
-        });
-        return c.json({ text: response.choices[0].message.content || "" });
-      } catch (error) {
-        console.warn("NVIDIA NIM failed in API, falling back to Groq:", error);
-        if (!groqApiKey) throw new Error("Missing Groq API Key");
-        
-        const response = await groqClient.chat.completions.create({
-          model: "llama-3.3-70b-versatile",
-          messages: [{ role: "user", content: prompt }],
-        });
-        return c.json({ text: response.choices[0].message.content || "" });
-      }
+      const aiResponse = await AIChatSession.sendMessage(prompt);
+      return c.json({ text: aiResponse.response.text() });
     } catch (error: any) {
       console.error("AI Chat Error:", error);
       return c.json({ error: error.message }, 500);
@@ -46,30 +17,33 @@ const aiRoute = new Hono()
     try {
       const { resumeData } = await c.req.json();
       const prompt = `
-        You are a senior technical recruiter. Analyze the following resume data and identify the "Hot Zones" where a recruiter's eyes are most likely to linger during a 6-second scan.
-        Return a JSON array of coordinates (x, y) where x and y are percentages (0-100) representing positions on a standard A4 page, and an intensity (0.0-1.0).
-        Focus on: Job Titles, Company Names, Years of Experience, Key Technical Skills, and the Summary.
-        
-        RESUME DATA:
-        ${JSON.stringify(resumeData)}
-        
-        OUTPUT FORMAT:
-        {
-          "hotZones": [
-            { "x": 20, "y": 15, "intensity": 0.9, "label": "Name/Header" },
-            ...
-          ]
-        }
+      You are an expert at eye-tracking research and recruiter psychology. 
+      Analyze the provided Resume Data and predict the "hot zones" where a recruiter's eyes will naturally gravitate during their initial 6-second scan.
+      
+      Generate 4-6 attention zones. For each zone, provide:
+      - x: horizontal position percentage (0 to 100). (e.g. left side is 10-30, center is 40-60).
+      - y: vertical position percentage (0 to 100). (e.g. top is 10-30).
+      - intensity: how strongly it attracts attention (0.0 to 1.0).
+      - label: What they are looking at (e.g., "Current Job Title", "University Name", "Key Achievement").
+      
+      Output ONLY a valid JSON object matching this structure:
+      {
+        "hotZones": [
+          { "x": 20, "y": 15, "intensity": 0.9, "label": "Recent Job Title" },
+          { "x": 50, "y": 40, "intensity": 0.7, "label": "Metrics/Numbers" }
+        ]
+      }
+
+      Resume Data:
+      ${JSON.stringify(resumeData)}
       `;
 
-      const response = await nvidiaClient.chat.completions.create({
-        model: "moonshotai/kimi-k2.6",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
-      });
-
-      return c.json(JSON.parse(response.choices[0].message.content || "{}"));
+      const aiResponse = await AIChatSession.sendMessage(prompt);
+      const jsonMatch = aiResponse.response.text().match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No valid JSON found in AI response");
+      return c.json(JSON.parse(jsonMatch[0]));
     } catch (error: any) {
+      console.error("Mind Reader API Error:", error);
       return c.json({ error: error.message }, 500);
     }
   })
@@ -77,75 +51,99 @@ const aiRoute = new Hono()
     try {
       const { resumeData, targetYear = 2030 } = await c.req.json();
       const prompt = `
-        You are a career visionary. Project the professional trajectory of this person to the year ${targetYear}.
-        Based on their current skills and experience, predict their future roles, promotions, and new high-impact skills they will acquire.
-        Modify the resume data to reflect this future version. Ensure it looks like a natural evolution.
-        
-        CURRENT DATA:
-        ${JSON.stringify(resumeData)}
-        
-        OUTPUT:
-        Return the FULL updated resume JSON object.
+      You are a career visionary. Project the professional trajectory of this person to the year ${targetYear}.
+      Based on their current skills and experience, predict their future roles, promotions, and new high-impact skills they will acquire.
+      Modify the resume data to reflect this future version. Ensure it looks like a natural evolution.
+      
+      CURRENT DATA:
+      ${JSON.stringify(resumeData)}
+      
+      OUTPUT:
+      Return the FULL updated resume JSON object matching the exact schema of the input, but with updated fields.
+      Output ONLY a valid JSON object.
       `;
 
-      const response = await nvidiaClient.chat.completions.create({
-        model: "moonshotai/kimi-k2.6",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
-      });
-
-      return c.json(JSON.parse(response.choices[0].message.content || "{}"));
+      const aiResponse = await AIChatSession.sendMessage(prompt);
+      const jsonMatch = aiResponse.response.text().match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No valid JSON found in AI response");
+      return c.json(JSON.parse(jsonMatch[0]));
     } catch (error: any) {
+      console.error("Time Traveler API Error:", error);
       return c.json({ error: error.message }, 500);
     }
   })
-
   .post("/fact-check", getAuthUser, async (c) => {
     try {
       const { resumeData } = await c.req.json();
       const prompt = `
-        You are an elite AI Auditor and Technical Recruiter. Your task is to perform a "Liar Detection" audit on the following resume.
-        Identify internal inconsistencies, temporal overlaps (dates), and "Skill vs Experience" gaps (skills listed but never mentioned in work history).
-        
-        RESUME DATA:
-        ${JSON.stringify(resumeData)}
-        
-        OUTPUT FORMAT (JSON):
-        {
-          "veracityScore": 0-100,
-          "trustLevel": "High" | "Moderate" | "Low",
-          "findings": [
-            { "type": "Temporal Inconsistency" | "Skill Gap" | "Logical Error", "detail": "Description...", "severity": "Critical" | "Warning" | "Informational" }
-          ],
-          "verdict": "A summary of the overall credibility."
-        }
+      You are an elite AI Auditor and Technical Recruiter. Your task is to perform a "Liar Detection" audit on the following resume.
+      Identify internal inconsistencies, temporal overlaps (dates), and "Skill vs Experience" gaps (skills listed but never mentioned in work history).
+      
+      RESUME DATA:
+      ${JSON.stringify(resumeData)}
+      
+      OUTPUT FORMAT (JSON):
+      {
+        "veracityScore": 85,
+        "trustLevel": "Moderate",
+        "findings": [
+          { "type": "Temporal Inconsistency", "detail": "Description...", "severity": "Warning" }
+        ],
+        "verdict": "A summary of the overall credibility."
+      }
+      Output ONLY a valid JSON object matching this structure.
       `;
 
-      const response = await nvidiaClient.chat.completions.create({
-        model: "moonshotai/kimi-k2.6",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
-      });
-
-      return c.json(JSON.parse(response.choices[0].message.content || "{}"));
+      const aiResponse = await AIChatSession.sendMessage(prompt);
+      const jsonMatch = aiResponse.response.text().match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No valid JSON found in AI response");
+      return c.json(JSON.parse(jsonMatch[0]));
     } catch (error: any) {
+      console.error("Fact Check API Error:", error);
       return c.json({ error: error.message }, 500);
     }
   })
   .post("/generate-cheat-sheet", getAuthUser, async (c) => {
     try {
       const { resumeData, companyName } = await c.req.json();
+      
+      if (!companyName) {
+        return c.json({ error: "Company name is required" }, 400);
+      }
+
       const prompt = `
-        You are an elite interview coach. Generate a high-impact "Interview Cheat Sheet" for a candidate applying to ${companyName}.
-        (Prompt logic...)
+      You are an expert tech recruiter and interview coach. 
+      Generate a customized interview cheat sheet for a candidate interviewing at ${companyName}, based on their Resume Data.
+      
+      Generate the following intelligence:
+      1. companyCulture: A 1-2 sentence summary of ${companyName}'s working culture.
+      2. technicalFocus: What technology or architectural patterns they prioritize.
+      3. recentNews: 2-3 recent (imagined or real) strategic shifts or news points about the company relevant to a tech interview.
+      4. predictedQuestions: 3 difficult interview questions they are likely to ask THIS specific candidate based on their resume, along with strategy advice.
+      
+      Output ONLY a valid JSON object matching this structure:
+      {
+        "companyCulture": "...",
+        "technicalFocus": "...",
+        "recentNews": ["...", "..."],
+        "predictedQuestions": [
+          {
+            "question": "...",
+            "advice": "..."
+          }
+        ]
+      }
+
+      Resume Data:
+      ${JSON.stringify(resumeData)}
       `;
-      const response = await nvidiaClient.chat.completions.create({
-        model: "moonshotai/kimi-k2.6",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
-      });
-      return c.json(JSON.parse(response.choices[0].message.content || "{}"));
+
+      const aiResponse = await AIChatSession.sendMessage(prompt);
+      const jsonMatch = aiResponse.response.text().match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No valid JSON found in AI response");
+      return c.json(JSON.parse(jsonMatch[0]));
     } catch (error: any) {
+      console.error("Cheat Sheet API Error:", error);
       return c.json({ error: error.message }, 500);
     }
   });
