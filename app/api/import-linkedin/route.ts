@@ -6,6 +6,13 @@ const IMPORT_PROMPT = `
 You are an expert resume parser. I will provide you with the raw text extracted from a LinkedIn PDF profile.
 Extract the following information and return it strictly as a JSON object matching this structure. Do not return any other text, markdown, or explanations—only the JSON object.
 
+Format instructions:
+- "startDate" and "endDate" must be formatted as "YYYY-MM-DD" or empty string if not applicable.
+- "currentlyWorking" must be a boolean (true or false).
+- "workSummary" must contain the experience description formatted as HTML list items (e.g. "<li>Accomplished X</li><li>Led Y</li>").
+- "rating" for skills must be a number between 0 and 5.
+- Do not include any JSON comments (like // comments) in the final JSON response.
+
 {
   "personalInfo": {
     "firstName": "",
@@ -23,9 +30,9 @@ Extract the following information and return it strictly as a JSON object matchi
       "city": "",
       "state": "",
       "startDate": "YYYY-MM-DD",
-      "endDate": "YYYY-MM-DD", // or leave empty if present
-      "currentlyWorking": boolean,
-      "workSummary": "<li>...</li><li>...</li>" // HTML bullet points
+      "endDate": "YYYY-MM-DD",
+      "currentlyWorking": false,
+      "workSummary": ""
     }
   ],
   "education": [
@@ -78,9 +85,14 @@ export async function POST(request: Request) {
     const result = await AIChatSession.sendMessage(prompt);
     let aiResponse = await result.response.text();
     
-    // Clean JSON response
-    aiResponse = aiResponse.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const parsedData = JSON.parse(aiResponse);
+    // Extract JSON block safely to avoid conversational noise errors
+    const jsonStartIndex = aiResponse.indexOf('{');
+    const jsonEndIndex = aiResponse.lastIndexOf('}');
+    if (jsonStartIndex === -1 || jsonEndIndex === -1) {
+      throw new Error("Invalid AI response: JSON structure not found");
+    }
+    const cleanJson = aiResponse.substring(jsonStartIndex, jsonEndIndex + 1);
+    const parsedData = JSON.parse(cleanJson);
 
     return NextResponse.json({ success: true, data: parsedData });
   } catch (error) {

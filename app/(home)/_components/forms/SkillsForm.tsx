@@ -22,6 +22,27 @@ type LocalSkill = SkillType & {
   _localId: string;
 };
 
+const areListContentsEqual = (listA: any[], listB: any[]) => {
+  if (!listA || !listB) return false;
+  if (listA.length !== listB.length) return false;
+  for (let i = 0; i < listA.length; i++) {
+    const itemA = listA[i];
+    const itemB = listB[i];
+    const keys = Array.from(new Set([...Object.keys(itemA), ...Object.keys(itemB)]));
+    for (const key of keys) {
+      if (key === "_localId") continue;
+      const valA = itemA[key];
+      const valB = itemB[key];
+      const normalizedA = valA === null || valA === undefined ? "" : valA;
+      const normalizedB = valB === null || valB === undefined ? "" : valB;
+      if (normalizedA !== normalizedB) {
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
 const SkillsForm = () => {
   const { resumeInfo, onUpdate } = useResumeContext();
   const { mutateAsync, isPending } = useUpdateDocument();
@@ -33,6 +54,20 @@ const SkillsForm = () => {
       _localId: item.id?.toString() || crypto.randomUUID(),
     }));
   });
+
+  // Sync from context when resumeInfo.skills changes (e.g. after PDF import)
+  useEffect(() => {
+    const contextSkills = resumeInfo?.skills || [];
+    if (!contextSkills.length) return;
+    if (!areListContentsEqual(skillsList, contextSkills)) {
+      setSkillsList(
+        contextSkills.map((item) => ({
+          ...item,
+          _localId: item.id?.toString() || crypto.randomUUID(),
+        }))
+      );
+    }
+  }, [resumeInfo?.skills]);
 
   useEffect(() => {
     if (!resumeInfo) {

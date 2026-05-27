@@ -11,7 +11,7 @@ type ResumeContextType = {
   isLoading: boolean;
   isError: boolean;
   isSuccess: boolean;
-  refetch: () => void;
+  refetch: () => Promise<any>;
   onUpdate: (data: ResumeDataType) => void;
 };
 
@@ -31,8 +31,8 @@ export const ResumeInfoProvider: FC<{
   const [resumeInfo, setResumeInfo] = useState<ResumeDataType>();
 
   useEffect(() => {
-    if (isSuccess) setResumeInfo(data?.data);
-  }, [isSuccess]);
+    if (isSuccess && data?.data) setResumeInfo(data.data);
+  }, [isSuccess, data]);
 
   const onUpdate = (data: ResumeDataType) => {
     setResumeInfo(data);

@@ -1,8 +1,14 @@
 import { Hono } from "hono";
 import { getAuthUser } from "@/lib/clerk";
 import { AIChatSession } from "@/lib/groq-model";
-import "pdf-parse/worker";
 import { PDFParse } from "pdf-parse";
+import {
+  buildResumeImportPrompt,
+  parseImportedResumeResponse,
+  parseResumeTextFallback,
+} from "@/lib/resume-import";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const extractRoute = new Hono()
   .post("/resume", getAuthUser, async (c) => {
@@ -14,79 +20,51 @@ const extractRoute = new Hono()
         return c.json({ success: false, message: "No file provided" }, 400);
       }
 
-      // Convert the uploaded File object to a Buffer
+      const isPdf =
+        file.type === "application/pdf" ||
+        file.type === "application/octet-stream" ||
+        file.name.toLowerCase().endsWith(".pdf");
+
+      if (!isPdf) {
+        return c.json({ success: false, message: "Only PDF resumes are supported." }, 400);
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        return c.json({ success: false, message: "Resume PDF must be 5MB or smaller." }, 400);
+      }
+
       const arrayBuffer = await file.arrayBuffer();
       const pdfBuffer = Buffer.from(arrayBuffer);
 
-      // Parse raw text locally using modern PDFParse (Instantaneous & robust!)
-      console.log("Parsing PDF locally using PDFParse...");
       const parser = new PDFParse({ data: pdfBuffer });
-      const parseResult = await parser.getText();
-      const rawText = parseResult.text;
-      
-      // Clean up resources immediately to prevent memory leaks
-      await parser.destroy();
-
-      if (!rawText) {
-        throw new Error("Failed to extract text from the uploaded PDF.");
+      let rawText = "";
+      try {
+        const parseResult = await parser.getText();
+        rawText = parseResult.text?.trim() || "";
+      } finally {
+        await parser.destroy();
       }
 
-
-      // 2. Use AI to structure the text
-      const prompt = `
-        You are an expert resume parser. Extract all information from the following parsed resume text and format it into a valid JSON object matching the schema below.
-        
-        RESUME TEXT:
-        ${rawText}
-
-        
-        SCHEMA:
-        {
-          "personalInfo": {
-            "firstName": "",
-            "lastName": "",
-            "jobTitle": "",
-            "address": "",
-            "phone": "",
-            "email": ""
+      if (rawText.length < 50) {
+        return c.json(
+          {
+            success: false,
+            message:
+              "We could not read enough text from this PDF. Please upload a text-based PDF instead of a scanned image.",
           },
-          "summary": "",
-          "experiences": [
-            {
-              "title": "",
-              "companyName": "",
-              "city": "",
-              "state": "",
-              "startDate": "",
-              "endDate": "",
-              "currentlyWorking": false,
-              "workSummary": ""
-            }
-          ],
-          "educations": [
-            {
-              "universityName": "",
-              "degree": "",
-              "major": "",
-              "startDate": "",
-              "endDate": "",
-              "description": ""
-            }
-          ],
-          "skills": [
-            { "name": "", "rating": 5 }
-          ]
-        }
-        
-        RULES:
-        - Be precise. If a field is missing, leave it empty.
-        - Format dates as "Month Year" if possible.
-        - Output ONLY the valid JSON object. No extra text.
-      `;
+          400
+        );
+      }
 
-      const aiResponse = await AIChatSession.sendMessage(prompt);
-      const jsonStr = aiResponse.response.text().match(/\{[\s\S]*\}/)?.[0] || "";
-      const extractedData = JSON.parse(jsonStr);
+      let extractedData = parseResumeTextFallback(rawText);
+
+      try {
+        const prompt = buildResumeImportPrompt(rawText.slice(0, 24000));
+        const aiResponse = await AIChatSession.sendMessage(prompt);
+        extractedData = parseImportedResumeResponse(rawText, aiResponse.response.text());
+      } catch (error) {
+        console.warn("AI resume extraction failed, using local fallback:", error);
+      }
 
       return c.json({ success: true, data: extractedData });
     } catch (error: any) {

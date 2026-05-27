@@ -26,6 +26,27 @@ const initialState = {
   currentlyWorking: false,
 };
 
+const areListContentsEqual = (listA: any[], listB: any[]) => {
+  if (!listA || !listB) return false;
+  if (listA.length !== listB.length) return false;
+  for (let i = 0; i < listA.length; i++) {
+    const itemA = listA[i];
+    const itemB = listB[i];
+    const keys = Array.from(new Set([...Object.keys(itemA), ...Object.keys(itemB)]));
+    for (const key of keys) {
+      if (key === "_localId") continue;
+      const valA = itemA[key];
+      const valB = itemB[key];
+      const normalizedA = valA === null || valA === undefined ? "" : valA;
+      const normalizedB = valB === null || valB === undefined ? "" : valB;
+      if (normalizedA !== normalizedB) {
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
 const ExperienceForm = (props: { handleNext: () => void }) => {
   const { handleNext } = props;
   const { resumeInfo, onUpdate } = useResumeContext();
@@ -40,6 +61,20 @@ const ExperienceForm = (props: { handleNext: () => void }) => {
     return list.map(item => ({ ...item, _localId: item.id || crypto.randomUUID() }));
   });
 
+  // Sync from context when resumeInfo.experiences changes (e.g. after PDF import)
+  useEffect(() => {
+    const contextExperiences = resumeInfo?.experiences || [];
+    if (!contextExperiences.length) return;
+    if (!areListContentsEqual(experienceList, contextExperiences)) {
+      setExperienceList(
+        contextExperiences.map(item => ({
+          ...item,
+          _localId: item.id || crypto.randomUUID(),
+        }))
+      );
+    }
+  }, [resumeInfo?.experiences]);
+
   useEffect(() => {
     if (!resumeInfo) return;
     // Remove _localId before saving
@@ -48,7 +83,7 @@ const ExperienceForm = (props: { handleNext: () => void }) => {
       ...resumeInfo,
       experiences: cleanedList,
     });
-  }, [experienceList, onUpdate, resumeInfo]);
+  }, [experienceList]);
 
   const handleChange = (
     e: { target: { name: string; value: string } },

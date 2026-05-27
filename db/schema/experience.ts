@@ -36,6 +36,8 @@ export const experienceRelations = relations(experienceTable, ({ one }) => ({
 
 export const experienceTableSchema = createInsertSchema(experienceTable, {
   id: z.number().optional(),
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
 }).pick({
   id: true,
   title: true,

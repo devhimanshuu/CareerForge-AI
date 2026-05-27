@@ -35,6 +35,8 @@ export const educationRelations = relations(educationTable, ({ one }) => ({
 
 export const educationTableSchema = createInsertSchema(educationTable, {
   id: z.number().optional(),
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
 }).pick({
   id: true,
   universityName: true,
