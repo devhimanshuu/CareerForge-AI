@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
-import { AIChatSession } from "@/lib/groq-model";
+import { extractResumeData } from "@/lib/langchain";
 
 const IMPORT_PROMPT = `
 You are an expert resume parser. I will provide you with the raw text extracted from a LinkedIn PDF profile.
@@ -80,21 +80,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Could not extract text from PDF" }, { status: 400 });
     }
 
-    // Pass to Groq AI
-    const prompt = IMPORT_PROMPT.replace("{TEXT}", text);
-    const result = await AIChatSession.sendMessage(prompt);
-    let aiResponse = await result.response.text();
-    
-    // Extract JSON block safely to avoid conversational noise errors
-    const jsonStartIndex = aiResponse.indexOf('{');
-    const jsonEndIndex = aiResponse.lastIndexOf('}');
-    if (jsonStartIndex === -1 || jsonEndIndex === -1) {
-      throw new Error("Invalid AI response: JSON structure not found");
-    }
-    const cleanJson = aiResponse.substring(jsonStartIndex, jsonEndIndex + 1);
-    const parsedData = JSON.parse(cleanJson);
+    // Pass to our unified LangGraph resume extractor
+    const extractedData = await extractResumeData(text);
 
-    return NextResponse.json({ success: true, data: parsedData });
+    // Provide both singular and plural keys for maximum frontend compatibility
+    const responseData = {
+      ...extractedData,
+      experience: extractedData.experiences,
+      education: extractedData.educations,
+    };
+
+    return NextResponse.json({ success: true, data: responseData });
   } catch (error) {
     console.error("LinkedIn Import Error:", error);
     return NextResponse.json({ error: "Failed to parse LinkedIn profile" }, { status: 500 });
