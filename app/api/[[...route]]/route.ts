@@ -1,3 +1,7 @@
+if (typeof (globalThis as any).DOMMatrix === "undefined") {
+  (globalThis as any).DOMMatrix = class DOMMatrix {};
+}
+
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import { logger } from "hono/logger";

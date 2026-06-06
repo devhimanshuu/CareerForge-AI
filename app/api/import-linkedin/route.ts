@@ -1,3 +1,7 @@
+if (typeof (globalThis as any).DOMMatrix === "undefined") {
+  (globalThis as any).DOMMatrix = class DOMMatrix {};
+}
+
 import { NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import { extractResumeData } from "@/lib/langchain";
