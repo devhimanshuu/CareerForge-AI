@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
 import { useResumeContext } from "@/context/resume-info-provider";
-import { AIChatSession } from "@/lib/groq-model";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -77,37 +76,22 @@ const AtsMatcher = () => {
 
     setLoading(true);
     try {
-      const prompt = `
-        You are an expert ATS (Applicant Tracking System) and career coach.
-        Review the following Resume Data and the Job Description.
-        
-        Calculate an ATS match score (0-100) based on how well the resume matches the job description.
-        Identify key missing industry keywords from the job description that are not in the resume.
-        For each missing keyword, suggest EXACTLY where to seamlessly integrate them into their experience points (e.g., "Add 'Agile' to your Software Engineer role at Company X").
-        Provide 2-3 specific suggestions to improve the resume for this job.
-        
-        Respond ONLY with a valid JSON object in the following format:
-        {
-          "score": number,
-          "missingKeywords": ["keyword1", "keyword2"],
-          "suggestions": ["suggestion1", "suggestion2"]
-        }
+      const response = await fetch("/api/ai/ats-match", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resumeData: resumeInfo,
+          jobDescription: textToAnalyze,
+        }),
+      });
 
-        Resume Data:
-        ${JSON.stringify(resumeInfo)}
+      if (!response.ok) {
+        throw new Error("Failed to analyze resume");
+      }
 
-        Job Description:
-        ${textToAnalyze}
-      `;
-
-      const aiResponse = await AIChatSession.sendMessage(prompt);
-      let responseText = aiResponse.response.text();
-      
-      // Extract JSON from response (robust against conversational filler)
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No valid JSON found in AI response");
-      
-      const parsedData = JSON.parse(jsonMatch[0]);
+      const parsedData = await response.json();
       setResult(parsedData);
       
     } catch (error) {

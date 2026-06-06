@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
 import { useResumeContext } from "@/context/resume-info-provider";
-import { AIChatSession } from "@/lib/groq-model";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,44 +36,39 @@ const AutoTailorEngine = () => {
     setLoading(true);
     setSuccess(false);
     try {
-      const prompt = `
-        You are an elite executive resume writer and ATS specialist.
-        Your task is to take the provided Resume Data and the Target Job Description and rewrite the resume data to be perfectly tailored for this job.
-        
-        Rules for tailoring:
-        1. Rewrite the "summary" to strongly align with the job description.
-        2. For each experience in "experiences", rewrite the "workSummary" (HTML format) to highlight achievements relevant to the job. Use power verbs and quantify results if possible. Keep the original HTML tags (ul, li).
-        3. Do not modify IDs, docIds, dates, or company names.
-        
-        Output ONLY a valid JSON object matching this structure (only return summary and experiences):
-        {
-          "summary": "new tailored summary",
-          "experiences": [
-            { "id": 1, "workSummary": "<ul><li>tailored bullet</li></ul>", ...other original fields }
-          ]
-        }
+      const response = await fetch("/api/ai/auto-tailor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resumeData: resumeInfo,
+          jobDescription,
+        }),
+      });
 
-        Resume Data:
-        ${JSON.stringify({ summary: resumeInfo?.summary, experiences: resumeInfo?.experiences })}
+      if (!response.ok) {
+        throw new Error("Failed to automatically tailor the resume");
+      }
 
-        Job Description:
-        ${jobDescription}
-      `;
-
-      const aiResponse = await AIChatSession.sendMessage(prompt);
-      const responseText = aiResponse.response.text();
-      
-      // Extract JSON from response (robust against conversational filler)
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No valid JSON found in AI response");
-      
-      const parsedData = JSON.parse(jsonMatch[0]);
+      const parsedData = await response.json();
       
       if (parsedData.summary || parsedData.experiences) {
+        const updatedExperiences = resumeInfo?.experiences?.map((exp: any) => {
+          const tailored = parsedData.experiences?.find((e: any) => e.id === exp.id);
+          if (tailored) {
+            return {
+              ...exp,
+              workSummary: tailored.workSummary,
+            };
+          }
+          return exp;
+        }) || [];
+
         const updatedResume = {
           ...resumeInfo,
           summary: parsedData.summary || resumeInfo?.summary,
-          experiences: parsedData.experiences || resumeInfo?.experiences,
+          experiences: updatedExperiences,
         };
         
         // Update local state
