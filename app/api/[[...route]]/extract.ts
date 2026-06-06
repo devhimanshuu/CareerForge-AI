@@ -1,12 +1,8 @@
 import { Hono } from "hono";
 import { getAuthUser } from "@/lib/clerk";
-import { AIChatSession } from "@/lib/groq-model";
 import { PDFParse } from "pdf-parse";
-import {
-  buildResumeImportPrompt,
-  parseImportedResumeResponse,
-  parseResumeTextFallback,
-} from "@/lib/resume-import";
+import { parseResumeTextFallback } from "@/lib/resume-import";
+import { extractResumeData } from "@/lib/langchain";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -56,14 +52,12 @@ const extractRoute = new Hono()
         );
       }
 
-      let extractedData = parseResumeTextFallback(rawText);
-
+      let extractedData;
       try {
-        const prompt = buildResumeImportPrompt(rawText.slice(0, 24000));
-        const aiResponse = await AIChatSession.sendMessage(prompt);
-        extractedData = parseImportedResumeResponse(rawText, aiResponse.response.text());
+        extractedData = await extractResumeData(rawText);
       } catch (error) {
-        console.warn("AI resume extraction failed, using local fallback:", error);
+        console.warn("LangGraph resume extraction failed, using local fallback:", error);
+        extractedData = parseResumeTextFallback(rawText);
       }
 
       return c.json({ success: true, data: extractedData });
