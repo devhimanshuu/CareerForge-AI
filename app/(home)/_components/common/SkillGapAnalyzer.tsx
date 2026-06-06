@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useResumeContext } from "@/context/resume-info-provider";
-import { AIChatSession } from "@/lib/groq-model";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,35 +26,21 @@ const SkillGapAnalyzer = ({ initialResumeInfo }: { initialResumeInfo?: any }) =>
   const handleAnalyze = async () => {
     setLoading(true);
     try {
-      const prompt = `
-        You are a career strategist and industry analyst.
-        Based on the candidate's Resume Data, analyze their target role (or current role) against current industry trends.
-        
-        RESUME DATA:
-        ${JSON.stringify(resumeInfo)}
-        
-        Analyze:
-        1. "Missing Skills": Identify 3-5 high-demand technical or soft skills they lack for their target level.
-        2. "Industry Trends": What's changing in their field? (e.g., AI integration, specific frameworks).
-        3. "Action Plan": Specific steps to bridge the gap.
-        4. "Course Recommendations": Suggest 2-3 specific courses (from platforms like Coursera, Udemy, or YouTube) for the missing skills.
-        
-        Output the response in this exact JSON format:
-        {
-          "missingSkills": ["skill1", "skill2"],
-          "trends": ["trend1", "trend2"],
-          "recommendations": [
-            {"skill": "Skill Name", "course": "Course Title", "platform": "Platform Name", "link": "search_query"}
-          ]
-        }
-      `;
+      const response = await fetch("/api/ai/skill-gap", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resumeData: resumeInfo,
+        }),
+      });
 
-      const aiResponse = await AIChatSession.sendMessage(prompt);
-      const responseText = aiResponse.response.text();
-      
-      // Extract JSON from response
-      const jsonStr = responseText.match(/\{[\s\S]*\}/)?.[0] || "";
-      const data = JSON.parse(jsonStr);
+      if (!response.ok) {
+        throw new Error("Failed to analyze skill gaps");
+      }
+
+      const data = await response.json();
       setAnalysis(data);
       
     } catch (error) {

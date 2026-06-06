@@ -12,7 +12,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useResumeContext } from "@/context/resume-info-provider";
-import { AIChatSession } from "@/lib/groq-model";
 import { motion } from "framer-motion";
 
 const SalaryEstimator = () => {
@@ -26,36 +25,22 @@ const SalaryEstimator = () => {
     setLoading(true);
 
     try {
-      const prompt = `
-        You are a high-end technical recruiter and market analyst. Estimate the annual salary market value for the following candidate profile.
-        
-        DATA:
-        Role: ${resumeInfo.personalInfo?.jobTitle}
-        Experience: ${resumeInfo.experiences?.length || 0} roles
-        Skills: ${resumeInfo.skills?.map(s => s.name).join(", ")}
-        
-        TASK:
-        1. Estimate the 25th, 50th (Median), and 75th percentile annual salaries in USD for major tech hubs (SF/NYC/London/Remote).
-        2. Identify "Premium Skills" in their profile that increase their value.
-        3. Identify "Missing Skills" that could boost their salary by 20%+.
-        
-        Output ONLY a JSON object:
-        {
-          "median": "$145k",
-          "range": "$120k - $185k",
-          "percentiles": [
-            {"label": "Entry", "value": "$110k"},
-            {"label": "Median", "value": "$145k"},
-            {"label": "Top 10%", "value": "$210k"}
-          ],
-          "premiumSkills": ["Next.js", "AI Integration"],
-          "growthTips": ["Add System Design", "Cloud Architecture"]
-        }
-      `;
+      const response = await fetch("/api/ai/salary-estimate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resumeData: resumeInfo,
+        }),
+      });
 
-      const aiResponse = await AIChatSession.sendMessage(prompt);
-      const jsonStr = aiResponse.response.text().match(/\{[\s\S]*\}/)?.[0] || "";
-      setEstimate(JSON.parse(jsonStr));
+      if (!response.ok) {
+        throw new Error("Failed to estimate salary");
+      }
+
+      const data = await response.json();
+      setEstimate(data);
     } catch (error) {
       console.error(error);
     } finally {
