@@ -12,8 +12,9 @@ const PublicResume = () => {
   const documentId = param.documentId as string;
   const searchParams = useSearchParams();
   const isPrint = searchParams.get("print") === "true";
+  const pdfSecret = searchParams.get("pdfSecret") || "";
   
-  const { data, isSuccess, isLoading } = useGetDocument(documentId, true);
+  const { data, isSuccess, isLoading } = useGetDocument(documentId, true, pdfSecret);
   const resumeInfo = data?.data ?? ({} as ResumeDataType);
 
   if (!isLoading && !isSuccess) {

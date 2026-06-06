@@ -320,11 +320,43 @@ Ensure you return ONLY a valid JSON object matching the structures above.`,
   .post("/market-data", getAuthUser, async (c) => {
     try {
       const { jobTitle, skills, region = "USA" } = await c.req.json();
+      
+      let searchContext = "";
+      if (process.env.TAVILY_API_KEY) {
+        try {
+          const searchRes = await fetch("https://api.tavily.com/search", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              api_key: process.env.TAVILY_API_KEY,
+              query: `salary range market demand hiring prospects and open positions for ${jobTitle} with ${skills} in region ${region}`,
+              search_depth: "basic",
+            }),
+          });
+          
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            searchContext = searchData.results
+              ?.map((r: any) => `${r.title}: ${r.content}`)
+              .join("\n\n") || "";
+          }
+        } catch (searchErr) {
+          console.warn("Tavily search failed, falling back to LLM estimation:", searchErr);
+        }
+      }
+
       const modelWithStructuredOutput = chatModel.withStructuredOutput(MarketDataResponseSchema);
       const chain = marketDataPrompt.pipe(modelWithStructuredOutput);
+      
+      const skillsWithSearch = searchContext 
+        ? `${skills || "None"}\n\nLive Search Market Context:\n${searchContext}`
+        : (skills || "JavaScript, TypeScript, React");
+
       const response = await chain.invoke({
         jobTitle: jobTitle || "Software Engineer",
-        skills: skills || "JavaScript, TypeScript, React",
+        skills: skillsWithSearch,
         region,
       });
       return c.json(response as any);

@@ -557,14 +557,26 @@ const documentRoute = new Hono()
         documentId: z.string(),
       })
     ),
+    zValidator(
+      "query",
+      z.object({
+        pdfSecret: z.string().optional(),
+      })
+    ),
     async (c) => {
       try {
         const { documentId } = c.req.valid("param");
+        const { pdfSecret } = c.req.valid("query");
+
+        const isSecretValid = pdfSecret && pdfSecret === process.env.CLERK_SECRET_KEY;
+
         const documentData = await db.query.documentTable.findFirst({
-          where: and(
-            eq(documentTable.status, "public"),
-            eq(documentTable.documentId, documentId)
-          ),
+          where: isSecretValid
+            ? eq(documentTable.documentId, documentId)
+            : and(
+                eq(documentTable.status, "public"),
+                eq(documentTable.documentId, documentId)
+              ),
           with: {
             personalInfo: true,
             experiences: true,

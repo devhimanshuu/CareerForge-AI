@@ -16,9 +16,108 @@ const PodcastResume = () => {
   const [script, setScript] = useState("");
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Conversational voice refs
+  const dialogueIndexRef = useRef(0);
+  const isPlayingRef = useRef(false);
+  const dialogueRef = useRef<{ speaker: "HOST" | "CANDIDATE"; text: string }[]>([]);
+
+  const parseScript = (text: string) => {
+    const lines = text.split("\n");
+    const dialogue: { speaker: "HOST" | "CANDIDATE"; text: string }[] = [];
+    
+    let currentSpeaker: "HOST" | "CANDIDATE" | null = null;
+    let currentText = "";
+    
+    for (const line of lines) {
+      const cleanLine = line.trim();
+      if (!cleanLine) continue;
+      
+      const hostMatch = cleanLine.match(/^HOST:\s*(.*)/i);
+      const candidateMatch = cleanLine.match(/^CANDIDATE:\s*(.*)/i);
+      
+      if (hostMatch) {
+        if (currentSpeaker && currentText) {
+          dialogue.push({ speaker: currentSpeaker, text: currentText.trim() });
+        }
+        currentSpeaker = "HOST";
+        currentText = hostMatch[1];
+      } else if (candidateMatch) {
+        if (currentSpeaker && currentText) {
+          dialogue.push({ speaker: currentSpeaker, text: currentText.trim() });
+        }
+        currentSpeaker = "CANDIDATE";
+        currentText = candidateMatch[1];
+      } else {
+        if (currentSpeaker) {
+          currentText += " " + cleanLine;
+        }
+      }
+    }
+    
+    if (currentSpeaker && currentText) {
+      dialogue.push({ speaker: currentSpeaker, text: currentText.trim() });
+    }
+    
+    return dialogue;
+  };
+
+  const playDialogue = () => {
+    if (typeof window === "undefined") return;
+    
+    if (!isPlayingRef.current || dialogueIndexRef.current >= dialogueRef.current.length) {
+      setPlaying(false);
+      isPlayingRef.current = false;
+      dialogueIndexRef.current = 0;
+      return;
+    }
+    
+    const item = dialogueRef.current[dialogueIndexRef.current];
+    const utterance = new SpeechSynthesisUtterance(item.text);
+    
+    const voices = window.speechSynthesis.getVoices();
+    // Host Voice (prefers female/Google US/UK English)
+    const hostVoice = voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("female")) || 
+                      voices.find(v => v.lang.startsWith("en-US")) || 
+                      voices[0];
+                      
+    // Candidate Voice (prefers male/alternative English voice)
+    const candidateVoice = voices.find(v => v.lang.startsWith("en") && v.name !== hostVoice?.name) || 
+                           voices.find(v => v.lang.startsWith("en-GB")) || 
+                           voices[0];
+    
+    if (item.speaker === "HOST") {
+      utterance.voice = hostVoice;
+      utterance.pitch = 0.95;
+      utterance.rate = 1.05;
+    } else {
+      utterance.voice = candidateVoice;
+      utterance.pitch = 1.1;
+      utterance.rate = 0.95;
+    }
+    
+    utterance.onend = () => {
+      dialogueIndexRef.current += 1;
+      playDialogue();
+    };
+    
+    utterance.onerror = () => {
+      setPlaying(false);
+      isPlayingRef.current = false;
+    };
+    
+    window.speechSynthesis.speak(utterance);
+  };
+
   const generatePodcast = async () => {
     if (!resumeInfo) return;
     setLoading(true);
+    // Reset dialogue refs
+    dialogueRef.current = [];
+    dialogueIndexRef.current = 0;
+    isPlayingRef.current = false;
+    if (typeof window !== "undefined") window.speechSynthesis.cancel();
+    setPlaying(false);
+
     try {
       const res = await fetch("/api/audio/generate-podcast", {
         method: "POST",
@@ -76,23 +175,37 @@ const PodcastResume = () => {
     }
 
     if (typeof window !== "undefined" && script) {
-      window.speechSynthesis.cancel();
-      if (!playing) {
-        const utterance = new SpeechSynthesisUtterance(script);
-        utterance.rate = 0.95;
-        utterance.onend = () => setPlaying(false);
-        window.speechSynthesis.speak(utterance);
-        setPlaying(true);
-      } else {
+      if (playing) {
+        window.speechSynthesis.cancel();
         setPlaying(false);
+        isPlayingRef.current = false;
+      } else {
+        window.speechSynthesis.cancel();
+        
+        if (dialogueRef.current.length === 0) {
+          dialogueRef.current = parseScript(script);
+        }
+        
+        isPlayingRef.current = true;
+        setPlaying(true);
+        playDialogue();
       }
     }
+  };
+
+  const handleClose = () => {
+    if (typeof window !== "undefined") {
+      window.speechSynthesis.cancel();
+    }
+    setPlaying(false);
+    isPlayingRef.current = false;
+    setActive(false);
   };
 
   return (
     <div className="relative group">
       <Button
-        onClick={() => (active ? setActive(false) : generatePodcast())}
+        onClick={() => (active ? handleClose() : generatePodcast())}
         disabled={loading}
         variant="ghost"
         size="icon"
@@ -187,7 +300,7 @@ const PodcastResume = () => {
                         Script
                     </Button>
                     <Button 
-                        onClick={() => setActive(false)}
+                        onClick={handleClose}
                         variant="ghost" 
                         size="sm" 
                         className="h-9 rounded-xl text-slate-500 hover:text-white text-[10px] font-bold uppercase"

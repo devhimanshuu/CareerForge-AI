@@ -26,8 +26,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const url = `${baseUrl}/preview/${documentId}/resume?print=true`;
+    const host = request.headers.get("host");
+    const protocol = request.headers.get("x-forwarded-proto") || "http";
+    const baseUrl = host ? `${protocol}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+    
+    const pdfSecret = process.env.CLERK_SECRET_KEY || "default_secret";
+    const url = `${baseUrl}/preview/${documentId}/resume?print=true&pdfSecret=${encodeURIComponent(pdfSecret)}`;
 
     const browser = await puppeteer.launch({
       headless: true,
@@ -53,7 +57,7 @@ export async function POST(request: Request) {
 
     await browser.close();
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

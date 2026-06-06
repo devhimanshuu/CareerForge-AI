@@ -14,6 +14,7 @@ import {
   Loader2,
   HelpCircle,
   Volume2,
+  VolumeX,
   RefreshCw,
   User,
   CheckCircle,
@@ -67,6 +68,48 @@ const InterviewLab = () => {
 
   // Final evaluation state
   const [evaluation, setEvaluation] = useState<any>(null);
+
+  // Recruiter voice synthesis
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    if (!currentQuestion || isMuted || typeof window === "undefined" || step !== "interviewing") return;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(currentQuestion);
+    const voices = window.speechSynthesis.getVoices();
+    const recruiterVoice = voices.find(v => v.lang.startsWith("en-US") && v.name.toLowerCase().includes("male")) || 
+                           voices.find(v => v.lang.startsWith("en-US")) || 
+                           voices.find(v => v.lang.startsWith("en")) || 
+                           voices[0];
+    if (recruiterVoice) {
+      utterance.voice = recruiterVoice;
+    }
+    utterance.pitch = 0.95;
+    utterance.rate = 1.0;
+
+    window.speechSynthesis.speak(utterance);
+
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, [currentQuestion, isMuted, step]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined") {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (step === "feedback" || step === "setup") {
+      if (typeof window !== "undefined") {
+        window.speechSynthesis.cancel();
+      }
+    }
+  }, [step]);
 
   // Pre-populate target role when resume is selected
   useEffect(() => {
@@ -422,6 +465,21 @@ const InterviewLab = () => {
               {/* Camera feed mockup / glow */}
               <div className="aspect-video relative bg-slate-950 flex flex-col items-center justify-center overflow-hidden border-b">
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-violet-500/10" />
+
+                <div className="absolute top-4 right-4 z-20">
+                  <Button
+                    onClick={() => setIsMuted(!isMuted)}
+                    variant="ghost"
+                    size="icon"
+                    className="w-8 h-8 rounded-lg bg-slate-900/80 backdrop-blur-md border border-white/10 hover:bg-slate-800 text-white hover:text-white"
+                  >
+                    {isMuted ? (
+                      <VolumeX size={14} className="text-red-400" />
+                    ) : (
+                      <Volume2 size={14} className="text-emerald-400" />
+                    )}
+                  </Button>
+                </div>
 
                 {/* Animated Pulsing AI Avatar */}
                 <div className="relative flex items-center justify-center">
