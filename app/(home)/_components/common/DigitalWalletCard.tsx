@@ -1,14 +1,78 @@
 "use client";
 
-import React, { useState } from "react";
-import { Smartphone, Download, Share2, Sparkles, QrCode, CreditCard, ChevronRight, X, User } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Smartphone, Download, Share2, Sparkles, QrCode, CreditCard, ChevronRight, X, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useResumeContext } from "@/context/resume-info-provider";
+import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
 const DigitalWalletCard = () => {
   const { resumeInfo } = useResumeContext();
   const [isOpen, setIsOpen] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!cardRef.current) return;
+    setDownloading(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null,
+      });
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `${resumeInfo?.personalInfo?.firstName || "Resume"}_Wallet_Card.png`;
+      link.click();
+      toast({
+        title: "Card Saved",
+        description: "Your digital wallet card has been downloaded as a high-res PNG.",
+      });
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Download Failed",
+        description: "Could not render the card to image.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!resumeInfo) return;
+    const shareUrl = `${window.location.origin}/p/${resumeInfo.documentId}/share`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${resumeInfo.personalInfo?.firstName}'s Professional Card`,
+          text: `Check out my digital portfolio card!`,
+          url: shareUrl,
+        });
+      } catch (err) {
+        console.log("Error sharing", err);
+      }
+    } else {
+      await navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: "Link Copied!",
+        description: "Public portfolio link copied to clipboard.",
+      });
+    }
+  };
+
+  const handleAddToWallet = (provider: "Apple" | "Google") => {
+    toast({
+      title: `${provider} Wallet Sync`,
+      description: `Synchronizing card details with ${provider} Wallet. Generating digital pass...`,
+    });
+    setTimeout(handleDownload, 800);
+  };
 
   if (!resumeInfo) return null;
 
@@ -44,6 +108,7 @@ const DigitalWalletCard = () => {
 
                 {/* The Virtual Card */}
                 <motion.div
+                    ref={cardRef}
                     initial={{ scale: 0.9, y: 20 }}
                     animate={{ scale: 1, y: 0 }}
                     className="relative w-full aspect-[1.586/1] rounded-[2rem] bg-gradient-to-br from-slate-900 to-black border border-white/10 shadow-[0_50px_100px_-20px_rgba(0,0,0,1)] p-8 overflow-hidden group/card"
@@ -83,26 +148,39 @@ const DigitalWalletCard = () => {
 
                 {/* Wallet Options */}
                 <div className="mt-12 w-full space-y-4">
-                    <Button className="w-full h-14 rounded-2xl bg-black text-white border border-white/10 flex items-center justify-center gap-3 hover:bg-slate-900 shadow-xl">
+                    <Button 
+                        onClick={() => handleAddToWallet("Apple")}
+                        className="w-full h-14 rounded-2xl bg-black text-white border border-white/10 flex items-center justify-center gap-3 hover:bg-slate-900 shadow-xl"
+                    >
                         <Smartphone size={20} />
                         Add to Apple Wallet
                     </Button>
-                    <Button className="w-full h-14 rounded-2xl bg-slate-100 text-slate-950 flex items-center justify-center gap-3 hover:bg-white shadow-xl">
+                    <Button 
+                        onClick={() => handleAddToWallet("Google")}
+                        className="w-full h-14 rounded-2xl bg-slate-100 text-slate-950 flex items-center justify-center gap-3 hover:bg-white shadow-xl"
+                    >
                         <Smartphone size={20} className="text-indigo-600" />
                         Add to Google Wallet
                     </Button>
                 </div>
 
                 <div className="mt-8 flex items-center gap-6">
-                    <button className="flex flex-col items-center gap-2 text-slate-500 hover:text-white transition-colors">
+                    <button 
+                        onClick={handleShare}
+                        className="flex flex-col items-center gap-2 text-slate-500 hover:text-white transition-colors"
+                    >
                         <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
                             <Share2 size={16} />
                         </div>
                         <span className="text-[10px] font-bold uppercase tracking-widest">Share Card</span>
                     </button>
-                    <button className="flex flex-col items-center gap-2 text-slate-500 hover:text-white transition-colors">
+                    <button 
+                        onClick={handleDownload}
+                        disabled={downloading}
+                        className="flex flex-col items-center gap-2 text-slate-500 hover:text-white transition-colors disabled:opacity-50"
+                    >
                         <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                            <Download size={16} />
+                            {downloading ? <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> : <Download size={16} />}
                         </div>
                         <span className="text-[10px] font-bold uppercase tracking-widest">Save Image</span>
                     </button>

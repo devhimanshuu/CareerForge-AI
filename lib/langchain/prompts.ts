@@ -196,10 +196,11 @@ Use empty string for any field that cannot be found. Do not invent data.`,
 export const experienceExtractionPrompt = ChatPromptTemplate.fromMessages([
   [
     "system",
-    `Extract ALL work experiences from the following resume text.
-For each experience, extract: title, companyName, city, state, startDate (YYYY-MM-DD), endDate (YYYY-MM-DD or null), currentlyWorking (boolean), and a list of responsibilities/achievements as separate strings.
+    `Extract ALL work experiences and significant personal/academic/professional projects from the following resume text.
+For each experience or project, extract: title (or role name), companyName (or project/organization name), city, state, startDate (YYYY-MM-DD), endDate (YYYY-MM-DD or null), currentlyWorking (boolean), and a list of responsibilities/achievements as separate strings.
+Treat personal/academic projects, freelance work, and research work as experiences so they are preserved in the user's career history.
 Use null for unknown dates. Set currentlyWorking=true if the role says "Present" or "Current".
-Do NOT invent data. Extract every experience entry you can find.`,
+Do NOT invent data. Extract every experience and project entry you can find.`,
   ],
   ["human", "{sectionText}"],
 ]);
@@ -208,9 +209,9 @@ Do NOT invent data. Extract every experience entry you can find.`,
 export const educationExtractionPrompt = ChatPromptTemplate.fromMessages([
   [
     "system",
-    `Extract ALL education entries from the following resume text.
-For each entry: universityName, degree, major/field, startDate (YYYY-MM-DD), endDate (YYYY-MM-DD), and description (GPA, honors, etc.).
-Use null for unknown dates. Do NOT invent data.`,
+    `Extract ALL education entries, academic degrees, bootcamps, and major professional certifications/courses from the following resume text.
+For each entry: universityName (or boot camp provider/certifying authority like AWS, Google, etc.), degree (or certificate name), major/field of study, startDate (YYYY-MM-DD or null), endDate (YYYY-MM-DD or null), and description (GPA, honors, extra details).
+Use null for unknown dates. Do NOT invent data. Extract every education, bootcamp, and major certificate entry you can find.`,
   ],
   ["human", "{sectionText}"],
 ]);
@@ -219,10 +220,10 @@ Use null for unknown dates. Do NOT invent data.`,
 export const skillsExtractionPrompt = ChatPromptTemplate.fromMessages([
   [
     "system",
-    `Extract ALL skills mentioned in the following resume text.
-Include technical tools, frameworks, programming languages, and soft skills.
-Rate each skill 1-5 based on apparent proficiency (5 = expert, mentioned extensively; 3 = mentioned; 1 = barely mentioned).
-Do NOT invent skills that aren't present in the text.`,
+    `Extract ALL skills, technologies, frameworks, libraries, programming languages, databases, cloud providers, certifications, methodologies, and soft skills mentioned in the following resume text.
+Also extract any spoken/written languages (e.g. English, Spanish) as skills.
+Rate each skill 1-5 based on apparent proficiency (5 = expert/mentioned extensively; 3 = mentioned; 1 = barely mentioned).
+Do NOT invent skills that aren't present in the text. Extract everything.`,
   ],
   ["human", "{sectionText}"],
 ]);

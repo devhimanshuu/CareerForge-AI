@@ -4,9 +4,26 @@ import { Loader, RotateCw, FileText, AlertCircle } from "lucide-react";
 import React, { Fragment } from "react";
 import ResumeItem from "./common/ResumeItem";
 
-const ResumeList = () => {
+interface ResumeListProps {
+  searchQuery?: string;
+  filterStatus?: "all" | "public" | "private";
+}
+
+const ResumeList = ({ searchQuery = "", filterStatus = "all" }: ResumeListProps) => {
   const { data, isLoading, isError, refetch } = useGetDocuments();
-  const resumes = data?.data ?? [];
+  const resumes = React.useMemo(() => data?.data ?? [], [data?.data]);
+
+  const filteredResumes = React.useMemo(() => {
+    return resumes.filter((resume) => {
+      const matchesSearch = resume.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus =
+        filterStatus === "all" ||
+        (filterStatus === "public" && resume.status === "public") ||
+        (filterStatus === "private" && resume.status === "private");
+      return matchesSearch && matchesStatus;
+    });
+  }, [resumes, searchQuery, filterStatus]);
+
   return (
     <Fragment>
       {isLoading ? (
@@ -45,23 +62,25 @@ const ResumeList = () => {
             </button>
           </div>
         </div>
-      ) : resumes.length === 0 ? (
+      ) : filteredResumes.length === 0 ? (
         <div className="col-span-full flex flex-col items-center justify-center py-16 gap-4">
           <div className="w-14 h-14 rounded-xl bg-muted/30 flex items-center justify-center">
             <FileText size={24} className="text-muted-foreground/40" />
           </div>
           <div className="text-center">
             <p className="text-sm font-semibold text-foreground mb-1">
-              No resumes yet
+              {resumes.length === 0 ? "No resumes yet" : "No matching resumes found"}
             </p>
             <p className="text-xs text-muted-foreground">
-              Create your first AI-powered resume to get started.
+              {resumes.length === 0
+                ? "Create your first AI-powered resume to get started."
+                : "Try adjusting your search query or status filter."}
             </p>
           </div>
         </div>
       ) : (
         <>
-          {resumes?.map((resume) => (
+          {filteredResumes.map((resume) => (
             <ResumeItem
               key={resume.documentId}
               documentId={resume.documentId}
@@ -73,7 +92,6 @@ const ResumeList = () => {
               parentId={resume.parentId}
               branchName={resume.branchName}
             />
-
           ))}
         </>
       )}

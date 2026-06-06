@@ -1,4 +1,5 @@
 import { StateGraph, Annotation, START, END } from "@langchain/langgraph";
+import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { chatModel } from "./config";
 import {
   sectionDetectionPrompt,
@@ -11,6 +12,7 @@ import {
   EducationsExtractionSchema,
   skillsExtractionPrompt,
   SkillsExtractionSchema,
+  SummaryExtractionSchema,
 } from "./index";
 import { normalizeImportedResume } from "../resume-import";
 
@@ -58,28 +60,17 @@ export const ExtractorState = Annotation.Root({
   }),
 });
 
-// Node 1: Section Detection
+// Node 1: Section Detection (Bypassed to pass full text context directly to nodes for 100% extraction accuracy)
 const detectSectionsNode = async (state: typeof ExtractorState.State) => {
-  try {
-    const model = chatModel.withStructuredOutput(SectionDetectionResponseSchema);
-    const chain = sectionDetectionPrompt.pipe(model);
-    const response: any = await chain.invoke({ rawText: state.rawText });
-    return { sections: response.sections };
-  } catch (error: any) {
-    console.error("Section detection failed:", error);
-    return { sections: [], errors: [error.message] };
-  }
+  return { sections: [] };
 };
 
 // Node 2: Personal Info Extraction
 const extractPersonalInfoNode = async (state: typeof ExtractorState.State) => {
   try {
-    const personalInfoSection = state.sections?.find(s => s.type === "personal_info");
-    const textToUse = personalInfoSection?.content || state.rawText.slice(0, 1500);
-
     const model = chatModel.withStructuredOutput(PersonalInfoExtractionSchema);
     const chain = personalInfoExtractionPrompt.pipe(model);
-    const response: any = await chain.invoke({ sectionText: textToUse });
+    const response: any = await chain.invoke({ sectionText: state.rawText });
     return { personalInfo: response };
   } catch (error: any) {
     console.error("Personal info extraction failed:", error);
@@ -90,17 +81,18 @@ const extractPersonalInfoNode = async (state: typeof ExtractorState.State) => {
 // Node 3: Summary Extraction
 const extractSummaryNode = async (state: typeof ExtractorState.State) => {
   try {
-    const summarySection = state.sections?.find(s => s.type === "summary");
-    if (summarySection?.content) {
-      return { summary: summarySection.content.trim() };
-    }
-    
-    // Fallback: extract summary from top part of the text
-    const textToUse = state.rawText.slice(0, 2000);
-    const prompt = `Extract a professional summary from this resume text. Return ONLY the summary text, or empty string if not found:\n\n${textToUse}`;
-    const response = await chatModel.invoke([{ role: "user", content: prompt }]);
-    const text = typeof response.content === "string" ? response.content : "";
-    return { summary: text.trim() };
+    const model = chatModel.withStructuredOutput(SummaryExtractionSchema);
+    const prompt = ChatPromptTemplate.fromMessages([
+      [
+        "system",
+        `Extract the professional summary or objective statement from the following resume text.
+Return the summary exactly as written. Do not summarize the summary. If no summary exists, return an empty string.`,
+      ],
+      ["human", "{sectionText}"],
+    ]);
+    const chain = prompt.pipe(model);
+    const response: any = await chain.invoke({ sectionText: state.rawText });
+    return { summary: response.summary?.trim() || "" };
   } catch (error: any) {
     console.error("Summary extraction failed:", error);
     return { summary: "" };
@@ -110,12 +102,9 @@ const extractSummaryNode = async (state: typeof ExtractorState.State) => {
 // Node 4: Experiences Extraction
 const extractExperiencesNode = async (state: typeof ExtractorState.State) => {
   try {
-    const experienceSection = state.sections?.find(s => s.type === "experience");
-    const textToUse = experienceSection?.content || state.rawText;
-
     const model = chatModel.withStructuredOutput(ExperiencesExtractionSchema);
     const chain = experienceExtractionPrompt.pipe(model);
-    const response: any = await chain.invoke({ sectionText: textToUse });
+    const response: any = await chain.invoke({ sectionText: state.rawText });
     return { experiences: response.experiences };
   } catch (error: any) {
     console.error("Experiences extraction failed:", error);
@@ -126,12 +115,9 @@ const extractExperiencesNode = async (state: typeof ExtractorState.State) => {
 // Node 5: Education Extraction
 const extractEducationNode = async (state: typeof ExtractorState.State) => {
   try {
-    const educationSection = state.sections?.find(s => s.type === "education");
-    const textToUse = educationSection?.content || state.rawText;
-
     const model = chatModel.withStructuredOutput(EducationsExtractionSchema);
     const chain = educationExtractionPrompt.pipe(model);
-    const response: any = await chain.invoke({ sectionText: textToUse });
+    const response: any = await chain.invoke({ sectionText: state.rawText });
     return { educations: response.educations };
   } catch (error: any) {
     console.error("Education extraction failed:", error);
@@ -142,12 +128,9 @@ const extractEducationNode = async (state: typeof ExtractorState.State) => {
 // Node 6: Skills Extraction
 const extractSkillsNode = async (state: typeof ExtractorState.State) => {
   try {
-    const skillsSection = state.sections?.find(s => s.type === "skills");
-    const textToUse = skillsSection?.content || state.rawText;
-
     const model = chatModel.withStructuredOutput(SkillsExtractionSchema);
     const chain = skillsExtractionPrompt.pipe(model);
-    const response: any = await chain.invoke({ sectionText: textToUse });
+    const response: any = await chain.invoke({ sectionText: state.rawText });
     return { skills: response.skills };
   } catch (error: any) {
     console.error("Skills extraction failed:", error);

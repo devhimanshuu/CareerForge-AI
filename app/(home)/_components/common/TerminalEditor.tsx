@@ -4,11 +4,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Terminal, Shield, Zap, Save, X, Terminal as TerminalIcon, Info, HelpCircle } from "lucide-react";
 import { useResumeContext } from "@/context/resume-info-provider";
+import useUpdateDocument from "@/features/document/use-update-document";
 import { toast } from "@/hooks/use-toast";
 import { createPortal } from "react-dom";
 
 const TerminalEditor = ({ onClose }: { onClose: () => void }) => {
   const { resumeInfo, onUpdate } = useResumeContext();
+  const { mutateAsync } = useUpdateDocument();
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<string[]>([
     "CAREERFORGE AI [Version 10.0.24.22]",
@@ -31,7 +33,7 @@ const TerminalEditor = ({ onClose }: { onClose: () => void }) => {
     }
   }, [history]);
 
-  const handleCommand = (cmd: string) => {
+  const handleCommand = async (cmd: string) => {
     const parts = cmd.trim().split(" ");
     const action = parts[0].toLowerCase();
     const args = parts.slice(1);
@@ -110,8 +112,24 @@ const TerminalEditor = ({ onClose }: { onClose: () => void }) => {
         break;
 
       case "save":
-        setHistory(prev => [...prev, "Initializing secure database sync...", " [OK] Verifying credentials", " [OK] Uploading blobs", " [DONE] Changes persisted successfully.", ""]);
-        toast({ title: "Terminal Sync Successful", description: "All manual CLI overrides have been saved." });
+        if (resumeInfo) {
+          try {
+            await mutateAsync({
+              personalInfo: resumeInfo.personalInfo || {},
+              summary: resumeInfo.summary,
+              experience: resumeInfo.experiences as any,
+              education: resumeInfo.educations as any,
+              skills: resumeInfo.skills as any,
+            });
+            setHistory(prev => [...prev, "Initializing secure database sync...", " [OK] Verifying credentials", " [OK] Uploading blobs", " [DONE] Changes persisted successfully.", ""]);
+            toast({ title: "Terminal Sync Successful", description: "All manual CLI overrides have been saved." });
+          } catch (err: any) {
+            setHistory(prev => [...prev, "Initializing secure database sync...", ` [FAIL] Database sync failed: ${err.message || err}`, ""]);
+            toast({ title: "Terminal Sync Failed", description: "Failed to persist overrides.", variant: "destructive" });
+          }
+        } else {
+          setHistory(prev => [...prev, "No active resume loaded.", ""]);
+        }
         break;
 
       default:

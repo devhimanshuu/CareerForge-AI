@@ -49,6 +49,21 @@ const PodcastResume = () => {
     }
   };
 
+  const downloadScript = () => {
+    if (!script) return;
+    const blob = new Blob([script], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${resumeInfo?.personalInfo?.firstName || "Resume"}_Podcast_Script.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({
+      title: "Script Downloaded",
+      description: "The podcast script has been saved to your device.",
+    });
+  };
+
   const togglePlayback = () => {
     if (audioUrl && audioRef.current) {
       if (playing) {
@@ -163,12 +178,13 @@ const PodcastResume = () => {
 
                 <div className="w-full grid grid-cols-2 gap-2">
                     <Button 
+                        onClick={downloadScript}
                         variant="outline" 
                         size="sm" 
-                        className="h-9 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-[10px] font-bold uppercase gap-2"
+                        className="h-9 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-[10px] font-bold uppercase gap-2 text-white hover:text-slate-950"
                     >
                         <Download size={14} />
-                        MP3
+                        Script
                     </Button>
                     <Button 
                         onClick={() => setActive(false)}
