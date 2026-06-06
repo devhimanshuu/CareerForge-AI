@@ -12,7 +12,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useResumeContext } from "@/context/resume-info-provider";
-import { AIChatSession } from "@/lib/groq-model";
 import { motion, AnimatePresence } from "framer-motion";
 
 const PERSONAS = [
@@ -52,18 +51,23 @@ const RecruiterRoast = () => {
     setRoast("");
 
     try {
-      const prompt = `
-        ${selectedPersona.prompt}
-        
-        RESUME DATA:
-        ${JSON.stringify(resumeInfo)}
-        
-        FORMAT:
-        Output a brutal, funny, but ultimately helpful roast. Use emojis. End with one "Pro Tip" that would actually save their life.
-      `;
+      const response = await fetch("/api/ai/resume-roast", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resumeData: resumeInfo,
+          personaPrompt: selectedPersona.prompt,
+        }),
+      });
 
-      const aiResponse = await AIChatSession.sendMessage(prompt);
-      setRoast(aiResponse.response.text());
+      if (!response.ok) {
+        throw new Error("Failed to roast resume");
+      }
+
+      const data = await response.json();
+      setRoast(data.roast);
     } catch (error) {
       console.error(error);
     } finally {

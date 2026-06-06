@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useResumeContext } from "@/context/resume-info-provider";
-import { AIChatSession } from "@/lib/groq-model";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,41 +38,22 @@ const InterviewPrepAssistant = ({ initialResumeInfo }: { initialResumeInfo?: any
 
     setLoading(true);
     try {
-      const prompt = `
-        You are a high-level technical recruiter and interview coach.
-        Review the candidate's Resume Data and the Target Job Description.
-        
-        RESUME:
-        ${JSON.stringify(resumeInfo)}
-        
-        JOB DESCRIPTION:
-        ${jobDescription}
-        
-        TASK:
-        1. "Questions": Generate 5 highly probable and challenging behavioral/technical questions specifically tailored to their experience and this JD.
-        2. "STAR Guides": For each question, provide a specific STAR (Situation, Task, Action, Result) framework hint on which part of their resume they should use to answer.
-        3. "Weak Points": Identify 2-3 potential "red flags" or gaps and how to pivot them into strengths.
-        
-        Format your response as a valid JSON object:
-        {
-          "questions": [
-            {
-              "question": "Question text?",
-              "intent": "What the interviewer is looking for",
-              "starHint": { "s": "...", "t": "...", "a": "...", "r": "..." }
-            }
-          ],
-          "weakPoints": [
-            { "gap": "...", "pivot": "..." }
-          ]
-        }
-      `;
+      const response = await fetch("/api/ai/interview-prep", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resumeData: resumeInfo,
+          jobDescription,
+        }),
+      });
 
-      const aiResponse = await AIChatSession.sendMessage(prompt);
-      const responseText = aiResponse.response.text();
-      
-      const jsonStr = responseText.match(/\{[\s\S]*\}/)?.[0] || "";
-      const data = JSON.parse(jsonStr);
+      if (!response.ok) {
+        throw new Error("Failed to generate interview prep");
+      }
+
+      const data = await response.json();
       setPrepData(data);
       
     } catch (error) {
