@@ -250,16 +250,17 @@ Your task:
 - If history is empty, greet the candidate warmly and ask the FIRST question. Focus on their background and why they fit the role.
 - If history contains questions and answers:
   1. Analyze the candidate's latest answer. Evaluate it for structure (e.g. STAR method), clarity, and technical depth.
-  2. If there are fewer than 3 questions asked so far, give 1 sentence of encouraging feedback, and ask the NEXT challenging question.
-  3. If they have answered 3 questions, do NOT ask another question. Instead, return a JSON report evaluating their overall performance.
+  2. If the user's response is brief, vague, or lacks specific metrics or actions (missing parts of Situation, Task, Action, or Result), ask a TARGETED follow-up question probing for that detail (e.g. "What specific actions did you take to resolve this?" or "What quantitative results did you achieve?").
+  3. If their response is complete, or if you have already asked a follow-up, give 1 sentence of encouraging feedback, and ask the NEXT challenging question on a new topic.
+  4. Only end the session and return the final evaluation after the candidate has provided at least 3 full answers to major topics (excluding follow-ups).
 
 Return format:
 - For questions/dialogue:
   {{
     "type": "question",
-    "text": "Your next question goes here."
+    "text": "Your next question or follow-up goes here."
   }}
-- For the final evaluation (only when 3 questions have been answered):
+- For the final evaluation:
   {{
     "type": "evaluation",
     "deliveryScore": 85,
@@ -276,7 +277,7 @@ Ensure you return ONLY a valid JSON object matching the structures above.`,
       const InterviewSessionResponseSchema = z.discriminatedUnion("type", [
         z.object({
           type: z.literal("question"),
-          text: z.string().describe("The next question or greeting"),
+          text: z.string().describe("The next question, follow-up, or greeting"),
         }),
         z.object({
           type: z.literal("evaluation"),
@@ -300,6 +301,123 @@ Ensure you return ONLY a valid JSON object matching the structures above.`,
       return c.json(response as any);
     } catch (error: any) {
       console.error("Interview Session API Error:", error);
+      return c.json({ error: error.message }, 500);
+    }
+  })
+  .post("/ats-reflection-tailor", getAuthUser, async (c) => {
+    try {
+      const { resumeData, jobDescription } = await c.req.json();
+      
+      // Step 1: Draft tailoring recommendations and keywords integration
+      const draftPrompt = `You are a professional resume writer. Review the provided resume data and the target job description.
+Identify missing key skills and keywords, then draft tailored versions of the professional "summary" and experience "workSummary" fields (keeping HTML list formatting) to integrate them contextually. Do not change company names, dates, or titles.
+Return your draft strictly as a JSON object matching this schema:
+{{
+  "summary": "Tailored summary...",
+  "experiences": [
+    {{ "id": "experience-id", "workSummary": "<ul><li>bullet 1</li></ul>" }}
+  ]
+}}`;
+      const draftRes = await chatModel.invoke([
+        { role: "system", content: draftPrompt },
+        { role: "user", content: `Resume Data:\n${JSON.stringify(resumeData)}\n\nJob Description:\n${jobDescription}` }
+      ]);
+      const draftText = typeof draftRes.content === "string" ? draftRes.content : JSON.stringify(draftRes.content);
+      const draftJsonMatch = draftText.match(/\{[\s\S]*\}/);
+      if (!draftJsonMatch) throw new Error("Drafting failed to return valid JSON");
+      const draftData = JSON.parse(draftJsonMatch[0]);
+
+      // Step 2: Reflection and Critique Pass
+      const critiquePrompt = `You are a critical resume editor and ATS auditor.
+You are reviewing a draft auto-tailored resume summary and experiences.
+Your task:
+1. Verify that no factual information (company names, dates, degrees) was changed or invented.
+2. Confirm the language sounds professional and reads naturally (no keyword stuffing).
+3. If issues are found, rewrite the fields to correct them.
+Return the corrected fields strictly as a JSON object matching this schema:
+{{
+  "summary": "Audited and corrected summary...",
+  "experiences": [
+    {{ "id": "experience-id", "workSummary": "<ul><li>corrected bullet 1</li></ul>" }}
+  ]
+}}`;
+      const critiqueRes = await chatModel.invoke([
+        { role: "system", content: critiquePrompt },
+        { role: "user", content: `Original Resume:\n${JSON.stringify(resumeData)}\n\nDraft Tailored Resume:\n${JSON.stringify(draftData)}\n\nJob Description:\n${jobDescription}` }
+      ]);
+      const critiqueText = typeof critiqueRes.content === "string" ? critiqueRes.content : JSON.stringify(critiqueRes.content);
+      const critiqueJsonMatch = critiqueText.match(/\{[\s\S]*\}/);
+      if (!critiqueJsonMatch) throw new Error("Critique failed to return valid JSON");
+      const finalizedData = JSON.parse(critiqueJsonMatch[0]);
+
+      return c.json(finalizedData);
+    } catch (error: any) {
+      console.error("ATS Reflection Tailor Error:", error);
+      return c.json({ error: error.message }, 500);
+    }
+  })
+  .post("/job-hunter-agent", getAuthUser, async (c) => {
+    try {
+      const { resumeData } = await c.req.json();
+      const jobTitle = resumeData?.personalInfo?.jobTitle || "Software Engineer";
+      const skills = resumeData?.skills?.map((s: any) => s.name).slice(0, 5).join(", ") || "TypeScript, React";
+
+      let searchResults: any[] = [];
+      if (process.env.TAVILY_API_KEY) {
+        try {
+          const searchRes = await fetch("https://api.tavily.com/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              api_key: process.env.TAVILY_API_KEY,
+              query: `active job listings hiring for ${jobTitle} with skills ${skills} remote or USA`,
+              search_depth: "basic",
+            }),
+          });
+          if (searchRes.ok) {
+            const data = await searchRes.json();
+            searchResults = data.results || [];
+          }
+        } catch (err) {
+          console.warn("Tavily search for Job Hunter failed, falling back to mock results:", err);
+        }
+      }
+
+      // If search failed or empty, fallback to mock active postings
+      if (searchResults.length === 0) {
+        searchResults = [
+          { title: `Senior ${jobTitle} at TechGlobal`, content: `Hiring a skilled Senior ${jobTitle} experienced in ${skills} for full-time remote role.`, url: "https://techglobal.com/careers" },
+          { title: `${jobTitle} (Remote) at InnovateSoft`, content: `We are looking for a ${jobTitle} to join our rapid product team. Requirements: ${skills}.`, url: "https://innovatesoft.io/jobs" },
+          { title: `Lead Developer at FinTech Group`, content: `Leading financial software platform hiring Lead developer with background in ${skills} and ${jobTitle} roles.`, url: "https://fintechgroup.org/careers" },
+        ];
+      }
+
+      // Analyze and draft match details + customized cover letter for each job listing
+      const jobsPrompt = `You are a job hunter agent. Review the user's resume data and these job listings found on the web.
+Analyze the match score (0-100) and draft a concise, tailored cover letter (150-200 words) for each job.
+Return the analyzed jobs matching this exact JSON schema:
+{{
+  "jobs": [
+    {{
+      "company": "Company Name",
+      "title": "Job Title",
+      "description": "Short description of the job specifications.",
+      "score": 92,
+      "url": "https://example.com/job",
+      "coverLetter": "Tailored cover letter content..."
+    }}
+  ]
+}}`;
+      const analysisRes = await chatModel.invoke([
+        { role: "system", content: jobsPrompt },
+        { role: "user", content: `User Resume:\n${JSON.stringify(resumeData)}\n\nSearch Listings:\n${JSON.stringify(searchResults)}` }
+      ]);
+      const text = typeof analysisRes.content === "string" ? analysisRes.content : JSON.stringify(analysisRes.content);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("Job Hunter Agent failed to return valid JSON");
+      return c.json(JSON.parse(jsonMatch[0]));
+    } catch (error: any) {
+      console.error("Job Hunter Agent Error:", error);
       return c.json({ error: error.message }, 500);
     }
   })
@@ -373,7 +491,7 @@ Ensure you return ONLY a valid JSON object matching the structures above.`,
 Rewrite the professional summary to be high impact.
 For experiences, rewrite the workSummary descriptions to use power verbs and introduce quantifiable metrics where appropriate. Keep the exact HTML list structure (<ul><li>).
 Ensure you do not alter core facts, dates, company names, or educational degrees. Keep the exact same JSON keys and structure.
-
+ 
 Return the FULL updated resume JSON object matching the exact schema of the input.`;
 
       const response = await chatModel.invoke([

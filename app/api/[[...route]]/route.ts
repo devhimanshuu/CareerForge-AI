@@ -1,6 +1,4 @@
-if (typeof (globalThis as any).DOMMatrix === "undefined") {
-  (globalThis as any).DOMMatrix = class DOMMatrix {};
-}
+import "@/lib/polyfill";
 
 import { Hono } from "hono";
 import { handle } from "hono/vercel";

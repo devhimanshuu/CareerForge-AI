@@ -22,6 +22,7 @@ const AutoTailorEngine = () => {
   const [jobDescription, setJobDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isReflectionMode, setIsReflectionMode] = useState(true);
 
   const handleTailor = async () => {
     if (!jobDescription.trim()) {
@@ -36,7 +37,7 @@ const AutoTailorEngine = () => {
     setLoading(true);
     setSuccess(false);
     try {
-      const response = await fetch("/api/ai/auto-tailor", {
+      const response = await fetch(isReflectionMode ? "/api/ai/ats-reflection-tailor" : "/api/ai/auto-tailor", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -123,6 +124,18 @@ const AutoTailorEngine = () => {
         </DialogHeader>
 
         <div className="flex flex-col gap-4 mt-4">
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-indigo-500/20 bg-indigo-500/5 shadow-inner">
+            <div className="pr-4">
+              <label className="text-xs font-bold text-foreground block">Multi-Agent Reflection Mode</label>
+              <span className="text-[10px] text-muted-foreground font-semibold leading-normal block mt-0.5">Executes a 2-pass critique loop to avoid factual errors and optimize readability.</span>
+            </div>
+            <input 
+              type="checkbox" 
+              checked={isReflectionMode} 
+              onChange={(e) => setIsReflectionMode(e.target.checked)}
+              className="w-5 h-5 accent-indigo-600 rounded cursor-pointer shrink-0"
+            />
+          </div>
           <div>
             <Textarea
               placeholder="Paste the target job description here..."

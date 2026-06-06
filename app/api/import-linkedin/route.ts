@@ -1,6 +1,4 @@
-if (typeof (globalThis as any).DOMMatrix === "undefined") {
-  (globalThis as any).DOMMatrix = class DOMMatrix {};
-}
+import "@/lib/polyfill";
 
 import { NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
