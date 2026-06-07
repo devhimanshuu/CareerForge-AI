@@ -27,6 +27,22 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import ResumeImport from "../_components/common/ResumeImport";
 import { PremiumPage } from "@/components/ui/premium-page";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { CheckCircle2, AlertTriangle, ArrowRightCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -52,6 +68,18 @@ const Page = () => {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [filterStatus, setFilterStatus] = React.useState<"all" | "public" | "private">("all");
 
+  const [coachData, setCoachData] = React.useState<any>(null);
+  const [isCoachLoading, setIsCoachLoading] = React.useState(true);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [selectedResumeId, setSelectedResumeId] = React.useState<string | null>(null);
+
+  const resumes = useMemo(() => {
+    if (data && Array.isArray(data.data)) {
+      return data.data;
+    }
+    return [];
+  }, [data]);
+
   React.useEffect(() => {
     const fetchApps = async () => {
       try {
@@ -67,12 +95,44 @@ const Page = () => {
     fetchApps();
   }, []);
 
-  const resumes = useMemo(() => {
-    if (data && Array.isArray(data.data)) {
-      return data.data;
+  React.useEffect(() => {
+    if (resumes.length > 0) {
+      const exists = resumes.some((r) => r.documentId === selectedResumeId);
+      if (!exists) {
+        setSelectedResumeId(resumes[0].documentId);
+      }
+    } else {
+      setSelectedResumeId(null);
     }
-    return [];
-  }, [data]);
+  }, [resumes, selectedResumeId]);
+
+  React.useEffect(() => {
+    const fetchCoachData = async () => {
+      if (resumes.length > 0 && !selectedResumeId) {
+        return;
+      }
+      setIsCoachLoading(true);
+      try {
+        const queryParam = selectedResumeId ? `?documentId=${selectedResumeId}` : "";
+        const res = await fetch(`/api/ai/career-coach${queryParam}`);
+        if (res.ok) {
+          const json = await res.json();
+          setCoachData(json);
+        } else {
+          setCoachData(null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch coach data:", err);
+        setCoachData(null);
+      } finally {
+        setIsCoachLoading(false);
+      }
+    };
+    
+    if (!isLoading) {
+      fetchCoachData();
+    }
+  }, [selectedResumeId, resumes.length, apps.length, isLoading]);
 
   const resumeCount = resumes.length;
   const publicCount = resumes.filter((r) => r?.status === "public").length;
@@ -188,7 +248,7 @@ const Page = () => {
               </h2>
             </div>
             
-            <div className="h-[285px] rounded-3xl border border-indigo-500/20 bg-gradient-to-b from-indigo-500/[0.03] to-purple-500/[0.01] p-6 relative overflow-hidden group shadow-md flex flex-col justify-between">
+            <div className="min-h-[285px] lg:h-[300px] rounded-3xl border border-indigo-500/20 bg-gradient-to-b from-indigo-500/[0.03] to-purple-500/[0.01] p-6 relative overflow-hidden group shadow-md flex flex-col justify-between">
               {/* Scanline line overlay */}
               <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(99,102,241,0.02)_1px,transparent_1px)] bg-[size:100%_4px] pointer-events-none" />
               {/* Glowing decorative sphere */}
@@ -199,24 +259,56 @@ const Page = () => {
               </div>
 
               <div>
-                <h3 className="text-base font-bold mb-3 flex items-center gap-2 font-outfit">
-                  Market Insights
-                  <span className="text-[9px] bg-gradient-to-r from-indigo-500 to-violet-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                    Live AI
+                <h3 className="text-base font-bold mb-3 flex items-center justify-between gap-2 font-outfit">
+                  <span className="flex items-center gap-2">
+                    Market Insights
+                    <span className="text-[9px] bg-gradient-to-r from-indigo-500 to-violet-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                      Live Agent
+                    </span>
                   </span>
                 </h3>
+
+                {resumes.length > 0 && (
+                  <div className="mb-3">
+                    <Select
+                      value={selectedResumeId || undefined}
+                      onValueChange={(val) => setSelectedResumeId(val)}
+                    >
+                      <SelectTrigger className="w-full bg-background/60 border-indigo-500/20 text-xs text-foreground font-medium rounded-xl h-8 focus:ring-indigo-500/50">
+                        <SelectValue placeholder="Select resume to analyze..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background/95 border-indigo-500/20 rounded-xl max-h-[160px] overflow-y-auto">
+                        {resumes.map((resume: any) => (
+                          <SelectItem
+                            key={resume.documentId}
+                            value={resume.documentId}
+                            className="text-xs focus:bg-indigo-500/10 focus:text-foreground cursor-pointer rounded-lg py-1.5"
+                          >
+                            {resume.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 
-                <div className="bg-background/50 border border-indigo-500/10 rounded-2xl p-4 font-mono text-xs text-muted-foreground/90 leading-relaxed relative max-h-[140px] overflow-y-auto custom-scrollbar">
+                <div className="bg-background/50 border border-indigo-500/10 rounded-2xl p-4 font-mono text-xs text-muted-foreground/90 leading-relaxed relative h-[85px] lg:h-[95px] overflow-y-auto custom-scrollbar mb-4">
                   <span className="text-indigo-400 font-semibold mr-1.5">&gt;_</span>
-                  &quot;{apps.length > 0
-                    ? `Based on your current pipeline, you have ${leadingStatus}. Keep branching resumes by role and compare public views, downloads, and recruiter leads.`
-                    : `Publish a portfolio and add applications to unlock personalized market insights from your own activity.`}&quot;
+                  &quot;{isCoachLoading ? (
+                    <span className="inline-flex items-center gap-2 text-indigo-400 font-bold animate-pulse">
+                      Analyzing profile & market trends...
+                    </span>
+                  ) : (
+                    coachData?.consoleMessage || "Write a resume and track applications to scan active insights."
+                  )}&quot;
                 </div>
               </div>
 
               <Button
+                onClick={() => setIsModalOpen(true)}
+                disabled={isCoachLoading || !coachData}
                 variant="outline"
-                className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white font-bold rounded-xl gap-2 border-0 shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/25 transition-all duration-300 hover:scale-[1.01]"
+                className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white font-bold rounded-xl gap-2 border-0 shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/25 transition-all duration-300 hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Get Full AI Review
                 <ArrowRight size={14} />
@@ -239,7 +331,7 @@ const Page = () => {
               </Link>
             </div>
             
-            <div className="h-[285px] overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+            <div className="min-h-[285px] lg:h-[300px] overflow-y-auto space-y-4 pr-1 custom-scrollbar">
               {apps.length === 0 && !isAppsLoading && (
                 <div className="h-full rounded-3xl border border-dashed flex flex-col items-center justify-center text-center p-8 opacity-60 bg-muted/10 border-border/80">
                   <Briefcase size={28} className="mb-3 text-muted-foreground" />
@@ -407,6 +499,125 @@ const Page = () => {
           </div>
         </motion.div>
       </motion.div>
+
+      {/* AI Career Coach Review Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-indigo-500/20 bg-background/95 backdrop-blur-2xl shadow-2xl p-6 font-outfit custom-scrollbar">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="text-2xl font-black bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent flex items-center gap-2">
+              <Sparkles className="text-indigo-500 animate-pulse" />
+              AI Career Coach Diagnostic
+            </DialogTitle>
+            <DialogDescription className="text-sm font-medium text-muted-foreground">
+              Personalized analysis of your resume and pipeline conversions.
+            </DialogDescription>
+          </DialogHeader>
+
+          {coachData ? (
+            <div className="space-y-6 mt-4">
+              {/* Standout Score Section */}
+              <div className="flex flex-col sm:flex-row items-center gap-6 p-5 rounded-2xl bg-muted/40 border border-border/50 backdrop-blur-md">
+                <div className="relative flex items-center justify-center size-24 shrink-0">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle
+                      cx="48"
+                      cy="48"
+                      r="40"
+                      className="stroke-muted/30 dark:stroke-muted/10"
+                      strokeWidth="6"
+                      fill="transparent"
+                    />
+                    <motion.circle
+                      cx="48"
+                      cy="48"
+                      r="40"
+                      className="stroke-indigo-500"
+                      strokeWidth="6"
+                      fill="transparent"
+                      strokeDasharray="251"
+                      initial={{ strokeDashoffset: 251 }}
+                      animate={{ strokeDashoffset: 251 - (251 * coachData.marketScore) / 100 }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
+                    />
+                  </svg>
+                  <span className="absolute text-xl font-black text-foreground">
+                    {coachData.marketScore}%
+                  </span>
+                </div>
+                <div className="space-y-1 text-center sm:text-left">
+                  <h4 className="text-lg font-bold flex items-center justify-center sm:justify-start gap-2">
+                    Market Standout Score
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      {coachData.marketStatus}
+                    </span>
+                  </h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                    Your resume alignment score based on current hiring demands and job tracker pipeline conversion rates.
+                  </p>
+                  <p className="text-xs font-bold text-indigo-500 dark:text-indigo-400 mt-2">
+                    Salary Expectation: {coachData.marketSalaryInsights}
+                  </p>
+                </div>
+              </div>
+
+              {/* Strengths & Gaps */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Profile Strengths */}
+                <div className="p-4 rounded-2xl bg-emerald-500/[0.02] border border-emerald-500/10 space-y-3">
+                  <h5 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 size={14} />
+                    Standout Strengths
+                  </h5>
+                  <ul className="space-y-2 text-xs font-medium text-muted-foreground">
+                    {coachData.strengths?.map((str: string, index: number) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="size-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                        {str}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Identified Gaps */}
+                <div className="p-4 rounded-2xl bg-amber-500/[0.02] border border-amber-500/10 space-y-3">
+                  <h5 className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                    <AlertTriangle size={14} />
+                    Identified Gaps
+                  </h5>
+                  <ul className="space-y-2 text-xs font-medium text-muted-foreground">
+                    {coachData.gaps?.map((gap: string, index: number) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="size-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                        {gap}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Action Recommendations */}
+              <div className="p-4 rounded-2xl bg-indigo-500/[0.02] border border-indigo-500/10 space-y-3">
+                <h5 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                  <ArrowRightCircle size={14} />
+                  Strategic Action Items
+                </h5>
+                <ul className="space-y-2 text-xs font-medium text-muted-foreground">
+                  {coachData.recommendations?.map((rec: string, index: number) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <span className="size-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0" />
+                      {rec}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
+              No diagnostic data available. Write a resume and track applications to get started.
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </PremiumPage>
   );
 };

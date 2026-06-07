@@ -29,6 +29,10 @@ import {
   marketDataPrompt,
   MarketDataResponseSchema,
 } from "@/lib/langchain";
+import { db } from "@/db";
+import { documentTable } from "@/db/schema/document";
+import { applicationTable } from "@/db/schema/application";
+import { and, desc, eq, ne } from "drizzle-orm";
 
 const aiRoute = new Hono()
   .post("/chat", getAuthUser, async (c) => {
@@ -500,10 +504,98 @@ Return the FULL updated resume JSON object matching the exact schema of the inpu
       ]);
       const text = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No valid JSON found in AI response");
       return c.json(JSON.parse(jsonMatch[0]));
     } catch (error: any) {
       console.error("Resume Doctor Fix API Error:", error);
+      return c.json({ error: error.message }, 500);
+    }
+  })
+  .get("/career-coach", getAuthUser, async (c) => {
+    try {
+      const user = c.get("user");
+      const userId = user.id;
+      const documentId = c.req.query("documentId");
+
+      // 1. Fetch active resume (specific resume if documentId is provided, otherwise most recently updated document)
+      let activeDoc = null;
+      if (documentId) {
+        activeDoc = await db.query.documentTable.findFirst({
+          where: and(
+            eq(documentTable.userId, userId),
+            eq(documentTable.documentId, documentId),
+            ne(documentTable.status, "archived")
+          ),
+          with: {
+            personalInfo: true,
+            experiences: true,
+            educations: true,
+            skills: true,
+          },
+        });
+      } else {
+        activeDoc = await db.query.documentTable.findFirst({
+          where: and(
+            eq(documentTable.userId, userId),
+            ne(documentTable.status, "archived")
+          ),
+          orderBy: desc(documentTable.updatedAt),
+          with: {
+            personalInfo: true,
+            experiences: true,
+            educations: true,
+            skills: true,
+          },
+        });
+      }
+
+      // 2. Fetch tracked applications
+      const userApps = await db
+        .select()
+        .from(applicationTable)
+        .where(eq(applicationTable.userId, userId))
+        .orderBy(desc(applicationTable.updatedAt));
+
+      // 3. Define structured output schema
+      const CareerCoachResponseSchema = z.object({
+        consoleMessage: z.string().describe("A short, terminal-friendly console message summarizing the current status and insights. E.g. 'Checking active resume... target: frontend developer... USA region shows strong hiring demand... recommend refining TypeScript experience.' Keep it under 200 characters."),
+        marketScore: z.number().min(0).max(100).describe("Standout score based on resume alignment with target roles and tracker pipeline conversion rates."),
+        marketStatus: z.string().describe("Hiring demand description, e.g. 'High Demand', 'Competitive', 'Balanced'"),
+        strengths: z.array(z.string()).describe("3 key strengths observed in the resume/profile."),
+        gaps: z.array(z.string()).describe("3 key skill or experience gaps based on pipeline target roles."),
+        recommendations: z.array(z.string()).describe("3 highly actionable next steps for the candidate."),
+        marketSalaryInsights: z.string().describe("expected salary and demand info for target role, e.g., '$110k - $145k average with high remote hiring velocity.'")
+      });
+
+      // 4. Define prompt
+      const prompt = ChatPromptTemplate.fromMessages([
+        [
+          "system",
+          `You are an elite AI Career Coach and Job Market Analyst.
+Your task is to analyze the candidate's active resume and their tracked job applications, and generate strategic career insights, standout scores, strengths, skill gaps, and regional salary/market demand expectations.
+
+Candidate Resume Data:
+{resumeData}
+
+Tracked Job Applications:
+{applicationData}
+
+Generate a detailed career coaching diagnostic. If the candidate has no resume or no applications, tailor your advice to encourage them to start tracking their job search and write down target roles.
+
+Return formatting instructions:
+You must output a structured JSON response matching the schema details.`,
+        ],
+      ]);
+
+      const modelWithStructuredOutput = chatModel.withStructuredOutput(CareerCoachResponseSchema);
+      const chain = prompt.pipe(modelWithStructuredOutput);
+      const response = await chain.invoke({
+        resumeData: JSON.stringify(activeDoc || { message: "No active resume created yet." }),
+        applicationData: JSON.stringify(userApps || { message: "No job applications tracked yet." }),
+      });
+
+      return c.json(response as any);
+    } catch (error: any) {
+      console.error("Career Coach API Error:", error);
       return c.json({ error: error.message }, 500);
     }
   });

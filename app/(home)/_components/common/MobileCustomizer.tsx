@@ -144,24 +144,7 @@ const MobileCustomizer = () => {
               </div>
             </div>
 
-            {/* AI Magic */}
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                  <Wand2 size={20} />
-                </div>
-                <div className="px-2 py-1 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-widest">
-                  Pro Feature
-                </div>
-              </div>
-              <h4 className="font-bold text-lg mb-1">AI Resume Architect</h4>
-              <p className="text-white/70 text-xs leading-relaxed mb-4">
-                Let our AI rebuild your entire resume structure for maximum ATS impact.
-              </p>
-              <Button variant="secondary" className="w-full font-bold h-11 rounded-xl">
-                Unlock Magic
-              </Button>
-            </div>
+
           </div>
         </SheetContent>
       </Sheet>
