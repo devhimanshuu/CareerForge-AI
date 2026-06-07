@@ -3,7 +3,10 @@ import dotenv from "dotenv";
 dotenv.config();
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ["pdf-parse", "@napi-rs/canvas"],
+    serverComponentsExternalPackages: ["pdf-parse", "pdfjs-dist", "@napi-rs/canvas"],
+    outputFileTracingIncludes: {
+      "/api/**/*": ["./node_modules/pdfjs-dist/**/*.mjs"],
+    },
   },
   images: {
     remotePatterns: [

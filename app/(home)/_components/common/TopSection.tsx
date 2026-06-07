@@ -17,6 +17,7 @@ import AutoPageFit from "./AutoPageFit";
 import CustomLayoutBuilder from "./CustomLayoutBuilder";
 import LanguageTranslator from "./LanguageTranslator";
 import MagicAI from "@/components/editor/MagicAI";
+import MarketInsights from "@/components/editor/MarketInsights";
 import {
   Wand2,
   Layout,
@@ -89,76 +90,42 @@ const TopSection = () => {
           This resume is in the trash bin
         </div>
       )}
-      <div className="w-full flex flex-col gap-4">
-        {/* Row 1: Title & Export Actions */}
-        <div className="flex flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <ResumeTitle
-              isLoading={isLoading || isPending}
-              initialTitle={resumeInfo?.title || ""}
-              status={resumeInfo?.status}
-              onSave={(value) => handleTitle(value)}
-            />
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 bg-indigo-500/5 backdrop-blur-sm rounded-xl p-1 border border-indigo-500/10">
-            <div className="px-2 hidden md:flex items-center gap-2 text-indigo-500 border-r border-indigo-500/10 mr-1">
-              <DownloadCloud size={14} />
-              <span className="text-[10px] font-black uppercase tracking-widest">
-                Export & Share
-              </span>
-            </div>
-            <PreviewModal />
-            <Download
-              title={resumeInfo?.title || "Untitled Resume"}
-              status={resumeInfo?.status}
-              isLoading={isLoading}
-            />
-            <Share />
-            <MoreOption />
-          </div>
+      <div className="w-full flex items-center justify-between gap-4 overflow-x-auto no-scrollbar pb-2">
+        {/* Left: Title */}
+        <div className="flex items-center shrink-0">
+          <ResumeTitle
+            isLoading={isLoading || isPending}
+            initialTitle={resumeInfo?.title || ""}
+            status={resumeInfo?.status}
+            onSave={(value) => handleTitle(value)}
+          />
         </div>
 
-        {/* Row 2: AI & Design Tools */}
-        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
+        {/* Right: Tools & Actions */}
+        <div className="flex items-center gap-2 shrink-0">
           {/* AI Studio Group */}
-          <div className="flex items-center gap-2 pr-4 border-r border-border/50 shrink-0">
+          <div className="flex items-center gap-2 pr-2 border-r border-border/50 shrink-0">
             <MagicAI />
+            <MarketInsights />
           </div>
 
           {/* Design Group */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/30 border border-border/50 shrink-0">
-            <div className="px-2 hidden xl:flex items-center gap-1.5 text-muted-foreground border-r border-border/50 mr-1">
-              <Layout size={14} />
-              <span className="text-[10px] font-black uppercase tracking-widest">
-                Design
-              </span>
-            </div>
-
-            <div className="hidden xl:flex items-center gap-1">
-              <TemplateSelector />
-              <AutoPageFit />
-              <CustomLayoutBuilder />
-              <ThemeColor />
-            </div>
-
-            {/* Mobile/Tablet Design Menu */}
-            <div className="xl:hidden">
+          <div className="flex items-center shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="h-8 gap-2 font-bold text-[10px] uppercase tracking-widest px-2"
+                    className="h-9 gap-2 font-bold text-[10px] uppercase tracking-widest text-muted-foreground border-border/50 bg-muted/30 hover:bg-muted/50"
                   >
-                    <Layout size={14} className="text-muted-foreground" />
+                    <Layout size={14} />
                     Design
-                    <ChevronDown size={12} className="opacity-50" />
+                    <ChevronDown size={14} className="opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  align="end"
-                  className="p-2 min-w-[180px] space-y-1"
+                  align="start"
+                  className="p-2 min-w-[200px] space-y-1 [&_button]:w-full [&_button]:justify-start [&_button]:bg-transparent [&_button]:border-none [&_button]:shadow-none [&_button]:hover:bg-accent [&_button]:px-2 [&_span]:!flex"
                 >
                   <div className="flex flex-col gap-1">
                     <TemplateSelector />
@@ -168,41 +135,25 @@ const TopSection = () => {
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
           </div>
 
           {/* Content Utilities Group */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/30 border border-border/50 shrink-0">
-            <div className="px-2 hidden 2xl:flex items-center gap-2 text-muted-foreground border-r border-border/50 mr-1">
-              <FileEdit size={14} />
-              <span className="text-[10px] font-black uppercase tracking-widest">
-                Content Tools
-              </span>
-            </div>
-
-            <div className="hidden 2xl:flex items-center gap-1">
-              <CoverLetterGenerator />
-              <AtsMatcher />
-              <LanguageTranslator />
-            </div>
-
-            {/* Mobile/Tablet Tools Menu */}
-            <div className="2xl:hidden">
+          <div className="flex items-center pr-2 border-r border-border/50 shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="h-8 gap-2 font-bold text-[10px] uppercase tracking-widest px-2"
+                    className="h-9 gap-2 font-bold text-[10px] uppercase tracking-widest text-muted-foreground border-border/50 bg-muted/30 hover:bg-muted/50"
                   >
-                    <PenTool size={14} className="text-muted-foreground" />
-                    Tools
-                    <ChevronDown size={12} className="opacity-50" />
+                    <FileEdit size={14} />
+                    Content Tools
+                    <ChevronDown size={14} className="opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  align="end"
-                  className="p-2 min-w-[180px] space-y-1"
+                  align="start"
+                  className="p-2 min-w-[200px] space-y-1 [&_button]:w-full [&_button]:justify-start [&_button]:bg-transparent [&_button]:border-none [&_button]:shadow-none [&_button]:hover:bg-accent [&_button]:px-2 [&_span]:!flex"
                 >
                   <div className="flex flex-col gap-1">
                     <CoverLetterGenerator />
@@ -211,7 +162,37 @@ const TopSection = () => {
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
+          </div>
+
+          <div className="flex items-center shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-2 font-bold text-[10px] uppercase tracking-widest text-indigo-500 border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10"
+                >
+                  <DownloadCloud size={14} />
+                  Export & Share
+                  <ChevronDown size={14} className="opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="p-2 min-w-[200px] space-y-1 [&_button]:w-full [&_button]:justify-start [&_button]:bg-transparent [&_button]:border-none [&_button]:shadow-none [&_button]:hover:bg-accent [&_button]:px-2 [&_span]:!flex"
+              >
+                <div className="flex flex-col gap-1">
+                  <PreviewModal />
+                  <Download
+                    title={resumeInfo?.title || "Untitled Resume"}
+                    status={resumeInfo?.status}
+                    isLoading={isLoading}
+                  />
+                  <Share />
+                  <MoreOption />
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

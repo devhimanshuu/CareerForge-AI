@@ -2,13 +2,19 @@
 import React, { useState } from "react";
 import { useResumeContext } from "@/context/resume-info-provider";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, DownloadCloud } from "lucide-react";
 import PersonalInfoForm from "./forms/PersonalInfoForm";
 import SummaryForm from "./forms/SummaryForm";
 import ExperienceForm from "./forms/ExperienceForm";
 import EducationForm from "./forms/EducationForm";
 import SkillsForm from "./forms/SkillsForm";
 import { LinkedInImport } from "./LinkedInImport";
+import GithubSync from "./common/GithubSync";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -43,6 +49,30 @@ const ResumeForm = () => {
                   </p>
               </div>
               <div className="flex items-center gap-2">
+                 <div className="hidden md:flex items-center mr-2 border-r border-border/50 pr-4">
+                     <DropdownMenu>
+                       <DropdownMenuTrigger asChild>
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           className="h-9 gap-2 font-bold text-[10px] uppercase tracking-widest text-emerald-600 border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10"
+                         >
+                           <DownloadCloud size={14} />
+                           Import Profile
+                           <ChevronDown size={14} className="opacity-50" />
+                         </Button>
+                       </DropdownMenuTrigger>
+                       <DropdownMenuContent
+                         align="end"
+                         className="p-2 min-w-[200px] space-y-1 [&_button]:w-full [&_button]:justify-start [&_button]:bg-transparent [&_button]:border-none [&_button]:shadow-none [&_button]:hover:bg-accent [&_button]:px-2 [&_span]:!flex"
+                       >
+                         <div className="flex flex-col gap-1">
+                           <LinkedInImport />
+                           <GithubSync />
+                         </div>
+                       </DropdownMenuContent>
+                     </DropdownMenu>
+                 </div>
                  {activeFormIndex > 1 && (
                     <Button
                         variant="outline"
@@ -113,22 +143,6 @@ const ResumeForm = () => {
               </React.Fragment>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* ── AI Portfolio Import Zone ── */}
-      <div className="px-6 pt-12 pb-4">
-        <div className="p-4 rounded-[24px] bg-gradient-to-br from-indigo-500/5 via-transparent to-violet-500/5 border border-indigo-500/10 flex items-center justify-between shadow-sm group hover:border-indigo-500/20 transition-all">
-            <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 flex items-center justify-center text-indigo-600 group-hover:rotate-6 transition-transform">
-                    <CheckCircle2 size={24} />
-                </div>
-                <div>
-                    <h4 className="text-xs font-black uppercase tracking-widest">Rapid Import</h4>
-                    <p className="text-[10px] text-muted-foreground font-medium">Auto-populate from LinkedIn or PDF</p>
-                </div>
-            </div>
-            <LinkedInImport />
         </div>
       </div>
 

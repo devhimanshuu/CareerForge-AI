@@ -16,7 +16,7 @@ const ResumePreview = () => {
   const previewRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const [isOversized, setIsOversized] = useState(false);
+  const [contentHeight, setContentHeight] = useState(1123);
 
   // AI Dynamic Layouts: Auto-scale to fit container width and A4 height
   useEffect(() => {
@@ -26,26 +26,21 @@ const ResumePreview = () => {
         const A4_WIDTH = 794;
         const A4_HEIGHT = 1123;
         
-        // Temporarily remove scaling to get true height
+        // Temporarily remove scaling to get true height without visual flash
+        const oldTransform = previewRef.current.style.transform;
         previewRef.current.style.transform = "none";
-        const contentHeight = previewRef.current.scrollHeight;
+        const currentContentHeight = previewRef.current.scrollHeight;
+        previewRef.current.style.transform = oldTransform; // Immediately restore
+        
+        setContentHeight(Math.max(1123, currentContentHeight));
         
         const widthScale = wrapperWidth / A4_WIDTH;
-        const heightScale = A4_HEIGHT / contentHeight;
 
         let finalScale = 1;
         
         // Scale down if container is narrower than A4
         if (widthScale < 1) {
           finalScale = widthScale;
-        }
-        
-        // Scale down further if content is taller than A4
-        if (contentHeight > A4_HEIGHT && heightScale < finalScale) {
-          finalScale = Math.max(heightScale, 0.4); 
-          setIsOversized(true);
-        } else {
-          setIsOversized(false);
         }
 
         setScale(finalScale);
@@ -56,30 +51,31 @@ const ResumePreview = () => {
     window.addEventListener("resize", handleResize);
     
     // Also trigger on content change
-    const observer = new MutationObserver(handleResize);
+    const mutationObserver = new MutationObserver(handleResize);
     if (previewRef.current) {
-      observer.observe(previewRef.current, { childList: true, subtree: true, characterData: true });
+      mutationObserver.observe(previewRef.current, { childList: true, subtree: true, characterData: true });
+    }
+
+    // Trigger on container resize (critical for ResizablePanel slider)
+    const resizeObserver = new ResizeObserver(handleResize);
+    if (wrapperRef.current) {
+      resizeObserver.observe(wrapperRef.current);
     }
     
     return () => {
       window.removeEventListener("resize", handleResize);
-      observer.disconnect();
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
     };
   }, [resumeInfo]);
 
   return (
     <div className="relative w-full flex justify-center overflow-visible" ref={wrapperRef}>
-      {isOversized && (
-        <div className="absolute -top-10 bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full flex items-center gap-1 animate-pulse z-10 shadow-sm border border-indigo-200">
-          <span>✨ AI Dynamic Layout applied to fit one page</span>
-        </div>
-      )}
-      
       {/* Container that takes exact scaled height to prevent empty space */}
       <div 
         className="relative flex justify-center transition-all duration-300" 
         style={{ 
-          height: `${1123 * scale}px`,
+          height: `${contentHeight * scale}px`,
           width: `${794 * scale}px`,
         }}
       >
@@ -87,12 +83,14 @@ const ResumePreview = () => {
           id="resume-preview-id"
           ref={previewRef}
           className={cn(`
-          shadow-xl bg-white text-black w-[794px] min-h-[1123px]
-          p-4 md:p-10 !font-open-sans
+          shadow-[0_0_50px_-12px_rgba(0,0,0,0.25)] dark:shadow-[0_0_50px_-12px_rgba(0,0,0,0.6)] 
+          bg-white text-black w-[794px] min-h-[1123px]
+          p-8 md:p-12 !font-open-sans
           dark:bg-white dark:text-black
+          rounded-sm border border-slate-200/50 dark:border-slate-800/50
           `)}
           style={{
-            borderTop: `13px solid ${resumeInfo?.themeColor}`,
+            borderTop: `8px solid ${resumeInfo?.themeColor}`,
             transform: `scale(${scale})`,
             transformOrigin: "top left",
             position: "absolute",
