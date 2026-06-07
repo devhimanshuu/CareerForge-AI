@@ -195,7 +195,7 @@ This software is distributed under the MIT License. Refer to `LICENSE` for detai
 ---
 
 <div align="center">
-  <h3>💻 Created by <a href="https://github.com/devhimanshuu">devhimanshu</a></h3>
+  <h3>💻 Created by <a href="https://github.com/devhimanshuu">devhimanshuu</a></h3>
   <p><i>Building the future of AI-powered career tools.</i></p>
   <code>const dev = { name: "devhimanshu", passion: "coding", status: "always-building" };</code>
 </div>
