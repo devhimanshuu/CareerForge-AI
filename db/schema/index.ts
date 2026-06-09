@@ -5,4 +5,5 @@ export { personalInfoTable, personalInfoRelations } from "./personal-info";
 export { skillsTable, skillsRelations } from "./skills";
 export { applicationTable, coverLetterTable, applicationRelations, applicationStatusEnum } from "./application";
 export { analyticsEventTable, portfolioLeadTable } from "./analytics";
+export { reviewCommentTable, agentInsightTable, integrationSnapshotTable, automationConfigTable } from "./premium";
 

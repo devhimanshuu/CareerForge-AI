@@ -19,6 +19,7 @@ export const analyticsEventTable = pgTable("analytics_event", {
   referrer: text("referrer"),
   userAgent: text("user_agent"),
   device: varchar("device", { length: 50 }),
+  country: varchar("country", { length: 100 }),
   durationSeconds: integer("duration_seconds"),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
 });
