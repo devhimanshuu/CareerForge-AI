@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { RoomProvider } from "@/lib/liveblocks";
 import { LiveList } from "@liveblocks/client";
 import { useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import { WifiOff, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Check if Liveblocks is configured (has env key on server)
-// Client-side we just detect connection state
-const IS_LIVEBLOCKS_CONFIGURED = true; // We attempt connection; fallback handles failure
+// Client-side we detect from public env or attempt connection
+const IS_LIVEBLOCKS_CONFIGURED = process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY !== undefined;
 
 type ConnectionState = "connecting" | "connected" | "disconnected" | "error";
 
@@ -25,6 +26,13 @@ export function CollaborationProvider({
   const [hasError, setHasError] = useState(false);
   const { user, isLoaded } = useUser();
 
+  // Reconnection logic
+  const handleReconnect = useCallback(() => {
+    setConnectionState("connecting");
+    setHasError(false);
+    // RoomProvider will automatically attempt reconnection
+  }, []);
+
   // Derive connection state from user loading
   useEffect(() => {
     if (!isLoaded) {
@@ -32,6 +40,11 @@ export function CollaborationProvider({
       return;
     }
     if (!user) {
+      setHasError(true);
+      setConnectionState("error");
+      return;
+    }
+    if (!IS_LIVEBLOCKS_CONFIGURED) {
       setHasError(true);
       setConnectionState("error");
       return;
@@ -64,7 +77,11 @@ export function CollaborationProvider({
   }
 
   return (
-    <RoomProvider id={roomId} initialPresence={getInitialPresence(user)} initialStorage={() => ({ comments: new LiveList([]) })}>
+    <RoomProvider 
+      id={roomId} 
+      initialPresence={getInitialPresence(user)} 
+      initialStorage={() => ({ comments: new LiveList([]) })}
+    >
       <div className="relative">
         {/* Connection status indicator */}
         <AnimatePresence>
@@ -145,11 +162,6 @@ const PRESENCE_COLORS = [
 
 function getRandomColor() {
   return PRESENCE_COLORS[Math.floor(Math.random() * PRESENCE_COLORS.length)];
-}
-
-// Helper: cn utility (reuse from utils)
-function cn(...inputs: (string | boolean | undefined | null)[]) {
-  return inputs.filter(Boolean).join(" ");
 }
 
 export { getRandomColor, PRESENCE_COLORS };

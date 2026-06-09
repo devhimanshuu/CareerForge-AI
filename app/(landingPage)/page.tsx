@@ -173,8 +173,86 @@ export default function Home() {
       </section>
 
       {/* ===== Features Section ===== */}
-      <section id="features" className="relative py-28 px-5">
-        <CyberneticBentoGrid />
+      <section id="features" className="relative py-32 px-5 bg-gradient-to-b from-background via-indigo-500/[0.02] to-background">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-indigo-500/20 bg-indigo-500/5 mb-6">
+              <Sparkles size={14} className="text-indigo-500" />
+              Powered by AI
+            </div>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-6">
+              Everything you need to
+              <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                {" "}land your dream job
+              </span>
+            </h2>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Our AI-powered platform automates the tedious parts of job hunting, so you can focus on what matters most — preparing and interviewing.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                icon: <Bot className="text-indigo-500" size={28} />,
+                title: "AI Resume Builder",
+                description: "Generate ATS-optimized resumes with AI-powered bullet points that highlight your achievements and match job requirements.",
+                gradient: "from-indigo-500/10 to-purple-500/10",
+                borderColor: "border-indigo-500/20",
+              },
+              {
+                icon: <Shield className="text-emerald-500" size={28} />,
+                title: "ATS Gap Analyzer",
+                description: "Scrape job listings and get instant feedback on how well your resume matches the requirements with actionable improvement suggestions.",
+                gradient: "from-emerald-500/10 to-teal-500/10",
+                borderColor: "border-emerald-500/20",
+              },
+              {
+                icon: <Music className="text-purple-500" size={28} />,
+                title: "AI Podcast Resumes",
+                description: "Transform your resume into an engaging audio podcast with dual-voice synthesis, perfect for sharing on social media.",
+                gradient: "from-purple-500/10 to-pink-500/10",
+                borderColor: "border-purple-500/20",
+              },
+              {
+                icon: <Video className="text-rose-500" size={28} />,
+                title: "Mock Interview Lab",
+                description: "Practice with AI-powered voice interviews that simulate real recruiter questions with real-time feedback on your answers.",
+                gradient: "from-rose-500/10 to-orange-500/10",
+                borderColor: "border-rose-500/20",
+              },
+              {
+                icon: <Briefcase className="text-amber-500" size={28} />,
+                title: "Job Application Tracker",
+                description: "Manage all your applications in one place with a Kanban board, automated status updates, and deadline reminders.",
+                gradient: "from-amber-500/10 to-yellow-500/10",
+                borderColor: "border-amber-500/20",
+              },
+              {
+                icon: <Target className="text-cyan-500" size={28} />,
+                title: "Smart Networking",
+                description: "Generate personalized outreach messages for different stages of your application process with AI-powered suggestions.",
+                gradient: "from-cyan-500/10 to-blue-500/10",
+                borderColor: "border-cyan-500/20",
+              },
+            ].map((feature, idx) => (
+              <div
+                key={idx}
+                className="group relative p-8 rounded-3xl border bg-gradient-to-br from-background to-card/50 hover:from-card/80 hover:to-background transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                style={{ borderColor: feature.borderColor.replace('/10', '/30') }}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+                <div className="relative z-10">
+                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.gradient} border ${feature.borderColor} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground mb-3">{feature.title}</h3>
+                  <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ===== Interactive Feature Showcase ===== */}
@@ -446,135 +524,168 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== How It Works Section (Timeline Redesign) ===== */}
-      <section id="how-it-works" className="relative py-28 px-5 mesh-gradient">
-        <div className="max-w-5xl mx-auto">
+      {/* ===== How It Works Section ===== */}
+      <section id="how-it-works" className="relative py-32 px-5 bg-gradient-to-b from-background via-purple-500/[0.02] to-background">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
-            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-border mb-4 glass">
-              <Target size="14px" className="text-indigo-500" />
-              The Process
+            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-purple-500/20 bg-purple-500/5 mb-6">
+              <Target size={14} className="text-purple-500" />
+              Simple Process
             </div>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight">
-              From Draft to{" "}
-              <span className="bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-                Dream Offer
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-6">
+              From resume to
+              <span className="bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 bg-clip-text text-transparent">
+                {" "}offer letter
               </span>
             </h2>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              A comprehensive system designed to optimize every stage of your
-              job hunt.
+            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Four simple steps to transform your job search from frustrating to successful.
             </p>
           </div>
 
-          <div className="relative">
-            {/* Center Line for Desktop */}
-            <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-indigo-500/0 via-indigo-500/50 to-indigo-500/0 transform -translate-x-1/2" />
-
-            <div className="space-y-12 md:space-y-24">
-              {[
-                {
-                  step: "01",
-                  title: "Forge Your Profile",
-                  description:
-                    "Input your basic details or import from LinkedIn. Our AI analyzes your experience and generates high-impact, quantified bullet points tailored to your target roles.",
-                  icon: <Bot className="text-indigo-500" size={24} />,
-                  align: "left",
-                },
-                {
-                  step: "02",
-                  title: "Optimize for ATS",
-                  description:
-                    "Select from our library of premium, ATS-friendly templates. Fine-tune typography, spacing, and order with the drag-and-drop layout builder.",
-                  icon: <Shield className="text-indigo-500" size={24} />,
-                  align: "right",
-                },
-                {
-                  step: "03",
-                  title: "Track & Apply",
-                  description:
-                    "Use the built-in Kanban board to manage applications. Generate specific resume versions and targeted cover letters for each opportunity with one click.",
-                  icon: <Briefcase className="text-indigo-500" size={24} />,
-                  align: "left",
-                },
-                {
-                  step: "04",
-                  title: "Prep & Ace",
-                  description:
-                    "Identify skill gaps and practice with the AI Interview Coach. Get real-time feedback on your answers before you face the real hiring manager.",
-                  icon: <Trophy className="text-indigo-500" size={24} />,
-                  align: "right",
-                },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className={`relative flex flex-col md:flex-row items-center justify-between w-full ${item.align === "left" ? "md:flex-row" : "md:flex-row-reverse"}`}
-                >
-                  {/* Content Box */}
-                  <div className="w-full md:w-5/12 z-10 mb-8 md:mb-0">
-                    <div className="p-8 rounded-2xl border border-border/50 bg-card/50 glass hover:bg-card/80 transition-colors group">
-                      <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-6 border border-indigo-500/20 group-hover:scale-110 transition-transform">
-                        {item.icon}
-                      </div>
-                      <div className="text-sm font-bold text-indigo-500 mb-2">
-                        STEP {item.step}
-                      </div>
-                      <h3 className="font-bold text-2xl mb-3">{item.title}</h3>
-                      <p className="text-muted-foreground leading-relaxed">
-                        {item.description}
-                      </p>
-                    </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              {
+                step: "01",
+                title: "Build Your Resume",
+                description: "Import from LinkedIn or start fresh. Our AI generates optimized bullet points that match your target roles.",
+                icon: <Bot className="text-indigo-500" size={32} />,
+                color: "indigo",
+              },
+              {
+                step: "02",
+                title: "Analyze & Optimize",
+                description: "Scrape job listings and get instant feedback on how well your resume matches with actionable suggestions.",
+                icon: <Shield className="text-emerald-500" size={32} />,
+                color: "emerald",
+              },
+              {
+                step: "03",
+                title: "Apply & Track",
+                description: "Generate tailored applications and track everything in one place with automated status updates.",
+                icon: <Briefcase className="text-amber-500" size={32} />,
+                color: "amber",
+              },
+              {
+                step: "04",
+                title: "Ace Interviews",
+                description: "Practice with AI-powered mock interviews and get real-time feedback on your answers.",
+                icon: <Trophy className="text-rose-500" size={32} />,
+                color: "rose",
+              },
+            ].map((item, idx) => (
+              <div key={idx} className="relative">
+                {/* Connector line */}
+                {idx < 3 && (
+                  <div className="hidden lg:block absolute top-16 left-[60%] w-[80%] h-0.5 bg-gradient-to-r from-indigo-500/30 to-transparent" />
+                )}
+                
+                <div className="relative p-8 rounded-3xl border bg-gradient-to-br from-background to-card/50 hover:from-card/80 hover:to-background transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border-border/50">
+                  <div className={`absolute -top-4 -left-4 w-12 h-12 rounded-2xl bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-${item.color}-500/30`}>
+                    {item.step}
                   </div>
-
-                  {/* Center Node */}
-                  <div className="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full border-4 border-background bg-indigo-500 items-center justify-center z-20 shadow-[0_0_20px_rgba(99,102,241,0.5)]">
-                    <div className="w-4 h-4 rounded-full bg-white animate-pulse" />
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-${item.color}-500/10 to-${item.color}-600/10 border border-${item.color}-500/20 flex items-center justify-center mb-6">
+                    {item.icon}
                   </div>
-
-                  {/* Empty space for the other side */}
-                  <div className="hidden md:block w-5/12" />
+                  <h3 className="text-xl font-bold text-foreground mb-3">{item.title}</h3>
+                  <p className="text-muted-foreground leading-relaxed text-sm">{item.description}</p>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* ===== Testimonials Section ===== */}
-      <section className="relative py-28 overflow-hidden bg-background">
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-        <div className="text-center mb-16 px-5">
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-4">
-            Loved by <span className="text-indigo-500">Professionals</span>
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            See how CareerForge AI is transforming job searches across
-            industries.
-          </p>
-        </div>
-
-        <TestimonialMarquee />
-      </section>
-
-      {/* ===== SaaS Pricing Tier Section ===== */}
-      <section id="pricing" className="relative py-28 px-5 bg-background border-t border-border/40">
-        {/* Background blobs */}
-        <div className="absolute top-[30%] right-[10%] w-[300px] h-[300px] bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-[20%] left-[10%] w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-[120px] pointer-events-none" />
-
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-border mb-4 glass">
-              <Star size="14px" className="text-indigo-500 fill-indigo-500" />
-              Simple, Transparent Pricing
+      <section className="relative py-32 px-5 bg-gradient-to-b from-background via-emerald-500/[0.02] to-background">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-emerald-500/20 bg-emerald-500/5 mb-6">
+              <Star size={14} className="text-emerald-500 fill-emerald-500" />
+              Trusted by professionals
             </div>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight">
-              Invest in Your{" "}
-              <span className="bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-                Career Breakthrough
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-6">
+              Join thousands who
+              <span className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 bg-clip-text text-transparent">
+                {" "}landed their dream jobs
               </span>
             </h2>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Choose the plan that fits your job hunt goals. Cancel or switch anytime.
+            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              See how CareerForge AI has transformed job searches across industries.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                name: "Sarah Chen",
+                role: "Senior Software Engineer",
+                company: "Google",
+                avatar: "SC",
+                color: "from-indigo-500 to-purple-500",
+                rating: 5,
+                text: "CareerForge AI helped me optimize my resume for a Senior role at Google. The ATS analyzer showed me exactly what keywords I was missing, and I got the offer within 3 months.",
+              },
+              {
+                name: "Marcus Johnson",
+                role: "Product Manager",
+                company: "Stripe",
+                avatar: "MJ",
+                color: "from-emerald-500 to-teal-500",
+                rating: 5,
+                text: "The mock interview feature was a game-changer. I practiced with the AI coach for weeks and felt completely prepared for my actual interviews at Stripe.",
+              },
+              {
+                name: "Emily Rodriguez",
+                role: "UX Designer",
+                company: "Figma",
+                avatar: "ER",
+                color: "from-rose-500 to-pink-500",
+                rating: 5,
+                text: "I created an AI podcast resume and shared it on LinkedIn. It got hundreds of views and led to multiple recruiter connections. Absolutely brilliant feature!",
+              },
+            ].map((testimonial, idx) => (
+              <div
+                key={idx}
+                className="group relative p-8 rounded-3xl border bg-gradient-to-br from-background to-card/50 hover:from-card/80 hover:to-background transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border-border/50"
+              >
+                <div className="flex items-center gap-1 mb-4">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star key={i} size={16} className="fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-foreground leading-relaxed mb-6">&ldquo;{testimonial.text}&rdquo;</p>
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${testimonial.color} flex items-center justify-center text-white font-bold text-sm`}>
+                    {testimonial.avatar}
+                  </div>
+                  <div>
+                    <div className="font-bold text-foreground">{testimonial.name}</div>
+                    <div className="text-sm text-muted-foreground">{testimonial.role} at {testimonial.company}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Pricing Section ===== */}
+      <section id="pricing" className="relative py-32 px-5 bg-gradient-to-b from-background via-rose-500/[0.02] to-background">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-rose-500/20 bg-rose-500/5 mb-6">
+              <Star size={14} className="text-rose-500 fill-rose-500" />
+              Simple pricing
+            </div>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-6">
+              Choose the plan that
+              <span className="bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500 bg-clip-text text-transparent">
+                {" "}fits your goals
+              </span>
+            </h2>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Start free and upgrade as you grow. No hidden fees, cancel anytime.
             </p>
 
             {/* Toggle Billing Period */}
@@ -594,91 +705,92 @@ export default function Home() {
           </div>
 
           {/* Pricing Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch max-w-6xl mx-auto">
             {[
               {
-                name: "Starter / Free",
-                description: "Forge your foundations and build standard, clean applications.",
+                name: "Starter",
+                description: "Perfect for getting started with AI-powered career tools.",
                 price: { monthly: 0, yearly: 0 },
                 features: [
-                  "1 ATS-Optimized Resume Profile",
-                  "Standard Layout Template Library",
-                  "Basic Resume Analytics Tracking",
-                  "1 AI Podcast Resume Generation",
-                  "1 Mock Recruiter Interview Screen",
+                  "1 AI-optimized resume",
+                  "Basic ATS templates",
+                  "1 AI podcast generation",
+                  "1 mock interview session",
+                  "Basic job tracking",
                 ],
                 cta: "Get Started Free",
                 popular: false,
                 href: "/sign-up",
+                color: "indigo",
               },
               {
-                name: "Pro / Career Builder",
-                description: "Accelerate your search with unlimited pipelines and interview coach engines.",
+                name: "Pro",
+                description: "For serious job seekers who want maximum impact.",
                 price: { monthly: 19, yearly: 15 },
                 features: [
-                  "Unlimited Resumes & Layouts",
-                  "Full ATS Job Scraper (Bypasses WAF)",
-                  "Interactive Voice Mock Interview Lab",
-                  "Real-time Tavily Job Market Analytics",
-                  "Unlimited AI Resume Podcasts",
-                  "Clerk Token-Secured PDF Downloads",
+                  "Unlimited AI resumes",
+                  "Full ATS job scraper",
+                  "Unlimited podcast generations",
+                  "Unlimited mock interviews",
+                  "Real-time market analytics",
+                  "Priority AI processing",
                 ],
-                cta: "Upgrade to Pro Suite",
+                cta: "Upgrade to Pro",
                 popular: true,
                 href: "/sign-up",
+                color: "rose",
               },
               {
-                name: "Executive / Elite",
-                description: "Premium access limits and custom review cycles.",
+                name: "Executive",
+                description: "Premium features for senior professionals and executives.",
                 price: { monthly: 49, yearly: 39 },
                 features: [
-                  "Everything in Pro Tier Plan",
-                  "Priority AI Text & Speech API Limits",
-                  "Custom Target Role Industry Datasets",
-                  "Direct 1-on-1 Profile Strategy Reviews",
-                  "Premium Live Support Channels",
+                  "Everything in Pro",
+                  "Custom industry datasets",
+                  "1-on-1 strategy reviews",
+                  "Priority support",
+                  "Advanced networking tools",
+                  "API access",
                 ],
-                cta: "Get Executive Access",
+                cta: "Get Executive",
                 popular: false,
                 href: "/sign-up",
+                color: "purple",
               },
             ].map((plan, idx) => (
               <div 
                 key={idx}
-                className={`relative flex flex-col justify-between p-8 rounded-3xl border transition-all duration-300 group hover:-translate-y-1 bg-card/30 glass ${
+                className={`relative flex flex-col justify-between p-8 rounded-3xl border transition-all duration-300 group hover:-translate-y-1 bg-gradient-to-br from-background to-card/30 ${
                   plan.popular 
-                    ? "border-indigo-500/40 shadow-xl shadow-indigo-500/5 ring-1 ring-indigo-500/20 scale-[1.02] z-10" 
+                    ? "border-rose-500/40 shadow-xl shadow-rose-500/10 ring-1 ring-rose-500/20 scale-[1.02] z-10" 
                     : "border-border/50 hover:border-border/80"
                 }`}
               >
                 {/* Popular Badge */}
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-[10px] font-black tracking-widest uppercase px-4 py-1.5 rounded-full border border-indigo-400/30 shadow-md">
-                    Most Popular Choice
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-rose-500 to-pink-600 text-white text-[10px] font-black tracking-widest uppercase px-4 py-1.5 rounded-full border border-rose-400/30 shadow-md">
+                    Most Popular
                   </div>
                 )}
 
-                {/* Glowing Linear Rails on hover */}
-                <div className="pointer-events-none absolute -inset-px opacity-0 transition duration-300 group-hover:opacity-100 rounded-3xl border border-indigo-500/20" />
-
                 <div>
-                  <h3 className="font-bold text-2xl text-foreground">{plan.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed font-semibold">{plan.description}</p>
+                  <h3 className="font-bold text-2xl text-foreground mb-2">{plan.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{plan.description}</p>
                   
                   {/* Price */}
-                  <div className="flex items-baseline gap-1 mt-6 border-b border-border/50 pb-6">
-                    <span className="text-4xl font-black text-foreground">${billingPeriod === "monthly" ? plan.price.monthly : plan.price.yearly}</span>
-                    <span className="text-sm font-semibold text-muted-foreground">/mo</span>
+                  <div className="flex items-baseline gap-1 mb-8 pb-6 border-b border-border/50">
+                    <span className="text-5xl font-black text-foreground">${billingPeriod === "monthly" ? plan.price.monthly : plan.price.yearly}</span>
+                    <span className="text-lg font-semibold text-muted-foreground">/mo</span>
                     {billingPeriod === "yearly" && plan.price.yearly > 0 && (
-                      <span className="text-[10px] text-muted-foreground ml-2 font-mono font-bold">Billed annually (${plan.price.yearly * 12}/yr)</span>
+                      <span className="text-xs text-muted-foreground ml-2 font-mono font-bold">Billed annually</span>
                     )}
                   </div>
 
                   {/* Features List */}
-                  <ul className="space-y-4 mt-8">
+                  <ul className="space-y-4">
                     {plan.features.map((feature, fIdx) => (
                       <li key={fIdx} className="flex items-start gap-3 text-sm text-foreground/90 font-medium">
-                        <CheckCircle2 size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+                        <CheckCircle2 size={18} className={`text-${plan.color}-500 shrink-0 mt-0.5`} />
                         <span>{feature}</span>
                       </li>
                     ))}
@@ -688,15 +800,15 @@ export default function Home() {
                 <div className="mt-10">
                   <Button 
                     asChild 
-                    className={`w-full h-12 rounded-xl text-sm font-bold shadow-md transition-all duration-300 ${
+                    className={`w-full h-14 rounded-xl text-sm font-bold shadow-md transition-all duration-300 ${
                       plan.popular 
-                        ? "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-indigo-500/25" 
+                        ? "bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white shadow-rose-500/25" 
                         : "bg-background border border-indigo-500/20 hover:bg-indigo-500/10 text-foreground"
                     }`}
                   >
                     <Link href={plan.href}>
                       {plan.cta}
-                      <ArrowRight size={14} className="ml-1.5" />
+                      <ArrowRight size={16} className="ml-1.5" />
                     </Link>
                   </Button>
                 </div>
@@ -780,31 +892,26 @@ export default function Home() {
       </section>
 
       {/* ===== CTA Section ===== */}
-      <section className="relative py-28 px-5">
-        <div className="max-w-5xl mx-auto text-center">
-          <div className="relative p-12 md:p-20 rounded-[2.5rem] bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 overflow-hidden shadow-2xl animate-glow-pulse">
+      <section className="relative py-32 px-5">
+        <div className="max-w-5xl mx-auto">
+          <div className="relative p-12 md:p-24 rounded-[3rem] bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 overflow-hidden shadow-2xl">
             {/* Decorative elements */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-float" />
-            <div
-              className="absolute bottom-0 left-0 w-72 h-72 bg-white/5 rounded-full blur-2xl animate-float"
-              style={{ animationDelay: "2s" }}
-            />
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-72 h-72 bg-white/5 rounded-full blur-2xl" />
             <FallingPattern
               className="absolute inset-0 opacity-20"
               color="rgba(255,255,255,0.5)"
               backgroundColor="transparent"
             />
 
-            <div className="relative z-10">
+            <div className="relative z-10 text-center">
               <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight mb-6 leading-tight">
-                Your Next Career Move
+                Ready to transform
                 <br />
-                Starts Here
+                your career?
               </h2>
-              <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto mb-10">
-                Join thousands of professionals who have already accelerated
-                their careers. Build your ATS-optimized resume in minutes, not
-                hours.
+              <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-10 leading-relaxed">
+                Join thousands of professionals who have already accelerated their careers with AI-powered tools. Start building your future today.
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -814,11 +921,11 @@ export default function Home() {
                   className="h-14 px-10 text-base font-bold bg-white text-indigo-600 hover:bg-white/90 shadow-xl shadow-black/20 transition-all duration-300 gap-2 rounded-xl w-full sm:w-auto"
                 >
                   <Link href="/sign-up">
-                    Start Building for Free
-                    <ArrowRight size="16px" />
+                    Start For Free
+                    <ArrowRight size={16} />
                   </Link>
                 </Button>
-                <p className="text-white/60 text-sm mt-4 sm:mt-0 sm:ml-4 flex items-center gap-2">
+                <p className="text-white/70 text-sm mt-4 sm:mt-0 sm:ml-4 flex items-center gap-2">
                   <CheckCircle2 size={16} /> No credit card required
                 </p>
               </div>
@@ -827,9 +934,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== Expanded Footer ===== */}
-      <footer className="border-t border-border/50 bg-card/20 pt-20 pb-10 px-5">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 mb-16">
+      {/* ===== Footer ===== */}
+      <footer className="border-t border-border/50 bg-card/30 pt-20 pb-10 px-5">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2 mb-6 group">
               <Image
@@ -844,17 +951,16 @@ export default function Home() {
               </span>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mb-6">
-              The ultimate AI-powered career platform. Craft stunning resumes,
-              ace your interviews, and land your dream job faster than ever.
+              The ultimate AI-powered career platform. Build stunning resumes, ace your interviews, and land your dream job faster than ever.
             </p>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <a
                 href="https://www.linkedin.com/in/himanshu-guptaa"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"
               >
-                <Linkedin size={20} />
+                <Linkedin size={18} />
               </a>
               <a
                 href="https://www.github.com/devhimanshuu"
@@ -862,7 +968,7 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"
               >
-                <Github size={20} />
+                <Github size={18} />
               </a>
               <a
                 href="https://himanshuguptaa.vercel.app"
@@ -870,7 +976,7 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"
               >
-                <Globe size={20} />
+                <Globe size={18} />
               </a>
               <a
                 href="https://x.com/devhimanshuu"
@@ -878,44 +984,44 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"
               >
-                <Twitter size={20} />
+                <Twitter size={18} />
               </a>
             </div>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4 text-foreground">Platform</h4>
+            <h4 className="font-semibold mb-4 text-foreground">Product</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li>
                 <Link
-                  href="#"
+                  href="#features"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  Resume Builder
+                  Features
                 </Link>
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="#pricing"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  Cover Letters
+                  Pricing
                 </Link>
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="#how-it-works"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  Job Tracker
+                  How It Works
                 </Link>
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="#faq"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  Interview Coach
+                  FAQ
                 </Link>
               </li>
             </ul>
@@ -929,7 +1035,7 @@ export default function Home() {
                   href="#"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  Career Blog
+                  Blog
                 </Link>
               </li>
               <li>
@@ -937,7 +1043,7 @@ export default function Home() {
                   href="#"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  ATS Templates
+                  Templates
                 </Link>
               </li>
               <li>
@@ -945,7 +1051,7 @@ export default function Home() {
                   href="#"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  Interview Questions
+                  Interview Prep
                 </Link>
               </li>
               <li>
@@ -967,7 +1073,7 @@ export default function Home() {
                   href="#"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  About Us
+                  About
                 </Link>
               </li>
               <li>
@@ -975,7 +1081,7 @@ export default function Home() {
                   href="#"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  Pricing
+                  Careers
                 </Link>
               </li>
               <li>
@@ -983,7 +1089,7 @@ export default function Home() {
                   href="#"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  Privacy Policy
+                  Privacy
                 </Link>
               </li>
               <li>
@@ -991,33 +1097,21 @@ export default function Home() {
                   href="#"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  Terms of Service
+                  Terms
                 </Link>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-6">
-          <p className="text-sm text-muted-foreground md:flex-1 text-center md:text-left">
+        <div className="max-w-7xl mx-auto pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} CareerForge AI. All rights reserved.
           </p>
-          
-          <div className="md:flex-1 flex justify-center">
-            <div className="flex items-center gap-2 text-sm font-mono text-muted-foreground bg-indigo-500/5 px-4 py-1.5 rounded-full border border-indigo-500/20 hover:border-indigo-500/40 hover:bg-indigo-500/10 transition-all">
-              <span className="text-indigo-500 font-bold">&lt;/&gt;</span>
-              <span>crafted_by:</span>
-              <a href="https://himanshuguptaa.vercel.app" target="_blank" rel="noopener noreferrer" className="font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent hover:opacity-80 transition-opacity">
-                himanshu_gupta
-              </a>
-            </div>
-          </div>
-
-          <div className="md:flex-1 flex justify-center md:justify-end">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-background px-3 py-1.5 rounded-full border border-border">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
-              All systems operational
-            </div>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <Link href="#" className="hover:text-indigo-500 transition-colors">Privacy Policy</Link>
+            <Link href="#" className="hover:text-indigo-500 transition-colors">Terms of Service</Link>
+            <Link href="#" className="hover:text-indigo-500 transition-colors">Cookie Policy</Link>
           </div>
         </div>
       </footer>

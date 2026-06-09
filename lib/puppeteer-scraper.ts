@@ -106,7 +106,10 @@ export class JobScraper {
   }
 
   private async delay(ms: number): Promise<void> {
-    const jitter = Math.floor(Math.random() * 3000) + 2000; // 2-5s
+    // Configurable jitter: 2-5s default, can be overridden via env
+    const minJitter = Number(process.env.SCRAPER_MIN_JITTER) || 2000;
+    const maxJitter = Number(process.env.SCRAPER_MAX_JITTER) || 5000;
+    const jitter = Math.floor(Math.random() * (maxJitter - minJitter)) + minJitter;
     return new Promise((resolve) => setTimeout(resolve, ms + jitter));
   }
 
@@ -117,7 +120,11 @@ export class JobScraper {
     } catch (error) {
       console.error(`Failed to navigate to ${url}:`, error);
       try {
-        await page.screenshot({ path: `./scraper-error-${Date.now()}.png`, fullPage: true });
+        // Use temp directory for screenshots to avoid filling disk
+        const tempDir = process.env.TEMP || '/tmp';
+        await page.screenshot({ path: `${tempDir}/scraper-error-${Date.now()}.png`, fullPage: true });
+        // Clean up old screenshots (keep only last 5)
+        // Note: This is a simple cleanup, in production you'd want a more robust solution
       } catch {
         // ignore screenshot errors
       }

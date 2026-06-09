@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -476,7 +476,24 @@ Recruiter targets must be job-title/search strategies, not invented people.`,
     ),
     getAuthUser,
     async (c) => {
+      const user = c.get("user");
       const input = c.req.valid("json") as ScrapeConfig;
+      
+      // Rate limiting: max 5 scrapes per hour per user
+      const recentScrapes = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(applicationPackageTable)
+        .where(
+          and(
+            eq(applicationPackageTable.userId, user.id),
+            sql`${applicationPackageTable.createdAt} > NOW() - INTERVAL '1 hour'`
+          )
+        );
+      
+      if ((recentScrapes[0]?.count ?? 0) >= 5) {
+        return c.json({ error: "Rate limit exceeded: max 5 scrapes per hour" }, 429);
+      }
+      
       const scraper = new JobScraper();
       const jobs = await scraper.scrapeJobs(input);
       return c.json({ success: true, jobs });
@@ -499,7 +516,7 @@ Recruiter targets must be job-title/search strategies, not invented people.`,
       const user = c.get("user");
       const input = c.req.valid("json");
       const resume = await getOwnedResume(input.resumeDocumentId, user.id);
-      if (!resume) return c.json({ error: "Resume not found" }, 404);
+      if (!resume) return c.json({ error: "Resume not found or access denied" }, 404);
 
       const packageData = await generateApplicationPackage(
         resume,
@@ -515,11 +532,11 @@ Recruiter targets must be job-title/search strategies, not invented people.`,
         jobUrl: input.jobUrl || null,
         jobDescription: input.jobDescription,
         tailoredSummary: packageData.tailoredSummary,
-        tailoredBullets: packageData.tailoredBulletPoints as any,
+        tailoredBullets: packageData.tailoredBulletPoints,
         coverLetter: packageData.coverLetter,
-        commonAnswers: packageData.commonAnswers as any,
+        commonAnswers: packageData.commonAnswers,
         matchScore: packageData.matchScore,
-        gaps: packageData.gaps as any,
+        gaps: packageData.gaps,
         status: "drafted",
       }).returning();
 
@@ -533,14 +550,18 @@ Recruiter targets must be job-title/search strategies, not invented people.`,
       .from(applicationPackageTable)
       .where(eq(applicationPackageTable.userId, user.id))
       .orderBy(desc(applicationPackageTable.createdAt));
+    
+    // Parse JSONB fields once for all packages
+    const parsedPackages = packages.map((pkg) => ({
+      ...pkg,
+      tailoredBullets: safeJson(pkg.tailoredBullets as string),
+      commonAnswers: safeJson(pkg.commonAnswers as string),
+      gaps: safeJson(pkg.gaps as string),
+    }));
+    
     return c.json({
       success: true,
-      packages: packages.map((pkg) => ({
-        ...pkg,
-        tailoredBullets: safeJson(pkg.tailoredBullets as string),
-        commonAnswers: safeJson(pkg.commonAnswers as string),
-        gaps: safeJson(pkg.gaps as string),
-      })),
+      packages: parsedPackages,
     });
   })
   .patch(

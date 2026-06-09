@@ -147,10 +147,10 @@ export class NotificationService {
 
     // Check type-specific alert preferences
     const typeAlertMap: Record<string, boolean | undefined> = {
-      collaboration_comment: prefs?.collaborationAlerts,
-      interview_score: prefs?.interviewAlerts,
-      insight_generated: prefs?.insightAlerts,
-      job_match: prefs?.jobMatchAlerts,
+      collaboration_comment: prefs?.collaborationAlerts ?? undefined,
+      interview_score: prefs?.interviewAlerts ?? undefined,
+      insight_generated: prefs?.insightAlerts ?? undefined,
+      job_match: prefs?.jobMatchAlerts ?? undefined,
     };
     const typeAlertEnabled = typeAlertMap[event.type] ?? true;
 

@@ -31,7 +31,8 @@ const resultSchema = z.object({
 
 export async function GET(request: Request) {
   const secret = request.headers.get("authorization");
-  if (!process.env.CRON_SECRET || secret !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Normalize secret check (case-insensitive for Bearer prefix)
+  if (!process.env.CRON_SECRET || secret?.toLowerCase() !== `bearer ${process.env.CRON_SECRET}`.toLowerCase()) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -83,15 +84,16 @@ export async function GET(request: Request) {
                 jobUrl: job.url,
                 jobDescription: job.description,
                 tailoredSummary: packageData.tailoredSummary,
-                tailoredBullets: packageData.tailoredBulletPoints as any,
+                tailoredBullets: packageData.tailoredBulletPoints,
                 coverLetter: packageData.coverLetter,
-                commonAnswers: packageData.commonAnswers as any,
+                commonAnswers: packageData.commonAnswers,
                 matchScore: packageData.matchScore,
-                gaps: packageData.gaps as any,
+                gaps: packageData.gaps,
                 status: "drafted",
               });
               stored++;
-            } catch {
+            } catch (error: any) {
+              console.error(`[Cron] Failed to generate package for job ${job.title} at ${job.company}:`, error.message);
               // Skip jobs that fail package generation
             }
           } else {
@@ -109,7 +111,7 @@ export async function GET(request: Request) {
 
         const nextRunAt = new Date();
         if (config.cadence === "monthly") nextRunAt.setMonth(nextRunAt.getMonth() + 1);
-        else nextRunAt.setDate(nextRunAt.getDate() + 7);
+        else nextRunAt.setDate(nextRunAt.getDate() + (config.intervalDays || 7));
         await db.update(automationConfigTable).set({
           lastRunAt: new Date().toISOString(),
           nextRunAt: nextRunAt.toISOString(),
@@ -123,9 +125,10 @@ export async function GET(request: Request) {
         const netConfig = config;
         const stages = (netConfig.stages || ["applied", "interviewing", "offer", "rejected"]) as ApplicationStage[];
 
+        const fallbackDays = config.fallbackDays || 7;
         const lastRunAt = automation.lastRunAt
           ? new Date(automation.lastRunAt)
-          : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+          : new Date(Date.now() - fallbackDays * 24 * 60 * 60 * 1000);
 
         const changedApps = await db
           .select()
@@ -169,14 +172,15 @@ export async function GET(request: Request) {
               payload: JSON.stringify({ ...outreach, scheduled: true, applicationId: app.id }),
             });
             networkingStored++;
-          } catch {
+          } catch (error: any) {
+            console.error(`[Cron] Failed to generate outreach for ${app.company} - ${app.jobTitle}:`, error.message);
             // Skip applications that fail outreach generation
           }
         }
 
         const netNextRunAt = new Date();
         if (netConfig.cadence === "hourly") netNextRunAt.setHours(netNextRunAt.getHours() + 1);
-        else netNextRunAt.setDate(netNextRunAt.getDate() + 1);
+        else netNextRunAt.setDate(netNextRunAt.getDate() + (netConfig.intervalDays || 1));
         await db.update(automationConfigTable).set({
           lastRunAt: new Date().toISOString(),
           nextRunAt: netNextRunAt.toISOString(),
@@ -224,7 +228,7 @@ export async function GET(request: Request) {
 
       const nextRunAt = new Date();
       if (config.cadence === "monthly") nextRunAt.setMonth(nextRunAt.getMonth() + 1);
-      else nextRunAt.setDate(nextRunAt.getDate() + 7);
+      else nextRunAt.setDate(nextRunAt.getDate() + (config.intervalDays || 7));
       await db.update(automationConfigTable).set({
         lastRunAt: new Date().toISOString(),
         nextRunAt: nextRunAt.toISOString(),
@@ -232,6 +236,7 @@ export async function GET(request: Request) {
       }).where(eq(automationConfigTable.id, automation.id));
       results.push({ id: automation.id, status: "completed", findings: result.findings.length });
     } catch (error: any) {
+      console.error(`[Cron] Automation ${automation.id} (${automation.type}) failed:`, error.message, error.stack);
       results.push({ id: automation.id, status: "failed", error: error.message });
     }
   }

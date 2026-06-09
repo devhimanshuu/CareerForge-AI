@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { documentTable, reviewCommentTable, collaborationThreadTable } from "@/db/schema";
@@ -158,9 +158,22 @@ const collaborationRoute = new Hono()
   .get(
     "/threads/:documentId",
     zValidator("param", z.object({ documentId: z.string().min(1) })),
+    getAuthUser,
     async (c) => {
+      const user = c.get("user");
       const { documentId } = c.req.valid("param");
       const sectionId = c.req.query("sectionId");
+      const limit = Math.min(Number(c.req.query("limit") || 50), 100);
+      const offset = Number(c.req.query("offset") || 0);
+
+      // Verify user has access to the document
+      const document = await db.query.documentTable.findFirst({
+        where: and(
+          eq(documentTable.documentId, documentId),
+          eq(documentTable.userId, user.id)
+        ),
+      });
+      if (!document) return c.json({ error: "Document not found or access denied" }, 404);
 
       const conditions = [eq(collaborationThreadTable.documentId, documentId)];
       if (sectionId) {
@@ -171,7 +184,9 @@ const collaborationRoute = new Hono()
         .select()
         .from(collaborationThreadTable)
         .where(and(...conditions))
-        .orderBy(desc(collaborationThreadTable.createdAt));
+        .orderBy(desc(collaborationThreadTable.createdAt))
+        .limit(limit)
+        .offset(offset);
 
       return c.json({ success: true, threads });
     },
@@ -195,14 +210,18 @@ const collaborationRoute = new Hono()
     ),
     getAuthUser,
     async (c) => {
+      const user = c.get("user");
       const { documentId } = c.req.valid("param");
       const input = c.req.valid("json");
 
       // Verify the document exists and user has access
       const document = await db.query.documentTable.findFirst({
-        where: eq(documentTable.documentId, documentId),
+        where: and(
+          eq(documentTable.documentId, documentId),
+          eq(documentTable.userId, user.id)
+        ),
       });
-      if (!document) return c.json({ error: "Document not found" }, 404);
+      if (!document) return c.json({ error: "Document not found or access denied" }, 404);
 
       const [thread] = await db
         .insert(collaborationThreadTable)
@@ -232,30 +251,47 @@ const collaborationRoute = new Hono()
         author: z.object({
           name: z.string().min(2).max(255),
           avatar: z.string().optional(),
-          color: z.string().max(7),
+          color: z.string().max(7).optional(),
         }),
         content: z.string().trim().min(1).max(2000),
-        createdAt: z.string(),
       }),
     ),
     getAuthUser,
     async (c) => {
       const { threadId } = c.req.valid("param");
-      const reply = c.req.valid("json");
+      const input = c.req.valid("json");
+      const user = c.get("user");
 
-      const [existing] = await db
-        .select({ id: collaborationThreadTable.id, replies: collaborationThreadTable.replies })
-        .from(collaborationThreadTable)
-        .where(eq(collaborationThreadTable.id, threadId))
-        .limit(1);
-      if (!existing) return c.json({ error: "Thread not found" }, 404);
+      // Verify thread exists and user has access to the document
+      const thread = await db.query.collaborationThreadTable.findFirst({
+        where: eq(collaborationThreadTable.id, threadId),
+      });
+      if (!thread) return c.json({ error: "Thread not found" }, 404);
 
-      const currentReplies = (existing.replies as any[]) || [];
-      const updatedReplies = [...currentReplies, reply];
+      const document = await db.query.documentTable.findFirst({
+        where: and(
+          eq(documentTable.documentId, thread.documentId),
+          eq(documentTable.userId, user.id)
+        ),
+      });
+      if (!document) return c.json({ error: "Access denied" }, 403);
+
+      // Validate and create reply structure
+      const reply = {
+        author: {
+          name: input.author.name,
+          avatar: input.author.avatar || null,
+          color: input.author.color || "#6366f1",
+        },
+        content: input.content,
+        createdAt: new Date().toISOString(),
+      };
 
       const [updated] = await db
         .update(collaborationThreadTable)
-        .set({ replies: updatedReplies })
+        .set({
+          replies: sql`array_append(${collaborationThreadTable.replies}, ${JSON.stringify(reply)})`,
+        })
         .where(eq(collaborationThreadTable.id, threadId))
         .returning();
 

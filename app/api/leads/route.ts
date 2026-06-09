@@ -5,6 +5,28 @@ import { db } from "@/db";
 import { documentTable, portfolioLeadTable } from "@/db/schema";
 import { trackPortfolioEvent } from "@/lib/analytics";
 
+// Simple in-memory rate limiter for lead capture
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT = 10; // requests per hour per IP for lead capture
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
+
+function checkRateLimit(identifier: string): boolean {
+  const now = Date.now();
+  const record = rateLimitMap.get(identifier);
+  
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(identifier, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  
+  if (record.count >= RATE_LIMIT) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
+}
+
 const leadSchema = z.object({
   documentId: z.string().min(1),
   email: z.string().email(),
@@ -14,6 +36,15 @@ const leadSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting based on IP
+    const ip = request.headers.get('x-forwarded-for') || 
+              request.headers.get('x-real-ip') || 
+              'unknown';
+    
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    }
+
     const parsed = leadSchema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid lead payload" }, { status: 400 });
