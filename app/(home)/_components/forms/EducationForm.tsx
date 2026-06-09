@@ -161,7 +161,7 @@ const EducationForm = (props: { handleNext: () => void }) => {
               className="bg-background relative"
             >
               <div
-                className="relative grid gride-cols-2
+                className="relative grid grid-cols-1 sm:grid-cols-2
                   mb-5 pt-4 gap-3
                   "
               >
@@ -184,7 +184,7 @@ const EducationForm = (props: { handleNext: () => void }) => {
                   </Button>
                 )}
 
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-2">
                   <Label className="text-sm">University Name</Label>
                   <Input
                     name="universityName"
@@ -236,7 +236,7 @@ const EducationForm = (props: { handleNext: () => void }) => {
                     onChange={(e) => handleChange(e, index)}
                   />
                 </div>
-                <div className="col-span-2 mt-1">
+                <div className="col-span-1 sm:col-span-2 mt-1">
                   <Label className="text-sm">Description</Label>
                   <Textarea
                     name="description"

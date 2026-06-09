@@ -179,7 +179,7 @@ const ExperienceForm = (props: { handleNext: () => void }) => {
             >
               <div
                 className="relative grid 
-                  grid-cols-2 mb-5 pt-4 gap-3
+                  grid-cols-1 sm:grid-cols-2 mb-5 pt-4 gap-3
               "
               >
                 <div className="absolute -left-6 top-6 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
@@ -268,7 +268,7 @@ const ExperienceForm = (props: { handleNext: () => void }) => {
                   />
                 </div>
 
-                <div className="col-span-2 mt-1">
+                <div className="col-span-1 sm:col-span-2 mt-1">
                   {/* {Work Summary} */}
                   <div className="flex items-center justify-between mb-2">
                     <Label className="text-sm">Work Summary</Label>

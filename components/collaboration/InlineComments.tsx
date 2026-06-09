@@ -297,7 +297,7 @@ export function InlineComments({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute z-50 w-72 bg-background border border-border rounded-xl shadow-2xl p-4 pointer-events-auto"
+            className="absolute z-50 w-72 max-w-[calc(100vw-2rem)] bg-background border border-border rounded-xl shadow-2xl p-4 pointer-events-auto"
             style={{
               left: Math.min(commentButtonPos.x, 200),
               top: commentButtonPos.y + 20,
@@ -380,7 +380,7 @@ export function InlineComments({
                   initial={{ opacity: 0, x: 10, width: 0 }}
                   animate={{ opacity: 1, x: 0, width: 280 }}
                   exit={{ opacity: 0, x: 10, width: 0 }}
-                  className="absolute left-6 top-0 w-[280px] bg-background border border-border rounded-xl shadow-2xl p-3 space-y-3"
+                  className="absolute left-6 top-0 w-[280px] max-w-[calc(100vw-3rem)] bg-background border border-border rounded-xl shadow-2xl p-3 space-y-3"
                 >
                   {/* Header: Author + selected text */}
                   <div className="flex items-start gap-2">
