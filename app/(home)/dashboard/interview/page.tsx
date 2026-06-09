@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Mic,
   Video,
@@ -20,6 +20,8 @@ import {
   CheckCircle,
   ChevronRight,
   AlertCircle,
+  Radio,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +42,14 @@ import VoiceStudio, {
   VoiceStudioConfig,
 } from "@/components/audio/VoiceStudio";
 import AudioVisualizer from "@/components/audio/AudioVisualizer";
+import VideoPanel from "@/components/interview/VideoPanel";
+import LiveTranscript, { TranscriptEntry } from "@/components/interview/LiveTranscript";
+import {
+  InterviewSessionManager,
+  createSilenceDetector,
+} from "@/lib/webrtc-interview";
+
+type InterviewMode = "turn-based" | "live";
 
 interface Message {
   role: "assistant" | "user";
@@ -62,6 +72,9 @@ const InterviewLab = () => {
     feedbackStyle: "supportive",
     questionCount: 4,
   });
+
+  // Mode state
+  const [interviewMode, setInterviewMode] = useState<InterviewMode>("turn-based");
 
   // Session state
   const [step, setStep] = useState<"setup" | "interviewing" | "feedback">("setup");
@@ -87,6 +100,24 @@ const InterviewLab = () => {
   const [voiceConfig, setVoiceConfig] = useState<VoiceStudioConfig>(defaultVoiceStudioConfig);
   const recruiterAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  // ─── Live Mode State ────────────────────────────────────────────
+  const [isLiveSession, setIsLiveSession] = useState(false);
+  const [liveMediaStream, setLiveMediaStream] = useState<MediaStream | null>(null);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isLiveMuted, setIsLiveMuted] = useState(false);
+  const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
+  const [isLiveListening, setIsLiveListening] = useState(false);
+  const [liveUserAudioLevel, setLiveUserAudioLevel] = useState(0);
+  const [liveAIAudioLevel, setLiveAIAudioLevel] = useState(0);
+  const [videoPanelState, setVideoPanelState] = useState<"idle" | "active" | "speaking">("idle");
+
+  const sessionManagerRef = useRef<InterviewSessionManager | null>(null);
+  const silenceDetectorRef = useRef<ReturnType<typeof createSilenceDetector> | null>(null);
+  const livePollingRef = useRef<NodeJS.Timeout | null>(null);
+  const accumulatedTranscriptRef = useRef<string>("");
+  const isProcessingAnswerRef = useRef(false);
+  const liveTTSAudioRef = useRef<HTMLAudioElement | null>(null);
+
   const voiceState = loading
     ? "thinking"
     : isRecording || transcribing
@@ -95,8 +126,10 @@ const InterviewLab = () => {
         ? "speaking"
         : "idle";
 
+  // ─── Existing TTS Effect (turn-based) ──────────────────────────
   useEffect(() => {
     if (!currentQuestion || isMuted || typeof window === "undefined" || step !== "interviewing") return;
+    if (interviewMode === "live") return; // Live mode has its own TTS
 
     window.speechSynthesis.cancel();
     recruiterAudioRef.current?.pause();
@@ -129,7 +162,7 @@ const InterviewLab = () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       window.speechSynthesis.cancel();
     };
-  }, [currentQuestion, isMuted, step, voiceConfig]);
+  }, [currentQuestion, isMuted, step, voiceConfig, interviewMode]);
 
   useEffect(() => {
     return () => {
@@ -186,6 +219,336 @@ const InterviewLab = () => {
     };
   }, [isRecording]);
 
+  // ─── Cleanup on unmount ────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      cleanupLiveSession();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Live Mode: Audio Level Polling ────────────────────────────
+  useEffect(() => {
+    if (!isLiveSession || step !== "interviewing") return;
+
+    const pollAudioLevel = () => {
+      const manager = sessionManagerRef.current;
+      if (!manager) return;
+
+      const level = manager.getAudioLevel();
+      setLiveUserAudioLevel(level);
+
+      // Update video panel state based on audio level
+      if (level > 0.1) {
+        setVideoPanelState("speaking");
+      } else if (isLiveSession) {
+        setVideoPanelState("active");
+      }
+
+      // Silence detection
+      if (silenceDetectorRef.current && !isProcessingAnswerRef.current) {
+        const silenceDetected = silenceDetectorRef.current.check(level);
+        if (silenceDetected && accumulatedTranscriptRef.current.trim()) {
+          handleLiveAnswerComplete();
+        }
+      }
+    };
+
+    livePollingRef.current = setInterval(pollAudioLevel, 150);
+
+    return () => {
+      if (livePollingRef.current) {
+        clearInterval(livePollingRef.current);
+        livePollingRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLiveSession, step]);
+
+  // ─── Live Mode: TTS for AI responses ──────────────────────────
+  const speakLiveResponse = useCallback(
+    async (text: string) => {
+      if (isLiveMuted || typeof window === "undefined") return;
+
+      window.speechSynthesis.cancel();
+      liveTTSAudioRef.current?.pause();
+
+      let objectUrl = "";
+      let cancelled = false;
+
+      setVideoPanelState("idle");
+
+      try {
+        // Try ElevenLabs first
+        objectUrl = await createElevenLabsAudio(text, voiceConfig);
+        const audio = new Audio(objectUrl);
+        liveTTSAudioRef.current = audio;
+
+        // Track AI audio level for visualizer
+        audio.onplay = () => {
+          setVideoPanelState("idle");
+          setLiveAIAudioLevel(0.7);
+        };
+        audio.onended = () => {
+          if (!cancelled) {
+            setLiveAIAudioLevel(0);
+            setVideoPanelState("active");
+          }
+        };
+        audio.onerror = () => {
+          if (!cancelled) {
+            setLiveAIAudioLevel(0);
+            setVideoPanelState("active");
+          }
+        };
+
+        await audio.play();
+      } catch {
+        // Fallback to browser TTS
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = voiceConfig.speed;
+
+        utterance.onstart = () => setLiveAIAudioLevel(0.7);
+        utterance.onend = () => {
+          if (!cancelled) {
+            setLiveAIAudioLevel(0);
+            setVideoPanelState("active");
+          }
+        };
+        utterance.onerror = () => {
+          if (!cancelled) {
+            setLiveAIAudioLevel(0);
+            setVideoPanelState("active");
+          }
+        };
+
+        window.speechSynthesis.speak(utterance);
+      }
+
+      return () => {
+        cancelled = true;
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+      };
+    },
+    [isLiveMuted, voiceConfig],
+  );
+
+  // ─── Live Mode: Handle user finished speaking (silence detected) ──
+  const handleLiveAnswerComplete = useCallback(async () => {
+    if (isProcessingAnswerRef.current) return;
+
+    const answerText = accumulatedTranscriptRef.current.trim();
+    if (!answerText) return;
+
+    isProcessingAnswerRef.current = true;
+    accumulatedTranscriptRef.current = "";
+    silenceDetectorRef.current?.reset();
+    setIsLiveListening(false);
+    setVideoPanelState("idle");
+
+    // Add user entry to transcript
+    const userEntry: TranscriptEntry = {
+      id: `user-${Date.now()}`,
+      speaker: "user",
+      text: answerText,
+      timestamp: new Date(),
+    };
+    setTranscriptEntries((prev) => [...prev, userEntry]);
+
+    // Update messages for AI context
+    const userMsg: Message = { role: "user", content: answerText };
+    setMessages((prev) => {
+      const updated = [...prev, userMsg];
+      // Send to AI
+      sendLiveToAI(updated);
+      return updated;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Live Mode: Send transcript to AI ─────────────────────────
+  const sendLiveToAI = useCallback(
+    async (currentMessages: Message[]) => {
+      setLoading(true);
+
+      try {
+        const res = await fetch("/api/ai/interview-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resumeData: selectedResumeInfo || {},
+            jobDescription,
+            targetRole,
+            messages: currentMessages,
+            config: interviewConfig,
+          }),
+        });
+
+        if (!res.ok) throw new Error("Failed to get AI response");
+        const data = await res.json();
+
+        if (data.type === "question") {
+          setCurrentQuestion(data.text);
+          setMessages((prev) => [...prev, { role: "assistant", content: data.text }]);
+
+          const aiEntry: TranscriptEntry = {
+            id: `ai-${Date.now()}`,
+            speaker: "interviewer",
+            text: data.text,
+            timestamp: new Date(),
+          };
+          setTranscriptEntries((prev) => [...prev, aiEntry]);
+
+          // Speak the AI response
+          await speakLiveResponse(data.text);
+        } else if (data.type === "evaluation") {
+          setEvaluation(data);
+          setStep("feedback");
+          cleanupLiveSession();
+          toast({
+            title: "Session Completed!",
+            description: "Your interview is complete. View your scorecard below.",
+          });
+        }
+      } catch (e: any) {
+        console.error(e);
+        toast({
+          title: "Session Error",
+          description: e.message || "Failed to get AI response. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+        isProcessingAnswerRef.current = false;
+      }
+    },
+    [selectedResumeInfo, jobDescription, targetRole, interviewConfig, speakLiveResponse],
+  );
+
+  // ─── Live Mode: Start live session ────────────────────────────
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const startLiveSession = useCallback(async () => {
+    if (!targetRole.trim()) {
+      toast({
+        title: "Setup Required",
+        description: "Please specify your target role.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    setMessages([]);
+    setUserAnswer("");
+    setEvaluation(null);
+    setTranscriptEntries([]);
+    accumulatedTranscriptRef.current = "";
+    isProcessingAnswerRef.current = false;
+
+    try {
+      // Initialize WebRTC session
+      const manager = new InterviewSessionManager();
+      sessionManagerRef.current = manager;
+
+      const stream = await manager.startSession({ audio: true, video: true });
+      setLiveMediaStream(stream);
+      setIsLiveSession(true);
+      setVideoPanelState("active");
+
+      // Initialize silence detector
+      silenceDetectorRef.current = createSilenceDetector(0.08, 2000);
+
+      // Start continuous audio recording with chunk transcription
+      manager.startRecording(async (blob) => {
+        if (isProcessingAnswerRef.current) return;
+
+        const result = await manager.transcribeChunk(
+          blob,
+          [targetRole, ...(selectedResumeInfo?.skills || []).map((s: any) => s.name)]
+            .filter(Boolean)
+            .join(","),
+        );
+
+        if (result.success && result.text.trim()) {
+          accumulatedTranscriptRef.current += (accumulatedTranscriptRef.current ? " " : "") + result.text.trim();
+          setIsLiveListening(true);
+        }
+      }, 2000);
+
+      // Get the first question from AI
+      const res = await fetch("/api/ai/interview-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resumeData: selectedResumeInfo || {},
+          jobDescription,
+          targetRole,
+          messages: [],
+          config: interviewConfig,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to initialize session");
+      const data = await res.json();
+
+      if (data.type === "question") {
+        setCurrentQuestion(data.text);
+        setMessages([{ role: "assistant", content: data.text }]);
+        setStep("interviewing");
+
+        const aiEntry: TranscriptEntry = {
+          id: `ai-${Date.now()}`,
+          speaker: "interviewer",
+          text: data.text,
+          timestamp: new Date(),
+        };
+        setTranscriptEntries([aiEntry]);
+
+        // Speak the first question
+        setTimeout(() => speakLiveResponse(data.text), 500);
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Live Session Failed",
+        description: e.message || "Failed to start live interview. Check camera/mic permissions.",
+        variant: "destructive",
+      });
+      cleanupLiveSession();
+    } finally {
+      setLoading(false);
+    }
+  }, [targetRole, selectedResumeInfo, jobDescription, interviewConfig, speakLiveResponse]);
+
+  // ─── Live Mode: Cleanup ───────────────────────────────────────
+  const cleanupLiveSession = useCallback(() => {
+    sessionManagerRef.current?.cleanup();
+    sessionManagerRef.current = null;
+    silenceDetectorRef.current = null;
+    isProcessingAnswerRef.current = false;
+    accumulatedTranscriptRef.current = "";
+
+    if (livePollingRef.current) {
+      clearInterval(livePollingRef.current);
+      livePollingRef.current = null;
+    }
+
+    liveTTSAudioRef.current?.pause();
+    liveTTSAudioRef.current = null;
+
+    if (typeof window !== "undefined") {
+      window.speechSynthesis.cancel();
+    }
+
+    setLiveMediaStream(null);
+    setIsLiveSession(false);
+    setVideoPanelState("idle");
+    setLiveUserAudioLevel(0);
+    setLiveAIAudioLevel(0);
+    setIsLiveListening(false);
+  }, []);
+
+  // ─── Existing: Turn-based session start ────────────────────────
   const handleStartSession = async () => {
     if (!targetRole.trim()) {
       toast({
@@ -234,6 +597,7 @@ const InterviewLab = () => {
     }
   };
 
+  // ─── Existing: Submit answer (turn-based) ─────────────────────
   const handleSubmitAnswer = async () => {
     if (!userAnswer.trim()) {
       toast({
@@ -289,7 +653,7 @@ const InterviewLab = () => {
     }
   };
 
-  // Recording triggers
+  // Recording triggers (turn-based)
   const startRecording = async () => {
     audioChunks.current = [];
     try {
@@ -319,7 +683,6 @@ const InterviewLab = () => {
     if (mediaRecorder && isRecording) {
       mediaRecorder.stop();
       setIsRecording(false);
-      // stop tracks to release hardware light indicator
       mediaRecorder.stream.getTracks().forEach((track) => track.stop());
     }
   };
@@ -366,6 +729,16 @@ const InterviewLab = () => {
   // Helper to count questions asked
   const questionIndex = messages.filter((m) => m.role === "assistant").length;
 
+  // Handle step reset
+  const handleReset = () => {
+    cleanupLiveSession();
+    setStep("setup");
+    setMessages([]);
+    setCurrentQuestion("");
+    setUserAnswer("");
+    setEvaluation(null);
+  };
+
   return (
     <PremiumPage>
       <PremiumPageHeader
@@ -376,7 +749,7 @@ const InterviewLab = () => {
         action={
           step !== "setup" && (
             <Button
-              onClick={() => setStep("setup")}
+              onClick={handleReset}
               variant="outline"
               className="gap-2 border-indigo-500/30 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
             >
@@ -413,7 +786,7 @@ const InterviewLab = () => {
       </div>
 
       <AnimatePresence mode="wait">
-        {/* SETUP STEP */}
+        {/* ─── SETUP STEP ────────────────────────────────────────── */}
         {step === "setup" && (
           <motion.div
             key="setup"
@@ -434,6 +807,41 @@ const InterviewLab = () => {
               </div>
 
               <div className="space-y-4">
+                {/* ─── Mode Toggle ──────────────────────────────── */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    Interview Mode
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setInterviewMode("turn-based")}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                        interviewMode === "turn-based"
+                          ? "border-indigo-500 bg-indigo-500/5 text-indigo-600"
+                          : "border-border/50 bg-muted/20 text-muted-foreground hover:border-indigo-300"
+                      )}
+                    >
+                      <MessageCircle size={20} />
+                      <span className="text-xs font-bold">Turn-based</span>
+                      <span className="text-[10px] opacity-70">Record & submit each answer</span>
+                    </button>
+                    <button
+                      onClick={() => setInterviewMode("live")}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                        interviewMode === "live"
+                          ? "border-violet-500 bg-violet-500/5 text-violet-600"
+                          : "border-border/50 bg-muted/20 text-muted-foreground hover:border-violet-300"
+                      )}
+                    >
+                      <Radio size={20} />
+                      <span className="text-xs font-bold">Live Conversation</span>
+                      <span className="text-[10px] opacity-70">Real-time video interview with AI</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     1. Choose Context Resume (Optional)
@@ -508,12 +916,22 @@ const InterviewLab = () => {
               </div>
 
               <Button
-                onClick={handleStartSession}
+                onClick={interviewMode === "live" ? startLiveSession : handleStartSession}
                 disabled={loading}
-                className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 text-sm"
+                className={cn(
+                  "w-full h-12 rounded-xl text-white font-bold gap-2 text-sm",
+                  interviewMode === "live"
+                    ? "bg-violet-600 hover:bg-violet-700"
+                    : "bg-indigo-600 hover:bg-indigo-700"
+                )}
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
+                ) : interviewMode === "live" ? (
+                  <>
+                    <Radio size={16} />
+                    Start Live Interview
+                  </>
                 ) : (
                   <>
                     <Play size={16} fill="currentColor" />
@@ -525,8 +943,8 @@ const InterviewLab = () => {
           </motion.div>
         )}
 
-        {/* INTERVIEWING STEP */}
-        {step === "interviewing" && (
+        {/* ─── INTERVIEWING STEP ────────────────────────────────── */}
+        {step === "interviewing" && interviewMode === "turn-based" && (
           <motion.div
             key="interviewing"
             initial={{ opacity: 0 }}
@@ -686,7 +1104,97 @@ const InterviewLab = () => {
           </motion.div>
         )}
 
-        {/* FEEDBACK STEP */}
+        {/* ─── LIVE INTERVIEWING STEP ───────────────────────────── */}
+        {step === "interviewing" && interviewMode === "live" && (
+          <motion.div
+            key="live-interviewing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="grid grid-cols-1 gap-6 lg:grid-cols-3"
+          >
+            {/* Left: Video + AI Visualizer */}
+            <div className="lg:col-span-2 flex flex-col gap-4">
+              {/* Video panel */}
+              <PremiumPanel className="p-3">
+                <VideoPanel
+                  mediaStream={liveMediaStream}
+                  state={videoPanelState}
+                  isMuted={isLiveMuted}
+                  onToggleMute={() => {
+                    setIsLiveMuted(!isLiveMuted);
+                    if (!isLiveMuted) {
+                      window.speechSynthesis.cancel();
+                      liveTTSAudioRef.current?.pause();
+                    }
+                  }}
+                  isVideoOff={isVideoOff}
+                  onToggleVideo={() => setIsVideoOff(!isVideoOff)}
+                  isLive={isLiveSession}
+                />
+              </PremiumPanel>
+
+              {/* AI visualizer + current question */}
+              <PremiumPanel className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <AudioVisualizer
+                    state={
+                      loading
+                        ? "thinking"
+                        : liveAIAudioLevel > 0
+                          ? "speaking"
+                          : isLiveListening
+                            ? "listening"
+                            : "idle"
+                    }
+                    mode="live"
+                    userAudioLevel={liveUserAudioLevel}
+                    aiAudioLevel={liveAIAudioLevel}
+                  />
+                </div>
+
+                {currentQuestion && (
+                  <div className="mt-3 p-4 rounded-2xl bg-violet-500/5 border border-violet-500/10">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-violet-500 flex items-center gap-1.5 mb-2">
+                      <Sparkles size={12} />
+                      AI Interviewer
+                    </h3>
+                    <p className="text-sm leading-relaxed font-bold text-slate-800 dark:text-slate-100">
+                      {currentQuestion}
+                    </p>
+                  </div>
+                )}
+
+                {/* Live status bar */}
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">
+                      Question {questionIndex} of {interviewConfig.questionCount}
+                    </span>
+                  </div>
+
+                  {loading && (
+                    <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                      <Loader2 size={12} className="animate-spin text-amber-500" />
+                      <span className="text-[10px] font-bold text-amber-500">Processing...</span>
+                    </div>
+                  )}
+                </div>
+              </PremiumPanel>
+            </div>
+
+            {/* Right: Live Transcript */}
+            <PremiumPanel className="p-5 flex flex-col min-h-[500px] max-h-[700px]">
+              <LiveTranscript
+                entries={transcriptEntries}
+                isListening={isLiveListening && !loading}
+              />
+            </PremiumPanel>
+          </motion.div>
+        )}
+
+        {/* ─── FEEDBACK STEP ─────────────────────────────────────── */}
         {step === "feedback" && evaluation && (
           <motion.div
             key="feedback"
