@@ -23,7 +23,8 @@ import {
   ChevronRight,
   Mic,
   Globe,
-  Map
+  Map,
+  Bot,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -121,7 +122,7 @@ const MobileCustomizer = () => {
                   href="/dashboard/interview" 
                   icon={<Mic size={16} />} 
                   label="Interview Lab" 
-                  active={pathname === "/dashboard/interview" || pathname?.startsWith("/dashboard/interview")} 
+                  active={pathname === "/dashboard/interview" || pathname?.startsWith("/dashboard/interview") || pathname === "/dashboard/interview-coach"} 
                 />
                 <MobileNavItem 
                   href="/dashboard/market" 
@@ -140,6 +141,12 @@ const MobileCustomizer = () => {
                   icon={<BarChart3 size={16} />} 
                   label="Analytics" 
                   active={pathname === "/dashboard/analytics" || pathname?.startsWith("/dashboard/analytics")} 
+                />
+                <MobileNavItem
+                  href="/dashboard/automation"
+                  icon={<Bot size={16} />}
+                  label="Agent Hub"
+                  active={pathname === "/dashboard/automation" || pathname?.startsWith("/dashboard/automation")}
                 />
               </div>
             </div>
