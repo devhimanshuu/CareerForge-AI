@@ -5,7 +5,7 @@ import { analyticsEventTable, documentTable } from "@/db/schema";
 
 type TrackEventInput = {
   documentId: string;
-  eventType: "view" | "click" | "download" | "lead";
+  eventType: "view" | "click" | "download" | "lead" | "session";
   headers: Headers;
   source?: string | null;
   durationSeconds?: number | null;
@@ -21,6 +21,15 @@ const getDevice = (userAgent: string) => {
   if (/mobile|iphone|android/.test(ua)) return "mobile";
   if (/ipad|tablet/.test(ua)) return "tablet";
   return "desktop";
+};
+
+const getCountry = (headers: Headers) => {
+  const country =
+    headers.get("x-vercel-ip-country") ||
+    headers.get("cf-ipcountry") ||
+    headers.get("x-country-code");
+  if (!country || country === "XX" || country === "T1") return null;
+  return country.toUpperCase();
 };
 
 export const createVisitorHash = (headers: Headers) => {
@@ -56,6 +65,7 @@ export const trackPortfolioEvent = async ({
     referrer: headers.get("referer"),
     userAgent,
     device: getDevice(userAgent),
+    country: getCountry(headers),
     durationSeconds: durationSeconds ?? null,
   });
 

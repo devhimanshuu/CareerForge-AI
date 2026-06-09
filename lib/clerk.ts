@@ -15,14 +15,16 @@ type Env = {
 };
 
 export const getAuthUser = createMiddleware<Env>(async (c, next) => {
+  let userId: string | null = null;
+  let user: Awaited<ReturnType<typeof currentUser>> = null;
   try {
-    const { userId } = auth();
+    userId = auth().userId;
     if (!userId) {
       throw new HTTPException(401, {
         res: c.json({ error: "unauthorized" }),
       });
     }
-    const user = await currentUser();
+    user = await currentUser();
     if (!user) {
        throw new HTTPException(401, {
         res: c.json({ error: "unauthorized" }),
@@ -36,11 +38,11 @@ export const getAuthUser = createMiddleware<Env>(async (c, next) => {
         email: user.emailAddresses[0]?.emailAddress,
         picture: user.imageUrl
     });
-    await next();
   } catch (error) {
     console.log(error);
     throw new HTTPException(401, {
       res: c.json({ error: "unauthorized" }),
     });
   }
+  await next();
 });
