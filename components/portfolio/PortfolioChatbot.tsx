@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AIChatSession } from "@/lib/groq-model";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -50,24 +49,14 @@ const PortfolioChatbot = ({ resumeInfo }: { resumeInfo: any }) => {
     setLoading(true);
 
     try {
-      const prompt = `
-        You are an AI career assistant for ${resumeInfo?.personalInfo?.firstName} ${resumeInfo?.personalInfo?.lastName}.
-        Use the following Resume Data to answer questions from recruiters.
-        
-        RESUME DATA:
-        ${JSON.stringify(resumeInfo)}
-        
-        RULES:
-        1. Be professional, enthusiastic, and helpful.
-        2. If you don't know the answer from the resume, say you're not sure but suggest they contact ${resumeInfo?.personalInfo?.firstName} directly.
-        3. Keep answers concise (max 3-4 sentences).
-        4. If they ask for contact info, provide it if it's in the resume, otherwise suggest leaving their details.
-        
-        Recruiter Question: ${userMessage}
-      `;
-
-      const aiResponse = await AIChatSession.sendMessage(prompt);
-      const responseText = aiResponse.response.text();
+      const response = await fetch("/api/ai/public-portfolio-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: resumeInfo.documentId, question: userMessage }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Portfolio assistant failed");
+      const responseText = result.text;
       setMessages(prev => [...prev, { role: "bot", content: responseText }]);
 
       // Trigger lead gen after 3 messages
