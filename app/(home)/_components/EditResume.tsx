@@ -196,7 +196,7 @@ const EditResume = () => {
               </div>
 
               <p className="text-sm text-muted-foreground mb-4">
-                Share this link with collaborators. They\'ll be able to see your edits in real-time, leave inline comments, and track each other\'s presence.
+                Share this link with collaborators. They&apos;ll be able to see your edits in real-time, leave inline comments, and track each other&apos;s presence.
               </p>
 
               {/* Share link input */}

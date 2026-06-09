@@ -11,6 +11,7 @@ import {
   synthesizeElevenLabsSpeech,
   transcribeWithElevenLabs,
 } from "@/lib/elevenlabs";
+import { zValidator } from "@hono/zod-validator";
 
 const audioRoute = new Hono()
   .get("/voices", getAuthUser, async (c) => {
@@ -202,8 +203,12 @@ const audioRoute = new Hono()
       let audioUrl: string | null = null;
       let note: string | undefined;
 
-      if (canSynthesize && input.hostVoiceId && input.candidateVoiceId) {
+      if (canSynthesize) {
         try {
+          if (!input.hostVoiceId || !input.candidateVoiceId) {
+            throw new Error("Host and candidate voice IDs are required for audio synthesis");
+          }
+
           await Promise.all([
             assertInterviewVoice(input.hostVoiceId, "host"),
             assertInterviewVoice(input.candidateVoiceId, "candidate"),
@@ -250,32 +255,40 @@ const audioRoute = new Hono()
   })
 
   /**
-   * GET /audio/podcast/stream — SSE endpoint that streams progress updates
+   * POST /audio/podcast/stream — SSE endpoint that streams progress updates
    * during long podcast generation.
    *
    * Stages emitted: "generating_script" → "synthesizing_audio" → "complete"
    *
-   * Query params: topic, resumeData (URL-encoded JSON), duration, tone,
-   *               hostVoiceId, candidateVoiceId, modelId, languageCode
+   * Body: topic, resumeData (JSON), duration, tone,
+   *       hostVoiceId, candidateVoiceId, modelId, languageCode
    */
-  .get("/podcast/stream", getAuthUser, async (c) => {
-    const topic = c.req.query("topic") || "";
-    const duration = Math.max(30, Math.min(300, Number(c.req.query("duration")) || 120));
-    const tone = c.req.query("tone") || "confident and conversational";
-    const hostVoiceId = c.req.query("hostVoiceId") || "";
-    const candidateVoiceId = c.req.query("candidateVoiceId") || "";
-    const modelId = c.req.query("modelId") || undefined;
-    const languageCode = c.req.query("languageCode") || undefined;
-
-    let resumeData: any = undefined;
-    const resumeDataRaw = c.req.query("resumeData");
-    if (resumeDataRaw) {
-      try {
-        resumeData = JSON.parse(decodeURIComponent(resumeDataRaw));
-      } catch {
-        // Ignore malformed JSON – the prompt will fall back to topic-only
-      }
-    }
+  .post(
+    "/podcast/stream",
+    zValidator(
+      "json",
+      z.object({
+        topic: z.string().optional(),
+        resumeData: z.any().optional(),
+        duration: z.number().min(30).max(300).optional(),
+        tone: z.string().optional(),
+        hostVoiceId: z.string().optional(),
+        candidateVoiceId: z.string().optional(),
+        modelId: z.string().optional(),
+        languageCode: z.string().optional(),
+      })
+    ),
+    getAuthUser,
+    async (c) => {
+      const body = c.req.valid("json");
+      const topic = body.topic || "";
+      const duration = body.duration || 120;
+      const tone = body.tone || "confident and conversational";
+      const hostVoiceId = body.hostVoiceId || "";
+      const candidateVoiceId = body.candidateVoiceId || "";
+      const modelId = body.modelId || undefined;
+      const languageCode = body.languageCode || undefined;
+      const resumeData = body.resumeData || undefined;
 
     return streamSSE(c, async (stream) => {
       try {
