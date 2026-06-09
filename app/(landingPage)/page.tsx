@@ -175,83 +175,7 @@ export default function Home() {
       {/* ===== Features Section ===== */}
       <section id="features" className="relative py-32 px-5 bg-gradient-to-b from-background via-indigo-500/[0.02] to-background">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20">
-            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-indigo-500/20 bg-indigo-500/5 mb-6">
-              <Sparkles size={14} className="text-indigo-500" />
-              Powered by AI
-            </div>
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-6">
-              Everything you need to
-              <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                {" "}land your dream job
-              </span>
-            </h2>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Our AI-powered platform automates the tedious parts of job hunting, so you can focus on what matters most — preparing and interviewing.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                icon: <Bot className="text-indigo-500" size={28} />,
-                title: "AI Resume Builder",
-                description: "Generate ATS-optimized resumes with AI-powered bullet points that highlight your achievements and match job requirements.",
-                gradient: "from-indigo-500/10 to-purple-500/10",
-                borderColor: "border-indigo-500/20",
-              },
-              {
-                icon: <Shield className="text-emerald-500" size={28} />,
-                title: "ATS Gap Analyzer",
-                description: "Scrape job listings and get instant feedback on how well your resume matches the requirements with actionable improvement suggestions.",
-                gradient: "from-emerald-500/10 to-teal-500/10",
-                borderColor: "border-emerald-500/20",
-              },
-              {
-                icon: <Music className="text-purple-500" size={28} />,
-                title: "AI Podcast Resumes",
-                description: "Transform your resume into an engaging audio podcast with dual-voice synthesis, perfect for sharing on social media.",
-                gradient: "from-purple-500/10 to-pink-500/10",
-                borderColor: "border-purple-500/20",
-              },
-              {
-                icon: <Video className="text-rose-500" size={28} />,
-                title: "Mock Interview Lab",
-                description: "Practice with AI-powered voice interviews that simulate real recruiter questions with real-time feedback on your answers.",
-                gradient: "from-rose-500/10 to-orange-500/10",
-                borderColor: "border-rose-500/20",
-              },
-              {
-                icon: <Briefcase className="text-amber-500" size={28} />,
-                title: "Job Application Tracker",
-                description: "Manage all your applications in one place with a Kanban board, automated status updates, and deadline reminders.",
-                gradient: "from-amber-500/10 to-yellow-500/10",
-                borderColor: "border-amber-500/20",
-              },
-              {
-                icon: <Target className="text-cyan-500" size={28} />,
-                title: "Smart Networking",
-                description: "Generate personalized outreach messages for different stages of your application process with AI-powered suggestions.",
-                gradient: "from-cyan-500/10 to-blue-500/10",
-                borderColor: "border-cyan-500/20",
-              },
-            ].map((feature, idx) => (
-              <div
-                key={idx}
-                className="group relative p-8 rounded-3xl border bg-gradient-to-br from-background to-card/50 hover:from-card/80 hover:to-background transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-                style={{ borderColor: feature.borderColor.replace('/10', '/30') }}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-                <div className="relative z-10">
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.gradient} border ${feature.borderColor} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground mb-3">{feature.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <CyberneticBentoGrid />
         </div>
       </section>
 
@@ -615,58 +539,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                name: "Sarah Chen",
-                role: "Senior Software Engineer",
-                company: "Google",
-                avatar: "SC",
-                color: "from-indigo-500 to-purple-500",
-                rating: 5,
-                text: "CareerForge AI helped me optimize my resume for a Senior role at Google. The ATS analyzer showed me exactly what keywords I was missing, and I got the offer within 3 months.",
-              },
-              {
-                name: "Marcus Johnson",
-                role: "Product Manager",
-                company: "Stripe",
-                avatar: "MJ",
-                color: "from-emerald-500 to-teal-500",
-                rating: 5,
-                text: "The mock interview feature was a game-changer. I practiced with the AI coach for weeks and felt completely prepared for my actual interviews at Stripe.",
-              },
-              {
-                name: "Emily Rodriguez",
-                role: "UX Designer",
-                company: "Figma",
-                avatar: "ER",
-                color: "from-rose-500 to-pink-500",
-                rating: 5,
-                text: "I created an AI podcast resume and shared it on LinkedIn. It got hundreds of views and led to multiple recruiter connections. Absolutely brilliant feature!",
-              },
-            ].map((testimonial, idx) => (
-              <div
-                key={idx}
-                className="group relative p-8 rounded-3xl border bg-gradient-to-br from-background to-card/50 hover:from-card/80 hover:to-background transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border-border/50"
-              >
-                <div className="flex items-center gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} size={16} className="fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-foreground leading-relaxed mb-6">&ldquo;{testimonial.text}&rdquo;</p>
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${testimonial.color} flex items-center justify-center text-white font-bold text-sm`}>
-                    {testimonial.avatar}
-                  </div>
-                  <div>
-                    <div className="font-bold text-foreground">{testimonial.name}</div>
-                    <div className="text-sm text-muted-foreground">{testimonial.role} at {testimonial.company}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <TestimonialMarquee />
         </div>
       </section>
 
