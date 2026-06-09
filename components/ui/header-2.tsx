@@ -3,7 +3,6 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MenuToggleIcon } from '@/components/ui/menu-toggle-icon';
-import { useScroll } from '@/components/ui/use-scroll';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Sparkles } from 'lucide-react';
@@ -12,7 +11,6 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export function Header() {
 	const [open, setOpen] = React.useState(false);
-	const scrolled = useScroll(20);
 
 	const links = [
 		{
@@ -42,18 +40,10 @@ export function Header() {
 
 	return (
 		<header
-			className={cn(
-				'sticky top-0 z-[9999] w-full transition-all duration-500',
-				scrolled
-					? 'bg-background/80 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/60 border-b border-border/40 shadow-[0_1px_0_0_rgba(0,0,0,0.03)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.02)]'
-					: 'bg-background border-b border-transparent',
-			)}
+			className='sticky top-0 z-[9999] w-full bg-background border-b border-border/40'
 		>
 			<nav
-				className={cn(
-					'mx-auto flex h-[72px] w-full max-w-7xl items-center justify-between px-6 transition-all duration-500 lg:px-8',
-					scrolled && 'h-[64px]',
-				)}
+				className='mx-auto flex h-[72px] w-full max-w-7xl items-center justify-between px-6 lg:px-8'
 			>
 				{/* Logo Section */}
 				<Link href="/" className="flex items-center gap-3 group shrink-0">
