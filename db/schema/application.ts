@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import {
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   serial,
@@ -35,6 +36,25 @@ export const coverLetterTable = pgTable("cover_letter", {
   applicationId: integer("application_id").notNull().references(() => applicationTable.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   tone: varchar("tone", { length: 50 }).notNull(), // Confident, Enthusiastic, Formal, Direct
+  createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
+});
+
+export const applicationPackageTable = pgTable("application_package", {
+  id: serial("id").primaryKey(),
+  applicationId: integer("application_id").references(() => applicationTable.id),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  jobTitle: varchar("job_title", { length: 500 }),
+  company: varchar("company", { length: 255 }),
+  jobUrl: text("job_url"),
+  jobDescription: text("job_description"),
+  tailoredSummary: text("tailored_summary"),
+  tailoredBullets: jsonb("tailored_bullets"),
+  coverLetter: text("cover_letter"),
+  commonAnswers: jsonb("common_answers"),
+  matchScore: integer("match_score"),
+  gaps: jsonb("gaps"),
+  status: varchar("status", { length: 50 }).default("drafted"),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
 });
