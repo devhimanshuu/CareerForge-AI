@@ -1,5 +1,5 @@
 "use client";
-import React from "react"; // Rebuild trigger
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Moon,
@@ -11,6 +11,7 @@ import {
   Mic,
   Globe,
   Map,
+  Bot,
 } from "lucide-react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import {
@@ -55,12 +56,35 @@ const navItems = [
     label: "Analytics",
     icon: BarChart3,
   },
+  {
+    href: "/dashboard/automation",
+    label: "Agents",
+    icon: Bot,
+  },
 ];
 
 const Header = () => {
   const { setTheme } = useTheme();
   const { user, isLoaded } = useUser();
   const pathname = usePathname();
+  const [agentAlerts, setAgentAlerts] = useState(0);
+
+  useEffect(() => {
+    const loadAlerts = async () => {
+      try {
+        const response = await fetch("/api/automation/insights");
+        if (!response.ok) return;
+        const data = await response.json();
+        const count = (data.insights || []).filter((item: { status: string }) => item.status === "new").length;
+        setAgentAlerts(count);
+      } catch {
+        setAgentAlerts(0);
+      }
+    };
+    loadAlerts();
+    const interval = window.setInterval(loadAlerts, 60000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
@@ -112,6 +136,11 @@ const Header = () => {
                 >
                   <Icon size={14} />
                   {item.label}
+                  {item.href === "/dashboard/automation" && agentAlerts > 0 && (
+                    <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-black text-white">
+                      {agentAlerts}
+                    </span>
+                  )}
                   {isActive && (
                     <span className="absolute -bottom-[13px] left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-indigo-500" />
                   )}
