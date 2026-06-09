@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import { getAuthUser } from "@/lib/clerk";
 import { AIChatSession } from "@/lib/groq-model";
 import { z } from "zod";
@@ -53,6 +54,10 @@ const audioRoute = new Hono()
       return c.json({ success: false, message: error.message || "Failed to synthesize speech" }, 500);
     }
   })
+  /**
+   * @deprecated Use POST /audio/podcast instead for unified script + audio generation.
+   * This endpoint will be removed in a future version.
+   */
   .post("/dialogue", getAuthUser, async (c) => {
     try {
       const schema = z.object({
@@ -135,6 +140,251 @@ const audioRoute = new Hono()
       return c.json({ success: false, message: error.message || "Failed to transcribe audio" }, 500);
     }
   })
+  /**
+   * POST /audio/podcast — Unified podcast generation (script + audio in one call).
+   *
+   * Accepts topic/context/resume data, generates a dialogue script via Groq LLM,
+   * then synthesizes each speaker turn into audio via ElevenLabs (when available).
+   * Returns { audioUrl, transcript, duration, speakers } in a single response.
+   */
+  .post("/podcast", getAuthUser, async (c) => {
+    try {
+      const schema = z.object({
+        resumeData: z.any().optional(),
+        topic: z.string().max(500).optional(),
+        duration: z.number().int().min(30).max(300).default(120),
+        tone: z.string().max(100).default("confident and conversational"),
+        hostVoiceId: z.string().min(1).optional(),
+        candidateVoiceId: z.string().min(1).optional(),
+        modelId: z.string().optional(),
+        languageCode: z.string().max(10).optional(),
+      });
+      const input = schema.parse(await c.req.json());
+
+      // ── Build prompt ─────────────────────────────────────────────────
+      const contextSection = input.topic
+        ? `TOPIC: ${input.topic}`
+        : `RESUME DATA:\n${JSON.stringify(input.resumeData)}`;
+
+      const prompt = `
+        You are a world-class podcast producer. Create a concise ${Math.max(45, Math.min(180, input.duration))}-second "Career Spotlight" interview script.
+        ${input.topic ? `Focus on the topic: ${input.topic}.` : "Make it specific to the candidate's resume."}
+        Use two speakers: HOST and CANDIDATE.
+        Tone: ${input.tone}.
+        Avoid generic hype and mention concrete roles, skills, education, and achievements where available.
+        Keep the entire script under 1,850 characters. Every spoken line must begin with HOST: or CANDIDATE:.
+
+        ${contextSection}
+
+        Return only the script text.
+      `;
+
+      // ── Generate script via Groq LLM ────────────────────────────────
+      const result = await AIChatSession.sendMessage(prompt);
+      const transcript = result.response.text();
+
+      // Extract unique speakers from the transcript
+      const speakers = Array.from(
+        new Set(
+          [...transcript.matchAll(/^(HOST|CANDIDATE)\s*:/gim)].map((m) => m[1].toUpperCase()),
+        ),
+      );
+
+      // Estimate duration based on spoken-word character count (~15 chars/sec)
+      const spokenText = transcript.replace(/^(HOST|CANDIDATE)\s*:\s*/gim, "").trim();
+      const estimatedDuration = Math.max(1, Math.round(spokenText.length / 15));
+
+      // ── Attempt audio synthesis via ElevenLabs ───────────────────────
+      const canSynthesize = Boolean(
+        process.env.ELEVENLABS_API_KEY && input.hostVoiceId && input.candidateVoiceId,
+      );
+
+      let audioUrl: string | null = null;
+      let note: string | undefined;
+
+      if (canSynthesize && input.hostVoiceId && input.candidateVoiceId) {
+        try {
+          await Promise.all([
+            assertInterviewVoice(input.hostVoiceId, "host"),
+            assertInterviewVoice(input.candidateVoiceId, "candidate"),
+          ]);
+
+          const dialogueInputs = parsePodcastDialogue(
+            transcript,
+            input.hostVoiceId,
+            input.candidateVoiceId,
+          );
+
+          if (dialogueInputs.length > 0) {
+            const audioBuffer = await synthesizeElevenLabsDialogue({
+              inputs: dialogueInputs,
+              modelId: input.modelId,
+              languageCode: input.languageCode,
+            });
+
+            const base64Audio = Buffer.from(audioBuffer).toString("base64");
+            audioUrl = `data:audio/mpeg;base64,${base64Audio}`;
+          }
+        } catch (audioError: any) {
+          note = `Audio synthesis failed: ${audioError.message}. Transcript is available.`;
+        }
+      } else {
+        note =
+          "Audio synthesis unavailable. Provide hostVoiceId and candidateVoiceId with a valid ELEVENLABS_API_KEY to enable TTS.";
+      }
+
+      return c.json({
+        success: true,
+        audioUrl,
+        transcript,
+        duration: estimatedDuration,
+        speakers,
+        ...(note ? { note } : {}),
+      });
+    } catch (error: any) {
+      return c.json(
+        { success: false, message: error.message || "Failed to generate podcast" },
+        500,
+      );
+    }
+  })
+
+  /**
+   * GET /audio/podcast/stream — SSE endpoint that streams progress updates
+   * during long podcast generation.
+   *
+   * Stages emitted: "generating_script" → "synthesizing_audio" → "complete"
+   *
+   * Query params: topic, resumeData (URL-encoded JSON), duration, tone,
+   *               hostVoiceId, candidateVoiceId, modelId, languageCode
+   */
+  .get("/podcast/stream", getAuthUser, async (c) => {
+    const topic = c.req.query("topic") || "";
+    const duration = Math.max(30, Math.min(300, Number(c.req.query("duration")) || 120));
+    const tone = c.req.query("tone") || "confident and conversational";
+    const hostVoiceId = c.req.query("hostVoiceId") || "";
+    const candidateVoiceId = c.req.query("candidateVoiceId") || "";
+    const modelId = c.req.query("modelId") || undefined;
+    const languageCode = c.req.query("languageCode") || undefined;
+
+    let resumeData: any = undefined;
+    const resumeDataRaw = c.req.query("resumeData");
+    if (resumeDataRaw) {
+      try {
+        resumeData = JSON.parse(decodeURIComponent(resumeDataRaw));
+      } catch {
+        // Ignore malformed JSON – the prompt will fall back to topic-only
+      }
+    }
+
+    return streamSSE(c, async (stream) => {
+      try {
+        // ── Stage 1: generating_script ───────────────────────────────
+        await stream.writeSSE({
+          event: "stage",
+          data: JSON.stringify({ stage: "generating_script", message: "Generating podcast script..." }),
+        });
+
+        const contextSection = topic
+          ? `TOPIC: ${topic}`
+          : `RESUME DATA:\n${JSON.stringify(resumeData)}`;
+
+        const prompt = `
+          You are a world-class podcast producer. Create a concise ${Math.max(45, Math.min(180, duration))}-second "Career Spotlight" interview script.
+          ${topic ? `Focus on the topic: ${topic}.` : "Make it specific to the candidate's resume."}
+          Use two speakers: HOST and CANDIDATE.
+          Tone: ${tone}.
+          Avoid generic hype and mention concrete roles, skills, education, and achievements where available.
+          Keep the entire script under 1,850 characters. Every spoken line must begin with HOST: or CANDIDATE:.
+
+          ${contextSection}
+
+          Return only the script text.
+        `;
+
+        const result = await AIChatSession.sendMessage(prompt);
+        const transcript = result.response.text();
+
+        const speakers = Array.from(
+          new Set(
+            [...transcript.matchAll(/^(HOST|CANDIDATE)\s*:/gim)].map((m) => m[1].toUpperCase()),
+          ),
+        );
+
+        const spokenText = transcript.replace(/^(HOST|CANDIDATE)\s*:\s*/gim, "").trim();
+        const estimatedDuration = Math.max(1, Math.round(spokenText.length / 15));
+
+        await stream.writeSSE({
+          event: "script",
+          data: JSON.stringify({ transcript, speakers, duration: estimatedDuration }),
+        });
+
+        // ── Stage 2: synthesizing_audio ──────────────────────────────
+        const canSynthesize = Boolean(
+          process.env.ELEVENLABS_API_KEY && hostVoiceId && candidateVoiceId,
+        );
+
+        let audioUrl: string | null = null;
+        let note: string | undefined;
+
+        if (canSynthesize) {
+          await stream.writeSSE({
+            event: "stage",
+            data: JSON.stringify({ stage: "synthesizing_audio", message: "Synthesizing audio..." }),
+          });
+
+          try {
+            await Promise.all([
+              assertInterviewVoice(hostVoiceId, "host"),
+              assertInterviewVoice(candidateVoiceId, "candidate"),
+            ]);
+
+            const dialogueInputs = parsePodcastDialogue(transcript, hostVoiceId, candidateVoiceId);
+
+            if (dialogueInputs.length > 0) {
+              const audioBuffer = await synthesizeElevenLabsDialogue({
+                inputs: dialogueInputs,
+                modelId,
+                languageCode,
+              });
+
+              const base64Audio = Buffer.from(audioBuffer).toString("base64");
+              audioUrl = `data:audio/mpeg;base64,${base64Audio}`;
+            }
+          } catch (audioError: any) {
+            note = `Audio synthesis failed: ${audioError.message}. Transcript is available.`;
+          }
+        } else {
+          note =
+            "Audio synthesis unavailable. Provide hostVoiceId and candidateVoiceId with a valid ELEVENLABS_API_KEY to enable TTS.";
+        }
+
+        await stream.writeSSE({
+          event: "audio",
+          data: JSON.stringify({
+            audioUrl,
+            ...(note ? { note } : {}),
+          }),
+        });
+
+        // ── Stage 3: complete ────────────────────────────────────────
+        await stream.writeSSE({
+          event: "stage",
+          data: JSON.stringify({ stage: "complete" }),
+        });
+      } catch (error: any) {
+        await stream.writeSSE({
+          event: "error",
+          data: JSON.stringify({ message: error.message || "Failed to generate podcast" }),
+        });
+      }
+    });
+  })
+
+  /**
+   * @deprecated Use POST /audio/podcast instead for unified script + audio generation.
+   * This endpoint will be removed in a future version.
+   */
   .post("/generate-podcast", getAuthUser, async (c) => {
     try {
       const {

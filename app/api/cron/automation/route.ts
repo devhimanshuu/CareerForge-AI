@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { agentInsightTable, automationConfigTable, documentTable } from "@/db/schema";
+import { agentInsightTable, applicationPackageTable, applicationTable, automationConfigTable, documentTable } from "@/db/schema";
 import { chatModel } from "@/lib/langchain";
 import { searchWeb } from "@/lib/tavily";
+import { JobScraper } from "@/lib/puppeteer-scraper";
+import { generateApplicationPackage } from "@/lib/auto-apply-agent";
+import { generateStageBasedOutreach, type ApplicationStage } from "@/lib/networking-agent";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -44,8 +47,146 @@ export async function GET(request: Request) {
   const results = [];
   for (const automation of due) {
     try {
-      if (automation.type !== "optimizer") continue;
       const config = JSON.parse(automation.config);
+
+      if (automation.type === "scraper") {
+        const scraper = new JobScraper();
+        const jobs = await scraper.scrapeJobs({
+          source: config.source || "indeed",
+          query: config.query,
+          location: config.location,
+          maxPages: Math.min(config.maxPages || 3, 5),
+        });
+
+        let stored = 0;
+        for (const job of jobs.slice(0, 5)) {
+          const resume = await db.query.documentTable.findFirst({
+            where: and(
+              eq(documentTable.documentId, automation.documentId),
+              eq(documentTable.userId, automation.userId),
+            ),
+            with: { personalInfo: true, experiences: true, educations: true, skills: true },
+          });
+
+          if (resume) {
+            try {
+              const packageData = await generateApplicationPackage(
+                resume,
+                job.description,
+                job.title,
+                job.company,
+              );
+              await db.insert(applicationPackageTable).values({
+                userId: automation.userId,
+                jobTitle: job.title,
+                company: job.company,
+                jobUrl: job.url,
+                jobDescription: job.description,
+                tailoredSummary: packageData.tailoredSummary,
+                tailoredBullets: packageData.tailoredBulletPoints as any,
+                coverLetter: packageData.coverLetter,
+                commonAnswers: packageData.commonAnswers as any,
+                matchScore: packageData.matchScore,
+                gaps: packageData.gaps as any,
+                status: "drafted",
+              });
+              stored++;
+            } catch {
+              // Skip jobs that fail package generation
+            }
+          } else {
+            await db.insert(applicationPackageTable).values({
+              userId: automation.userId,
+              jobTitle: job.title,
+              company: job.company,
+              jobUrl: job.url,
+              jobDescription: job.description,
+              status: "drafted",
+            });
+            stored++;
+          }
+        }
+
+        const nextRunAt = new Date();
+        if (config.cadence === "monthly") nextRunAt.setMonth(nextRunAt.getMonth() + 1);
+        else nextRunAt.setDate(nextRunAt.getDate() + 7);
+        await db.update(automationConfigTable).set({
+          lastRunAt: new Date().toISOString(),
+          nextRunAt: nextRunAt.toISOString(),
+          updatedAt: new Date().toISOString(),
+        }).where(eq(automationConfigTable.id, automation.id));
+        results.push({ id: automation.id, status: "completed", stored });
+        continue;
+      }
+
+      if (automation.type === "networking") {
+        const netConfig = config;
+        const stages = (netConfig.stages || ["applied", "interviewing", "offer", "rejected"]) as ApplicationStage[];
+
+        const lastRunAt = automation.lastRunAt
+          ? new Date(automation.lastRunAt)
+          : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+        const changedApps = await db
+          .select()
+          .from(applicationTable)
+          .where(and(
+            eq(applicationTable.userId, automation.userId),
+            eq(applicationTable.documentId, automation.documentId),
+            gte(applicationTable.updatedAt, lastRunAt.toISOString()),
+          ))
+          .limit(5);
+
+        let networkingStored = 0;
+        for (const app of changedApps) {
+          const appStage = app.status as ApplicationStage;
+          if (!stages.includes(appStage)) continue;
+
+          try {
+            let resumeContext: string | undefined;
+            const resume = await db.query.documentTable.findFirst({
+              where: and(
+                eq(documentTable.documentId, automation.documentId),
+                eq(documentTable.userId, automation.userId),
+              ),
+              with: { personalInfo: true, experiences: true, educations: true, skills: true },
+            });
+            if (resume) resumeContext = JSON.stringify(resume);
+
+            const outreach = await generateStageBasedOutreach({
+              company: app.company,
+              role: app.jobTitle,
+              stage: appStage,
+              resumeContext,
+            });
+
+            await db.insert(agentInsightTable).values({
+              userId: automation.userId,
+              documentId: automation.documentId,
+              type: "networking",
+              title: `${app.company} — ${appStage} outreach`,
+              summary: `Stage-based networking for ${app.jobTitle} at ${app.company}.`,
+              payload: JSON.stringify({ ...outreach, scheduled: true, applicationId: app.id }),
+            });
+            networkingStored++;
+          } catch {
+            // Skip applications that fail outreach generation
+          }
+        }
+
+        const netNextRunAt = new Date();
+        if (netConfig.cadence === "hourly") netNextRunAt.setHours(netNextRunAt.getHours() + 1);
+        else netNextRunAt.setDate(netNextRunAt.getDate() + 1);
+        await db.update(automationConfigTable).set({
+          lastRunAt: new Date().toISOString(),
+          nextRunAt: netNextRunAt.toISOString(),
+          updatedAt: new Date().toISOString(),
+        }).where(eq(automationConfigTable.id, automation.id));
+        results.push({ id: automation.id, status: "completed", stored: networkingStored });
+        continue;
+      }
+
+      if (automation.type !== "optimizer") continue;
       const resume = await db.query.documentTable.findFirst({
         where: and(
           eq(documentTable.documentId, automation.documentId),

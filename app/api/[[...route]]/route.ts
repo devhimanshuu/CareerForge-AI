@@ -12,6 +12,7 @@ import imageRoute from "./image";
 import aiRoute from "./ai";
 import collaborationRoute from "./collaboration";
 import automationRoute from "./automation";
+import notificationRoute from "./notification";
 
 
 
@@ -38,7 +39,8 @@ const routes = app
   .route("/image", imageRoute)
   .route("/ai", aiRoute)
   .route("/collaboration", collaborationRoute)
-  .route("/automation", automationRoute);
+  .route("/automation", automationRoute)
+  .route("/notification", notificationRoute);
 
 
 

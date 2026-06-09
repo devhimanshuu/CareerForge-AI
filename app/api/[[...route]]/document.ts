@@ -529,7 +529,7 @@ const documentRoute = new Hono()
         await trackPortfolioEvent({
           documentId: documentData.documentId,
           eventType: "view",
-          headers: c.req.raw.headers,
+          request: c.req.raw,
           source: "public-portfolio",
         });
 

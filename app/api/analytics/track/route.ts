@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const aggregate = await trackPortfolioEvent({
       documentId: parsed.data.documentId,
       eventType: parsed.data.type,
-      headers: request.headers,
+      request,
       source: parsed.data.source,
       durationSeconds: parsed.data.durationSeconds,
     });

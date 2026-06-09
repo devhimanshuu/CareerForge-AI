@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     await trackPortfolioEvent({
       documentId: parsed.data.documentId,
       eventType: "lead",
-      headers: request.headers,
+      request,
       source: "portfolio-chatbot",
     });
 
