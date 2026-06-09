@@ -667,6 +667,7 @@ const documentRoute = new Hono()
               thumbnail: parentDoc.thumbnail,
               status: "private",
               template: parentDoc.template,
+              settings: parentDoc.settings,
               parentId: parentDoc.documentId,
               branchName: branchName,
             })

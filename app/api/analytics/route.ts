@@ -77,8 +77,27 @@ export async function GET(request: Request) {
           .limit(5)
       : [];
 
+    const geoBreakdown = documentIds.length
+      ? await db
+          .select({
+            country: analyticsEventTable.country,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(analyticsEventTable)
+          .where(
+            and(
+              inArray(analyticsEventTable.documentId, documentIds),
+              eq(analyticsEventTable.eventType, "view"),
+            ),
+          )
+          .groupBy(analyticsEventTable.country)
+          .orderBy(sql`count(*) desc`)
+          .limit(8)
+      : [];
+
     const avgTime = formatDuration(aggregate?.avgDuration || 0);
     const sourceTotal = trafficSources.reduce((sum, source) => sum + source.count, 0);
+    const geoTotal = geoBreakdown.reduce((sum, row) => sum + row.count, 0);
 
     return NextResponse.json({
       success: true,
@@ -92,6 +111,11 @@ export async function GET(request: Request) {
         trafficSources: trafficSources.map((source) => ({
           label: normalizeSourceLabel(source.label),
           percentage: sourceTotal ? Math.round((source.count / sourceTotal) * 100) : 0,
+        })),
+        geoBreakdown: geoBreakdown.map((row) => ({
+          country: row.country || "Unknown",
+          percentage: geoTotal ? Math.round((row.count / geoTotal) * 100) : 0,
+          count: row.count,
         })),
       },
     });

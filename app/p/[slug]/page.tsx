@@ -23,6 +23,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import PortfolioChatbot from "@/components/portfolio/PortfolioChatbot";
 import ARPopOutViewer from "./ARPopOutViewer";
 import { sanitizeResumeHtml } from "@/lib/sanitize-html";
+import ReviewPanel from "@/components/portfolio/ReviewPanel";
+import DeveloperProof from "@/components/portfolio/DeveloperProof";
 
 
 const PublicPortfolio = () => {
@@ -52,6 +54,33 @@ const PublicPortfolio = () => {
       fetchPortfolio();
     }
   }, [slug]);
+
+  useEffect(() => {
+    if (!data?.documentId) return;
+    const startedAt = Date.now();
+    let sent = false;
+    const trackDuration = () => {
+      if (sent) return;
+      sent = true;
+      const durationSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      const payload = JSON.stringify({
+        documentId: data.documentId,
+        type: "session",
+        source: "public-portfolio",
+        durationSeconds,
+      });
+      navigator.sendBeacon?.("/api/analytics/track", new Blob([payload], { type: "application/json" }));
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") trackDuration();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", trackDuration);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", trackDuration);
+    };
+  }, [data?.documentId]);
 
   if (loading) return <PortfolioSkeleton />;
   if (error || !data) return <PortfolioError message={error} />;
@@ -158,7 +187,7 @@ const PublicPortfolio = () => {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-20">
             {/* Summary */}
-            <section className="space-y-6">
+            <section id="summary" className="space-y-6">
               <SectionHeading
                 icon={<Layers size={20} />}
                 title="Professional Summary"
@@ -169,7 +198,7 @@ const PublicPortfolio = () => {
             </section>
 
             {/* Experience */}
-            <section className="space-y-10">
+            <section id="experience" className="space-y-10">
               <SectionHeading
                 icon={<Briefcase size={20} />}
                 title="Work Experience"
@@ -206,7 +235,7 @@ const PublicPortfolio = () => {
           {/* Sidebar */}
           <div className="space-y-16">
             {/* Skills */}
-            <section className="space-y-6">
+            <section id="skills" className="space-y-6">
               <SectionHeading
                 icon={<Award size={20} />}
                 title="Core Expertise"
@@ -230,7 +259,7 @@ const PublicPortfolio = () => {
             </section>
 
             {/* Education */}
-            <section className="space-y-6">
+            <section id="education" className="space-y-6">
               <SectionHeading
                 icon={<GraduationCap size={20} />}
                 title="Education"
@@ -275,6 +304,8 @@ const PublicPortfolio = () => {
           </div>
         </div>
 
+        <DeveloperProof documentId={data.documentId} />
+
         {/* Footer */}
         <footer className="mt-32 pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 text-muted-foreground text-sm">
           <p>
@@ -289,6 +320,7 @@ const PublicPortfolio = () => {
 
         {/* Recruiter Chatbot */}
         <PortfolioChatbot resumeInfo={data} />
+        <ReviewPanel documentId={data.documentId} />
 
         {/* AR Pop-out Viewer (Mobile Only) */}
         <div className="md:hidden">

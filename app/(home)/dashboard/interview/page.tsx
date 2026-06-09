@@ -34,6 +34,12 @@ import { toast } from "@/hooks/use-toast";
 import useGetDocuments from "@/features/document/use-get-document";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import VoiceStudio, {
+  createElevenLabsAudio,
+  defaultVoiceStudioConfig,
+  VoiceStudioConfig,
+} from "@/components/audio/VoiceStudio";
+import AudioVisualizer from "@/components/audio/AudioVisualizer";
 
 interface Message {
   role: "assistant" | "user";
@@ -50,6 +56,12 @@ const InterviewLab = () => {
   const [targetRole, setTargetRole] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [selectedResumeInfo, setSelectedResumeInfo] = useState<any>(null);
+  const [interviewConfig, setInterviewConfig] = useState({
+    interviewType: "mixed",
+    difficulty: "adaptive",
+    feedbackStyle: "supportive",
+    questionCount: 4,
+  });
 
   // Session state
   const [step, setStep] = useState<"setup" | "interviewing" | "feedback">("setup");
@@ -71,33 +83,58 @@ const InterviewLab = () => {
 
   // Recruiter voice synthesis
   const [isMuted, setIsMuted] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceConfig, setVoiceConfig] = useState<VoiceStudioConfig>(defaultVoiceStudioConfig);
+  const recruiterAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const voiceState = loading
+    ? "thinking"
+    : isRecording || transcribing
+      ? "listening"
+      : isSpeaking
+        ? "speaking"
+        : "idle";
 
   useEffect(() => {
     if (!currentQuestion || isMuted || typeof window === "undefined" || step !== "interviewing") return;
 
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(currentQuestion);
-    const voices = window.speechSynthesis.getVoices();
-    const recruiterVoice = voices.find(v => v.lang.startsWith("en-US") && v.name.toLowerCase().includes("male")) || 
-                           voices.find(v => v.lang.startsWith("en-US")) || 
-                           voices.find(v => v.lang.startsWith("en")) || 
-                           voices[0];
-    if (recruiterVoice) {
-      utterance.voice = recruiterVoice;
-    }
-    utterance.pitch = 0.95;
-    utterance.rate = 1.0;
+    recruiterAudioRef.current?.pause();
+    let objectUrl = "";
+    let cancelled = false;
 
-    window.speechSynthesis.speak(utterance);
+    const speak = async () => {
+      setIsSpeaking(true);
+      try {
+        objectUrl = await createElevenLabsAudio(currentQuestion, voiceConfig);
+        const audio = new Audio(objectUrl);
+        recruiterAudioRef.current = audio;
+        audio.onended = () => !cancelled && setIsSpeaking(false);
+        audio.onerror = () => !cancelled && setIsSpeaking(false);
+        await audio.play();
+      } catch {
+        const utterance = new SpeechSynthesisUtterance(currentQuestion);
+        utterance.rate = voiceConfig.speed;
+        utterance.onend = () => !cancelled && setIsSpeaking(false);
+        utterance.onerror = () => !cancelled && setIsSpeaking(false);
+        window.speechSynthesis.speak(utterance);
+      }
+    };
+    speak();
 
     return () => {
+      cancelled = true;
+      setIsSpeaking(false);
+      recruiterAudioRef.current?.pause();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
       window.speechSynthesis.cancel();
     };
-  }, [currentQuestion, isMuted, step]);
+  }, [currentQuestion, isMuted, step, voiceConfig]);
 
   useEffect(() => {
     return () => {
       if (typeof window !== "undefined") {
+        recruiterAudioRef.current?.pause();
         window.speechSynthesis.cancel();
       }
     };
@@ -107,6 +144,7 @@ const InterviewLab = () => {
     if (step === "feedback" || step === "setup") {
       if (typeof window !== "undefined") {
         window.speechSynthesis.cancel();
+        recruiterAudioRef.current?.pause();
       }
     }
   }, [step]);
@@ -172,6 +210,7 @@ const InterviewLab = () => {
           jobDescription,
           targetRole,
           messages: [],
+          config: interviewConfig,
         }),
       });
 
@@ -220,6 +259,7 @@ const InterviewLab = () => {
           jobDescription,
           targetRole,
           messages: updatedMessages,
+          config: interviewConfig,
         }),
       });
 
@@ -289,6 +329,10 @@ const InterviewLab = () => {
     try {
       const formData = new FormData();
       formData.append("file", blob, "answer.wav");
+      formData.append("keyterms", [
+        targetRole,
+        ...(selectedResumeInfo?.skills || []).map((skill: any) => skill.name),
+      ].filter(Boolean).join(","));
 
       const response = await fetch("/api/audio/transcribe", {
         method: "POST",
@@ -401,7 +445,7 @@ const InterviewLab = () => {
                   >
                     <option value="">-- No resume context (pure interview) --</option>
                     {resumes.map((resume: any) => (
-                      <option key={resume.id} value={resume.id}>
+                      <option key={resume.documentId} value={resume.documentId}>
                         {resume.title}
                       </option>
                     ))}
@@ -430,6 +474,36 @@ const InterviewLab = () => {
                     onChange={(e) => setJobDescription(e.target.value)}
                     className="min-h-[150px] rounded-xl resize-none"
                   />
+                </div>
+
+                <VoiceStudio value={voiceConfig} onChange={setVoiceConfig} />
+
+                <div className="space-y-3 rounded-2xl border bg-muted/20 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Interview Design</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <ConfigSelect
+                      label="Format"
+                      value={interviewConfig.interviewType}
+                      options={["mixed", "behavioral", "technical", "case-study", "leadership"]}
+                      onChange={(interviewType) => setInterviewConfig({ ...interviewConfig, interviewType })}
+                    />
+                    <ConfigSelect
+                      label="Difficulty"
+                      value={interviewConfig.difficulty}
+                      options={["adaptive", "standard", "challenging", "expert"]}
+                      onChange={(difficulty) => setInterviewConfig({ ...interviewConfig, difficulty })}
+                    />
+                    <ConfigSelect
+                      label="Feedback"
+                      value={interviewConfig.feedbackStyle}
+                      options={["supportive", "direct", "strict"]}
+                      onChange={(feedbackStyle) => setInterviewConfig({ ...interviewConfig, feedbackStyle })}
+                    />
+                  </div>
+                  <label className="block space-y-2">
+                    <span className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground"><span>Major Questions</span><span className="text-indigo-500">{interviewConfig.questionCount}</span></span>
+                    <input type="range" min={2} max={10} value={interviewConfig.questionCount} onChange={(event) => setInterviewConfig({ ...interviewConfig, questionCount: Number(event.target.value) })} className="w-full accent-indigo-500" />
+                  </label>
                 </div>
               </div>
 
@@ -481,29 +555,24 @@ const InterviewLab = () => {
                   </Button>
                 </div>
 
-                {/* Animated Pulsing AI Avatar */}
-                <div className="relative flex items-center justify-center">
+                <div className="relative z-10 flex flex-col items-center justify-center">
                   <motion.div
                     animate={{
-                      scale: isRecording || loading ? [1, 1.15, 1] : 1,
-                      opacity: isRecording || loading ? [0.4, 0.8, 0.4] : 0.5,
+                      scale: voiceState !== "idle" ? [1, 1.12, 1] : 1,
+                      opacity: voiceState !== "idle" ? [0.35, 0.75, 0.35] : 0.45,
                     }}
                     transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                    className="absolute w-28 h-28 rounded-full bg-indigo-500 blur-xl"
+                    className="absolute h-32 w-32 rounded-full bg-indigo-500 blur-2xl"
                   />
-                  <div className="w-20 h-20 rounded-full border-2 border-indigo-400 bg-slate-900 flex items-center justify-center shadow-xl shadow-indigo-500/20 relative z-10">
-                    {loading ? (
-                      <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-                    ) : (
-                      <Volume2 className={cn("w-8 h-8 text-indigo-400", isRecording && "animate-pulse")} />
-                    )}
+                  <div className="relative rounded-3xl border border-white/10 bg-slate-900/80 px-8 py-6 shadow-xl shadow-indigo-500/20 backdrop-blur-md">
+                    <AudioVisualizer state={voiceState} />
                   </div>
                 </div>
 
                 <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center z-20">
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/10">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white">Question {questionIndex} of 3</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white">Question {questionIndex} of {interviewConfig.questionCount}</span>
                   </div>
 
                   {isRecording && (
@@ -705,5 +774,24 @@ const InterviewLab = () => {
     </PremiumPage>
   );
 };
+
+const ConfigSelect = ({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) => (
+  <label className="space-y-1.5">
+    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
+    <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border bg-background px-3 text-xs font-bold capitalize">
+      {options.map((option) => <option key={option} value={option}>{option.replace("-", " ")}</option>)}
+    </select>
+  </label>
+);
 
 export default InterviewLab;

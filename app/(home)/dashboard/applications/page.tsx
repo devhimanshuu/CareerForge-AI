@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
   Plus,
@@ -16,7 +16,13 @@ import {
   FileText,
   Sparkles,
   Loader,
+  Loader2,
   Trash2,
+  Bot,
+  ExternalLink,
+  GitBranch,
+  Network,
+  Save,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -109,11 +115,48 @@ const JobTrackerPage = () => {
   const [fullResumeInfo, setFullResumeInfo] = useState<any>(null);
   const [isFetchingResume, setIsFetchingResume] = useState(false);
 
+  const [activeResumeDetails, setActiveResumeDetails] = useState<any>(null);
+  const [agentJobs, setAgentJobs] = useState<any[]>([]);
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [isAgentOpen, setIsAgentOpen] = useState(false);
+  const [selectedCoverLetter, setSelectedCoverLetter] = useState<string | null>(null);
+  const [appNotes, setAppNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [networkingLoading, setNetworkingLoading] = useState<number | null>(null);
+  const [isCoverLetterOpen, setIsCoverLetterOpen] = useState(false);
+  const [selectedResumeId, setSelectedResumeId] = useState("");
+  const [approvingJob, setApprovingJob] = useState("");
+  const [preferences, setPreferences] = useState({
+    targetRole: "",
+    region: "Global",
+    workMode: "any",
+    seniority: "any level",
+    maxResults: 5,
+  });
 
 
   // Resume Data for linking
   const { data: resumeData } = useGetDocuments();
-  const resumes = resumeData?.data || [];
+  const resumes = useMemo(() => resumeData?.data || [], [resumeData?.data]);
+
+  useEffect(() => {
+    const nextDocumentId = selectedResumeId || resumes[0]?.documentId;
+    if (nextDocumentId) {
+      if (!selectedResumeId) setSelectedResumeId(nextDocumentId);
+      const fetchResume = async () => {
+        try {
+          const res = await fetch(`/api/document/${nextDocumentId}`);
+          const json = await res.json();
+          if (json.success) {
+            setActiveResumeDetails(json.data);
+          }
+        } catch (error) {
+          console.error("Failed to load active resume for agent search:", error);
+        }
+      };
+      fetchResume();
+    }
+  }, [resumes, selectedResumeId]);
 
   const fetchApplications = async () => {
     try {
@@ -135,6 +178,7 @@ const JobTrackerPage = () => {
     if (selectedApp?.documentId) {
       fetchFullResume(selectedApp.documentId);
     }
+    setAppNotes(selectedApp?.notes || "");
   }, [selectedApp]);
 
   const fetchFullResume = async (docId: string) => {
@@ -150,6 +194,143 @@ const JobTrackerPage = () => {
     }
   };
 
+  const runJobAgent = async () => {
+    setAgentLoading(true);
+    setIsAgentOpen(true);
+    try {
+      const response = await fetch("/api/ai/job-hunter-agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resumeData: activeResumeDetails || {},
+          preferences,
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Agent search failed");
+      setAgentJobs(json.jobs || []);
+    } catch (err: any) {
+      console.error(err);
+      setAgentJobs([]);
+      toast({
+        title: "Agent Search Failed",
+        description: err.message || "No live job listings were found. Try broadening your search preferences.",
+        variant: "destructive",
+      });
+    } finally {
+      setAgentLoading(false);
+    }
+  };
+
+  const saveApplicationNotes = async () => {
+    if (!selectedApp) return;
+    setSavingNotes(true);
+    try {
+      const response = await fetch(`/api/application/update/${selectedApp.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: appNotes }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.message || "Failed to save notes");
+      setApplications((current) => current.map((app) => app.id === selectedApp.id ? { ...app, notes: appNotes } : app));
+      setSelectedApp((current: any) => current ? { ...current, notes: appNotes } : current);
+      toast({ title: "Notes Saved", description: "Application notes were updated." });
+    } catch (error: any) {
+      toast({ title: "Save Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const draftNetworkingOutreach = async (app: any, event?: React.MouseEvent) => {
+    event?.stopPropagation();
+    if (!app.documentId || !app.company) return;
+    setNetworkingLoading(app.id);
+    try {
+      const response = await fetch("/api/automation/networking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: app.documentId,
+          company: app.company,
+          targetRole: app.jobTitle,
+          tone: "warm",
+          goal: "recruiter_intro",
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Networking agent failed");
+      toast({
+        title: "Outreach Kit Ready",
+        description: `LinkedIn and email drafts for ${app.company} are in your Agent Hub.`,
+      });
+      window.location.href = "/dashboard/automation";
+    } catch (error: any) {
+      toast({ title: "Networking Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setNetworkingLoading(null);
+    }
+  };
+
+  const saveAgentJob = async (job: any) => {
+    if (!activeResumeDetails?.documentId) return;
+    try {
+      const response = await fetch("/api/application/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: activeResumeDetails.documentId,
+          jobTitle: job.title,
+          company: job.company,
+          status: "wishlist",
+          notes: `${job.description}\n\nSource: ${job.url || "Agent discovery"}\nMatch score: ${job.score}%`,
+        }),
+      });
+      const json = await response.json();
+      if (json.success) {
+        fetchApplications();
+        toast({ title: "Saved to Tracker", description: `${job.title} at ${job.company} added to your pipeline.` });
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const approveAgentJob = async (job: any) => {
+    if (!activeResumeDetails?.documentId) return;
+    const key = `${job.company}-${job.title}`;
+    setApprovingJob(key);
+    try {
+      const branchResponse = await fetch(`/api/document/branch/${activeResumeDetails.documentId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ branchName: `${job.company} - ${job.title}`.slice(0, 100) }),
+      });
+      const branchData = await branchResponse.json();
+      if (!branchResponse.ok || !branchData.data?.documentId) throw new Error(branchData.error || "Could not create tailored resume branch");
+
+      const applicationResponse = await fetch("/api/application/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: branchData.data.documentId,
+          jobTitle: job.title,
+          company: job.company,
+          status: "wishlist",
+          notes: `${job.description}\n\nSource: ${job.url || "Agent discovery"}\nMatch score: ${job.score}%`,
+        }),
+      });
+      const applicationJson = await applicationResponse.json();
+      if (!applicationResponse.ok || !applicationJson.success) throw new Error(applicationJson.message || "Could not create application approval record");
+      fetchApplications();
+      toast({ title: "Application Package Approved", description: "Created a job-specific resume branch and added the role to your approval pipeline." });
+    } catch (error: any) {
+      toast({ title: "Approval Failed", description: error.message || "Unable to approve package.", variant: "destructive" });
+    } finally {
+      setApprovingJob("");
+    }
+  };
 
   const handleCreate = async () => {
     if (!newJob.jobTitle || !newJob.company || !newJob.documentId) {
@@ -257,116 +438,300 @@ const JobTrackerPage = () => {
           </p>
         </div>
 
-        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DialogTrigger asChild>
-            <Button className="h-11 gap-2 rounded-md bg-foreground px-5 font-bold text-background shadow-sm transition-all hover:bg-foreground/90">
-              <Plus size={20} />
-              New Application
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Dialog open={isAgentOpen} onOpenChange={setIsAgentOpen}>
+            <Button
+              onClick={() => setIsAgentOpen(true)}
+              disabled={agentLoading}
+              className="h-11 gap-2 rounded-md bg-blue-600 px-5 font-bold text-white shadow-sm transition-all hover:bg-blue-700"
+            >
+              <Sparkles size={18} />
+              Search Live Roles
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] rounded-lg">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black">
-                Add New Job
-              </DialogTitle>
-              <DialogDescription>
-                Track a new job opportunity in your pipeline.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-6 py-4">
-              <div className="grid gap-2">
-                <Label
-                  htmlFor="jobTitle"
-                  className="font-bold text-xs uppercase text-muted-foreground"
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto rounded-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-xl">
+                  <Bot className="w-5 h-5 text-indigo-500" />
+                  AI Opportunity Search
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="grid grid-cols-1 gap-3 rounded-xl border bg-muted/20 p-4 md:grid-cols-2">
+                <select
+                  value={selectedResumeId}
+                  onChange={(event) => setSelectedResumeId(event.target.value)}
+                  className="h-10 rounded-md border bg-background px-3 text-xs font-bold"
                 >
-                  Job Title *
-                </Label>
+                  {resumes.map((document: any) => (
+                    <option key={document.documentId} value={document.documentId}>
+                      {document.title}
+                    </option>
+                  ))}
+                </select>
                 <Input
-                  id="jobTitle"
-                  placeholder="e.g. Senior Frontend Engineer"
-                  className="h-11 rounded-md"
-                  value={newJob.jobTitle}
-                  onChange={(e) =>
-                    setNewJob({ ...newJob, jobTitle: e.target.value })
-                  }
+                  placeholder="Target role override"
+                  value={preferences.targetRole}
+                  onChange={(event) => setPreferences({ ...preferences, targetRole: event.target.value })}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label
-                  htmlFor="company"
-                  className="font-bold text-xs uppercase text-muted-foreground"
-                >
-                  Company *
-                </Label>
                 <Input
-                  id="company"
-                  placeholder="e.g. Google, Stripe"
-                  className="h-11 rounded-md"
-                  value={newJob.company}
-                  onChange={(e) =>
-                    setNewJob({ ...newJob, company: e.target.value })
-                  }
+                  placeholder="Region or city"
+                  value={preferences.region}
+                  onChange={(event) => setPreferences({ ...preferences, region: event.target.value })}
                 />
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={preferences.workMode}
+                    onChange={(event) => setPreferences({ ...preferences, workMode: event.target.value })}
+                    className="h-10 rounded-md border bg-background px-3 text-xs font-bold"
+                  >
+                    <option value="any">Any work mode</option>
+                    <option value="remote">Remote</option>
+                    <option value="hybrid">Hybrid</option>
+                    <option value="onsite">On-site</option>
+                  </select>
+                  <select
+                    value={preferences.seniority}
+                    onChange={(event) => setPreferences({ ...preferences, seniority: event.target.value })}
+                    className="h-10 rounded-md border bg-background px-3 text-xs font-bold"
+                  >
+                    <option value="any level">Any level</option>
+                    <option value="junior">Junior</option>
+                    <option value="mid-level">Mid-level</option>
+                    <option value="senior">Senior</option>
+                    <option value="lead">Lead</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2 flex items-center gap-3">
+                  <label className="flex-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    Results: {preferences.maxResults}
+                    <input
+                      type="range"
+                      min={1}
+                      max={10}
+                      value={preferences.maxResults}
+                      onChange={(event) => setPreferences({ ...preferences, maxResults: Number(event.target.value) })}
+                      className="mt-2 block w-full accent-indigo-500"
+                    />
+                  </label>
+                  <Button
+                    onClick={runJobAgent}
+                    disabled={agentLoading}
+                    className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700"
+                  >
+                    {agentLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    Scan roles
+                  </Button>
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label className="font-bold text-xs uppercase text-muted-foreground">
-                  Link Resume Version *
-                </Label>
-                <Select
-                  value={newJob.documentId}
-                  onValueChange={(v) => setNewJob({ ...newJob, documentId: v })}
-                >
-                  <SelectTrigger className="h-11 rounded-md">
-                    <SelectValue placeholder="Select resume version" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-lg">
-                    {resumes.map((resume: any) => (
-                      <SelectItem
-                        key={resume.documentId}
-                        value={resume.documentId}
-                      >
-                        {resume.title}{" "}
-                        {resume.branchName ? `(${resume.branchName})` : ""}
-                      </SelectItem>
+
+              {agentLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-4" />
+                  <p className="text-sm font-bold text-foreground animate-pulse">Active Agent Scanning...</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                    The agent is searching live web listings matching your resume experiences and skills.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6 mt-4">
+                  <p className="text-xs text-muted-foreground font-semibold">
+                    Matched active postings found on the web based on your active profile: <strong className="text-foreground">{activeResumeDetails?.personalInfo?.jobTitle || "Software Engineer"}</strong>.
+                  </p>
+                  <div className="space-y-4">
+                    {agentJobs.map((job, idx) => (
+                      <div key={idx} className="p-5 border border-border/50 bg-card/25 rounded-2xl flex flex-col gap-3 group relative overflow-hidden transition-all hover:border-indigo-500/20 hover:bg-card/45">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl pointer-events-none" />
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h4 className="font-bold text-md text-foreground flex items-center gap-2">
+                              {job.title}
+                              <span className="text-[10px] text-muted-foreground bg-muted border border-border font-bold px-1.5 py-0.5 rounded">
+                                {job.company}
+                              </span>
+                            </h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed mt-2">{job.description}</p>
+                            {job.matchEvidence?.length > 0 && <p className="mt-2 text-[10px] font-semibold text-emerald-500">{job.matchEvidence.join(" | ")}</p>}
+                            {job.risk && <p className="mt-1 text-[10px] font-semibold text-amber-500">Risk: {job.risk}</p>}
+                          </div>
+                          <div className="px-2.5 py-1 bg-emerald-500/10 text-emerald-500 text-xs font-bold border border-emerald-500/20 rounded-md shrink-0">
+                            {job.score}% Match
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <Button
+                            onClick={() => approveAgentJob(job)}
+                            disabled={approvingJob === `${job.company}-${job.title}`}
+                            size="sm"
+                            className="text-xs h-9 font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 gap-1.5"
+                          >
+                            {approvingJob === `${job.company}-${job.title}` ? <Loader2 size={13} className="animate-spin" /> : <GitBranch size={13} />}
+                            Approve Package
+                          </Button>
+                          <Button
+                            onClick={() => saveAgentJob(job)}
+                            size="sm"
+                            className="text-xs h-9 font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4"
+                          >
+                            Save Only
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setSelectedCoverLetter(job.coverLetter);
+                              setIsCoverLetterOpen(true);
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-9 font-bold border-indigo-500/20 text-foreground hover:bg-indigo-500/5 rounded-lg px-4 flex items-center gap-1.5"
+                          >
+                            <FileText size={13} />
+                            Cover Letter
+                          </Button>
+                          {job.url && (
+                            <a href={job.url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-foreground font-semibold flex items-center gap-1 ml-auto">
+                              View Original <ExternalLink size={10} />
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label className="font-bold text-xs uppercase text-muted-foreground">
-                  Initial Status
-                </Label>
-                <Select
-                  value={newJob.status}
-                  onValueChange={(v) => setNewJob({ ...newJob, status: v })}
-                >
-                  <SelectTrigger className="h-11 rounded-md">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-lg">
-                    {STATUS_COLUMNS.map((col) => (
-                      <SelectItem key={col.id} value={col.id}>
-                        {col.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                className="h-11 w-full rounded-md bg-foreground font-bold text-background hover:bg-foreground/90"
-                onClick={handleCreate}
-                disabled={isCreating}
-              >
-                {isCreating && (
-                  <Loader size={16} className="animate-spin mr-2" />
-                )}
-                Add to Tracker
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+            <DialogTrigger asChild>
+              <Button className="h-11 gap-2 rounded-md bg-foreground px-5 font-bold text-background shadow-sm transition-all hover:bg-foreground/90">
+                <Plus size={20} />
+                New Application
               </Button>
-            </DialogFooter>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] rounded-lg">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black">
+                  Add New Job
+                </DialogTitle>
+                <DialogDescription>
+                  Track a new job opportunity in your pipeline.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-6 py-4">
+                <div className="grid gap-2">
+                  <Label
+                    htmlFor="jobTitle"
+                    className="font-bold text-xs uppercase text-muted-foreground"
+                  >
+                    Job Title *
+                  </Label>
+                  <Input
+                    id="jobTitle"
+                    placeholder="e.g. Senior Frontend Engineer"
+                    className="h-11 rounded-md"
+                    value={newJob.jobTitle}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, jobTitle: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label
+                    htmlFor="company"
+                    className="font-bold text-xs uppercase text-muted-foreground"
+                  >
+                    Company *
+                  </Label>
+                  <Input
+                    id="company"
+                    placeholder="e.g. Google, Stripe"
+                    className="h-11 rounded-md"
+                    value={newJob.company}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, company: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="font-bold text-xs uppercase text-muted-foreground">
+                    Link Resume Version *
+                  </Label>
+                  <Select
+                    value={newJob.documentId}
+                    onValueChange={(v) => setNewJob({ ...newJob, documentId: v })}
+                  >
+                    <SelectTrigger className="h-11 rounded-md">
+                      <SelectValue placeholder="Select resume version" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-lg">
+                      {resumes.map((resume: any) => (
+                        <SelectItem
+                          key={resume.documentId}
+                          value={resume.documentId}
+                        >
+                          {resume.title}{" "}
+                          {resume.branchName ? `(${resume.branchName})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label className="font-bold text-xs uppercase text-muted-foreground">
+                    Initial Status
+                  </Label>
+                  <Select
+                    value={newJob.status}
+                    onValueChange={(v) => setNewJob({ ...newJob, status: v })}
+                  >
+                    <SelectTrigger className="h-11 rounded-md">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-lg">
+                      {STATUS_COLUMNS.map((col) => (
+                        <SelectItem key={col.id} value={col.id}>
+                          {col.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  className="h-11 w-full rounded-md bg-foreground font-bold text-background hover:bg-foreground/90"
+                  onClick={handleCreate}
+                  disabled={isCreating}
+                >
+                  {isCreating && (
+                    <Loader size={16} className="animate-spin mr-2" />
+                  )}
+                  Add to Tracker
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <Dialog open={isCoverLetterOpen} onOpenChange={setIsCoverLetterOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg">
+                <FileText className="w-5 h-5 text-indigo-500" />
+                Tailored Cover Letter Draft
+              </DialogTitle>
+            </DialogHeader>
+            <div className="mt-4 p-6 bg-muted/20 border border-border/50 rounded-2xl whitespace-pre-line text-sm leading-relaxed font-semibold font-sans text-slate-800 dark:text-slate-100 select-all">
+              {selectedCoverLetter}
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button onClick={() => setIsCoverLetterOpen(false)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 rounded-xl">
+                Close
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
+      </div>
       </div>
 
       {/* Kanban Board */}
@@ -415,11 +780,18 @@ const JobTrackerPage = () => {
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
+                                className="gap-2 cursor-pointer"
+                                onClick={(e) => draftNetworkingOutreach(app, e)}
+                                disabled={networkingLoading === app.id}
+                              >
+                                {networkingLoading === app.id ? <Loader2 size={14} className="animate-spin" /> : <Network size={14} />}
+                                Draft Outreach
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 cursor-pointer"
                                 onClick={(e) => handleDeleteClick(app, e)}
                               >
-
                                 <Trash2 size={14} />
                                 Delete Job
                               </DropdownMenuItem>
@@ -541,8 +913,20 @@ const JobTrackerPage = () => {
                   <textarea
                     className="h-32 w-full resize-none rounded-lg border bg-muted/30 p-4 text-sm focus:ring-2 ring-indigo-500/20"
                     placeholder="Interview questions, salary expectations, next steps..."
-                    defaultValue={selectedApp.notes || ""}
+                    value={appNotes}
+                    onChange={(event) => setAppNotes(event.target.value)}
                   />
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={saveApplicationNotes}
+                      disabled={savingNotes}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      {savingNotes ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                      Save Notes
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -557,7 +941,6 @@ const JobTrackerPage = () => {
         isDeleting={isDeleting}
         jobTitle={appToDelete?.jobTitle || ""}
       />
-      </div>
     </PremiumPage>
   );
 };

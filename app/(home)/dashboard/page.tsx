@@ -72,6 +72,7 @@ const Page = () => {
   const [isCoachLoading, setIsCoachLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [selectedResumeId, setSelectedResumeId] = React.useState<string | null>(null);
+  const [newInsights, setNewInsights] = React.useState(0);
 
   const resumes = useMemo(() => {
     if (data && Array.isArray(data.data)) {
@@ -93,6 +94,22 @@ const Page = () => {
       }
     };
     fetchApps();
+  }, []);
+
+  React.useEffect(() => {
+    const fetchInsights = async () => {
+      try {
+        const res = await fetch("/api/automation/insights");
+        if (res.ok) {
+          const json = await res.json();
+          const count = (json.insights || []).filter((item: { status: string }) => item.status === "new").length;
+          setNewInsights(count);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchInsights();
   }, []);
 
   React.useEffect(() => {
@@ -197,6 +214,28 @@ const Page = () => {
             </div>
           </div>
         </motion.div>
+
+        {newInsights > 0 && (
+          <motion.div variants={itemVariants}>
+            <Link
+              href="/dashboard/automation"
+              className="flex items-center justify-between gap-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 transition-colors hover:bg-amber-500/15"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500 text-white">
+                  <Bot size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-black">Agent Insights Ready</p>
+                  <p className="text-xs text-muted-foreground">
+                    {newInsights} new optimizer or networking recommendation{newInsights === 1 ? "" : "s"} waiting for review.
+                  </p>
+                </div>
+              </div>
+              <ArrowRight size={16} className="text-amber-600" />
+            </Link>
+          </motion.div>
+        )}
 
         {/* ── Stats Row ── */}
         <motion.div
@@ -424,18 +463,18 @@ const Page = () => {
               iconColor="text-blue-500"
             />
             <QuickActionCard
-              href="/dashboard/jobs"
+              href="/dashboard/applications"
               icon={<Briefcase size={20} />}
-              title="Opportunity Board"
-              description="Explore curated job listings customized dynamically to your experience."
+              title="Job Tracker"
+              description="Manage every application in a single pipeline and keep your resume branches aligned with the role."
               gradient="from-violet-500/10 to-purple-500/10"
               iconColor="text-violet-500"
             />
             <QuickActionCard
-              href="#resumes"
-              icon={<Star size={20} />}
-              title="AI Optimization"
-              description="Leverage AI-driven enhancements to optimize your resume score."
+              href="/dashboard/automation"
+              icon={<Bot size={20} />}
+              title="Agent Hub"
+              description="Run optimizers, networking agents, job hunter, and review AI insights in one place."
               gradient="from-amber-500/10 to-orange-500/10"
               iconColor="text-amber-500"
             />

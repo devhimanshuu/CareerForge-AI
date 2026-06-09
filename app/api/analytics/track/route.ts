@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 const trackSchema = z.object({
   documentId: z.string().min(1),
-  type: z.enum(["view", "click", "download", "lead"]),
+  type: z.enum(["view", "click", "download", "lead", "session"]),
   source: z.string().max(255).optional(),
   durationSeconds: z.number().int().min(0).max(24 * 60 * 60).optional(),
 });

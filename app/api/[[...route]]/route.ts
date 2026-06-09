@@ -10,6 +10,8 @@ import audioRoute from "./audio";
 import extractRoute from "./extract";
 import imageRoute from "./image";
 import aiRoute from "./ai";
+import collaborationRoute from "./collaboration";
+import automationRoute from "./automation";
 
 
 
@@ -34,7 +36,9 @@ const routes = app
   .route("/audio", audioRoute)
   .route("/extract", extractRoute)
   .route("/image", imageRoute)
-  .route("/ai", aiRoute);
+  .route("/ai", aiRoute)
+  .route("/collaboration", collaborationRoute)
+  .route("/automation", automationRoute);
 
 
 

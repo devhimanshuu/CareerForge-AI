@@ -29,6 +29,7 @@ const AnalyticsDashboard = () => {
     viewsOverTime: Array(14).fill(0),
     branchMetrics: [] as any[],
     trafficSources: [] as { label: string; percentage: number }[],
+    geoBreakdown: [] as { country: string; percentage: number; count: number }[],
   });
   const [loading, setLoading] = useState(true);
 
@@ -256,6 +257,23 @@ const AnalyticsDashboard = () => {
                 >
                   <Link href="/dashboard">Create New Branch</Link>
                 </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4 rounded-lg border bg-card p-6 shadow-sm">
+              <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground">
+                Visitor Geography
+              </h3>
+              <div className="space-y-4">
+                {data.geoBreakdown.length > 0 ? (
+                  data.geoBreakdown.map((geo) => (
+                    <SourceItem key={geo.country} label={geo.country} percentage={geo.percentage} />
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Geographic data appears after public portfolio views (Vercel geo headers).
+                  </p>
+                )}
               </div>
             </div>
 
