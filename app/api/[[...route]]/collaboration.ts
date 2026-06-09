@@ -3,7 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { documentTable, reviewCommentTable } from "@/db/schema";
+import { documentTable, reviewCommentTable, collaborationThreadTable } from "@/db/schema";
 import { getAuthUser } from "@/lib/clerk";
 
 const collaborationRoute = new Hono()
@@ -150,6 +150,173 @@ const collaborationRoute = new Hono()
       if (!comment) return c.json({ error: "Comment not found" }, 404);
 
       await db.delete(reviewCommentTable).where(eq(reviewCommentTable.id, id));
+      return c.json({ success: true });
+    },
+  )
+  // ─── Threaded Collaboration Comments ───
+  // GET /collaboration/threads/:documentId — Get all threads for a document
+  .get(
+    "/threads/:documentId",
+    zValidator("param", z.object({ documentId: z.string().min(1) })),
+    async (c) => {
+      const { documentId } = c.req.valid("param");
+      const sectionId = c.req.query("sectionId");
+
+      const conditions = [eq(collaborationThreadTable.documentId, documentId)];
+      if (sectionId) {
+        conditions.push(eq(collaborationThreadTable.sectionId, sectionId));
+      }
+
+      const threads = await db
+        .select()
+        .from(collaborationThreadTable)
+        .where(and(...conditions))
+        .orderBy(desc(collaborationThreadTable.createdAt));
+
+      return c.json({ success: true, threads });
+    },
+  )
+  // POST /collaboration/threads/:documentId — Create a new comment thread
+  .post(
+    "/threads/:documentId",
+    zValidator("param", z.object({ documentId: z.string().min(1) })),
+    zValidator(
+      "json",
+      z.object({
+        id: z.string().min(1).max(255),
+        sectionId: z.string().min(1).max(100),
+        selectedText: z.string().max(1000).optional(),
+        highlightRange: z.object({ start: z.number(), end: z.number() }).optional(),
+        authorName: z.string().trim().min(2).max(255),
+        authorEmail: z.string().email().optional().or(z.literal("")),
+        authorColor: z.string().max(7).optional(),
+        content: z.string().trim().min(3).max(2000),
+      }),
+    ),
+    getAuthUser,
+    async (c) => {
+      const { documentId } = c.req.valid("param");
+      const input = c.req.valid("json");
+
+      // Verify the document exists and user has access
+      const document = await db.query.documentTable.findFirst({
+        where: eq(documentTable.documentId, documentId),
+      });
+      if (!document) return c.json({ error: "Document not found" }, 404);
+
+      const [thread] = await db
+        .insert(collaborationThreadTable)
+        .values({
+          id: input.id,
+          documentId,
+          sectionId: input.sectionId,
+          selectedText: input.selectedText || null,
+          highlightRange: input.highlightRange || null,
+          authorName: input.authorName,
+          authorEmail: input.authorEmail || null,
+          authorColor: input.authorColor || "#6366f1",
+          content: input.content,
+        })
+        .returning();
+
+      return c.json({ success: true, thread }, 201);
+    },
+  )
+  // PATCH /collaboration/threads/:threadId/reply — Add reply to thread
+  .patch(
+    "/threads/:threadId/reply",
+    zValidator("param", z.object({ threadId: z.string().min(1) })),
+    zValidator(
+      "json",
+      z.object({
+        author: z.object({
+          name: z.string().min(2).max(255),
+          avatar: z.string().optional(),
+          color: z.string().max(7),
+        }),
+        content: z.string().trim().min(1).max(2000),
+        createdAt: z.string(),
+      }),
+    ),
+    getAuthUser,
+    async (c) => {
+      const { threadId } = c.req.valid("param");
+      const reply = c.req.valid("json");
+
+      const [existing] = await db
+        .select({ id: collaborationThreadTable.id, replies: collaborationThreadTable.replies })
+        .from(collaborationThreadTable)
+        .where(eq(collaborationThreadTable.id, threadId))
+        .limit(1);
+      if (!existing) return c.json({ error: "Thread not found" }, 404);
+
+      const currentReplies = (existing.replies as any[]) || [];
+      const updatedReplies = [...currentReplies, reply];
+
+      const [updated] = await db
+        .update(collaborationThreadTable)
+        .set({ replies: updatedReplies })
+        .where(eq(collaborationThreadTable.id, threadId))
+        .returning();
+
+      return c.json({ success: true, thread: updated });
+    },
+  )
+  // PATCH /collaboration/threads/:threadId/resolve — Resolve/unresolve thread
+  .patch(
+    "/threads/:threadId/resolve",
+    zValidator("param", z.object({ threadId: z.string().min(1) })),
+    zValidator(
+      "json",
+      z.object({
+        resolved: z.boolean(),
+      }),
+    ),
+    getAuthUser,
+    async (c) => {
+      const { threadId } = c.req.valid("param");
+      const { resolved } = c.req.valid("json");
+
+      const [existing] = await db
+        .select({ id: collaborationThreadTable.id })
+        .from(collaborationThreadTable)
+        .where(eq(collaborationThreadTable.id, threadId))
+        .limit(1);
+      if (!existing) return c.json({ error: "Thread not found" }, 404);
+
+      const updates = {
+        resolved,
+        resolvedAt: resolved ? new Date().toISOString() : null,
+      };
+
+      const [updated] = await db
+        .update(collaborationThreadTable)
+        .set(updates)
+        .where(eq(collaborationThreadTable.id, threadId))
+        .returning();
+
+      return c.json({ success: true, thread: updated });
+    },
+  )
+  // DELETE /collaboration/threads/:threadId — Delete thread
+  .delete(
+    "/threads/:threadId",
+    zValidator("param", z.object({ threadId: z.string().min(1) })),
+    getAuthUser,
+    async (c) => {
+      const { threadId } = c.req.valid("param");
+
+      const [existing] = await db
+        .select({ id: collaborationThreadTable.id })
+        .from(collaborationThreadTable)
+        .where(eq(collaborationThreadTable.id, threadId))
+        .limit(1);
+      if (!existing) return c.json({ error: "Thread not found" }, 404);
+
+      await db
+        .delete(collaborationThreadTable)
+        .where(eq(collaborationThreadTable.id, threadId));
+
       return c.json({ success: true });
     },
   );

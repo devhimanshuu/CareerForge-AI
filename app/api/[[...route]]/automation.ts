@@ -5,15 +5,20 @@ import { z } from "zod";
 import { db } from "@/db";
 import {
   agentInsightTable,
+  applicationPackageTable,
   automationConfigTable,
   documentTable,
   experienceTable,
   integrationSnapshotTable,
   skillsTable,
 } from "@/db/schema";
+import { JobScraper, ScrapeConfig } from "@/lib/puppeteer-scraper";
+import { generateApplicationPackage } from "@/lib/auto-apply-agent";
+import { generateStageBasedOutreach, type ApplicationStage } from "@/lib/networking-agent";
 import { getAuthUser } from "@/lib/clerk";
 import { chatModel } from "@/lib/langchain";
 import { searchWeb } from "@/lib/tavily";
+import { GitHubClient } from "@/lib/github-client";
 
 const optimizerSchema = z.object({
   findings: z.array(
@@ -253,6 +258,90 @@ Recruiter targets must be job-title/search strategies, not invented people.`,
     },
   )
   .post(
+    "/networking-schedule",
+    zValidator(
+      "json",
+      z.object({
+        documentId: z.string().min(1),
+        stages: z.array(z.enum(["applied", "interviewing", "offer", "rejected"])).min(1).max(4),
+        cadence: z.enum(["hourly", "daily"]).default("daily"),
+      }),
+    ),
+    getAuthUser,
+    async (c) => {
+      const user = c.get("user");
+      const input = c.req.valid("json");
+
+      const nextRunAt = new Date();
+      if (input.cadence === "hourly") nextRunAt.setHours(nextRunAt.getHours() + 1);
+      else nextRunAt.setDate(nextRunAt.getDate() + 1);
+
+      await db
+        .insert(automationConfigTable)
+        .values({
+          userId: user.id,
+          documentId: input.documentId,
+          type: "networking",
+          config: JSON.stringify(input),
+          nextRunAt: nextRunAt.toISOString(),
+        })
+        .onConflictDoUpdate({
+          target: [
+            automationConfigTable.userId,
+            automationConfigTable.documentId,
+            automationConfigTable.type,
+          ],
+          set: {
+            config: JSON.stringify(input),
+            enabled: true,
+            nextRunAt: nextRunAt.toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        });
+
+      return c.json({ success: true, config: input, nextRunAt: nextRunAt.toISOString() });
+    },
+  )
+  .post(
+    "/networking-generate",
+    zValidator(
+      "json",
+      z.object({
+        applicationId: z.number().int().positive().optional(),
+        company: z.string().trim().min(2).max(255),
+        role: z.string().trim().min(2).max(255),
+        stage: z.enum(["applied", "interviewing", "offer", "rejected"]),
+        resumeContext: z.string().optional(),
+      }),
+    ),
+    getAuthUser,
+    async (c) => {
+      const user = c.get("user");
+      const input = c.req.valid("json");
+
+      const outreach = await generateStageBasedOutreach({
+        company: input.company,
+        role: input.role,
+        stage: input.stage as ApplicationStage,
+        resumeContext: input.resumeContext,
+      });
+
+      const [insight] = await db
+        .insert(agentInsightTable)
+        .values({
+          userId: user.id,
+          documentId: null,
+          type: "networking",
+          title: `${input.company} — ${input.stage} outreach`,
+          summary: `Stage-based networking for ${input.role} at ${input.company}.`,
+          payload: JSON.stringify({ ...outreach, applicationId: input.applicationId }),
+        })
+        .returning();
+
+      return c.json({ success: true, outreach, insight: parseInsight(insight) });
+    },
+  )
+  .post(
     "/developer-sync",
     zValidator(
       "json",
@@ -268,7 +357,7 @@ Recruiter targets must be job-title/search strategies, not invented people.`,
     async (c) => {
       const user = c.get("user");
       const input = c.req.valid("json");
-      const data = input.provider === "github"
+      const { data, rateLimitWarning } = input.provider === "github"
         ? await syncGithub(input.username, input.repoLimit, input.includeForks)
         : await syncLeetCode(input.username);
 
@@ -291,7 +380,7 @@ Recruiter targets must be job-title/search strategies, not invented people.`,
           set: { documentId: input.documentId || null, data: JSON.stringify(data), updatedAt: new Date().toISOString() },
         });
 
-      return c.json({ success: true, provider: input.provider, data });
+      return c.json({ success: true, provider: input.provider, data, rateLimitWarning });
     },
   )
   .get("/snapshots", getAuthUser, async (c) => {
@@ -368,6 +457,109 @@ Recruiter targets must be job-title/search strategies, not invented people.`,
       await db.delete(automationConfigTable).where(and(eq(automationConfigTable.id, id), eq(automationConfigTable.userId, user.id)));
       return c.json({ success: true });
     },
+  )
+  .post(
+    "/scrape-jobs",
+    zValidator(
+      "json",
+      z.object({
+        source: z.string().min(1),
+        query: z.string().min(1),
+        location: z.string().optional(),
+        maxPages: z.number().int().min(1).max(20).optional(),
+        filters: z.object({
+          remote: z.boolean().optional(),
+          experience: z.string().optional(),
+          datePosted: z.string().optional(),
+        }).optional(),
+      }),
+    ),
+    getAuthUser,
+    async (c) => {
+      const input = c.req.valid("json") as ScrapeConfig;
+      const scraper = new JobScraper();
+      const jobs = await scraper.scrapeJobs(input);
+      return c.json({ success: true, jobs });
+    },
+  )
+  .post(
+    "/auto-apply",
+    zValidator(
+      "json",
+      z.object({
+        resumeDocumentId: z.string().min(1),
+        jobDescription: z.string().min(1),
+        jobTitle: z.string().min(1),
+        company: z.string().min(1),
+        jobUrl: z.string().optional(),
+      }),
+    ),
+    getAuthUser,
+    async (c) => {
+      const user = c.get("user");
+      const input = c.req.valid("json");
+      const resume = await getOwnedResume(input.resumeDocumentId, user.id);
+      if (!resume) return c.json({ error: "Resume not found" }, 404);
+
+      const packageData = await generateApplicationPackage(
+        resume,
+        input.jobDescription,
+        input.jobTitle,
+        input.company,
+      );
+
+      const [record] = await db.insert(applicationPackageTable).values({
+        userId: user.id,
+        jobTitle: input.jobTitle,
+        company: input.company,
+        jobUrl: input.jobUrl || null,
+        jobDescription: input.jobDescription,
+        tailoredSummary: packageData.tailoredSummary,
+        tailoredBullets: packageData.tailoredBulletPoints as any,
+        coverLetter: packageData.coverLetter,
+        commonAnswers: packageData.commonAnswers as any,
+        matchScore: packageData.matchScore,
+        gaps: packageData.gaps as any,
+        status: "drafted",
+      }).returning();
+
+      return c.json({ success: true, package: { ...packageData, id: record.id } });
+    },
+  )
+  .get("/application-packages", getAuthUser, async (c) => {
+    const user = c.get("user");
+    const packages = await db
+      .select()
+      .from(applicationPackageTable)
+      .where(eq(applicationPackageTable.userId, user.id))
+      .orderBy(desc(applicationPackageTable.createdAt));
+    return c.json({
+      success: true,
+      packages: packages.map((pkg) => ({
+        ...pkg,
+        tailoredBullets: safeJson(pkg.tailoredBullets as string),
+        commonAnswers: safeJson(pkg.commonAnswers as string),
+        gaps: safeJson(pkg.gaps as string),
+      })),
+    });
+  })
+  .patch(
+    "/application-packages/:id",
+    zValidator("param", z.object({ id: z.coerce.number().int().positive() })),
+    zValidator("json", z.object({ status: z.enum(["drafted", "reviewed", "applied", "rejected"]) })),
+    getAuthUser,
+    async (c) => {
+      const user = c.get("user");
+      const { id } = c.req.valid("param");
+      const { status } = c.req.valid("json");
+      const [pkg] = await db
+        .update(applicationPackageTable)
+        .set({ status, updatedAt: new Date().toISOString() })
+        .where(and(eq(applicationPackageTable.id, id), eq(applicationPackageTable.userId, user.id)))
+        .returning();
+      if (!pkg) return c.json({ error: "Package not found" }, 404);
+      return c.json({ success: true, package: pkg });
+    },
   );
 
 async function getOwnedResume(documentId: string, userId: string) {
@@ -378,21 +570,24 @@ async function getOwnedResume(documentId: string, userId: string) {
 }
 
 async function syncGithub(username: string, repoLimit: number, includeForks: boolean) {
-  const headers: Record<string, string> = {
-    Accept: "application/vnd.github+json",
-    "User-Agent": "CareerForgeAI",
-  };
-  if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  const client = new GitHubClient();
 
-  const [profileResponse, reposResponse, eventsResponse] = await Promise.all([
-    fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, { headers }),
-    fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=${repoLimit * 2}`, { headers }),
-    fetch(`https://api.github.com/users/${encodeURIComponent(username)}/events/public?per_page=100`, { headers }),
+  const [profileResult, reposResult, eventsResult] = await Promise.all([
+    client.fetch(`/users/${encodeURIComponent(username)}`),
+    client.fetch(`/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=${repoLimit * 2}`),
+    client.fetch(`/users/${encodeURIComponent(username)}/events/public?per_page=100`),
   ]);
-  if (!profileResponse.ok || !reposResponse.ok) throw new Error("GitHub profile could not be loaded");
 
-  const profile = await profileResponse.json();
-  const repos = (await reposResponse.json())
+  const profile = profileResult.data as any;
+  const reposRaw = reposResult.data as any[];
+  let events: any[] = [];
+  try {
+    events = eventsResult.data as any[];
+  } catch {
+    // Events are optional — continue without them
+  }
+
+  const repos = reposRaw
     .filter((repo: any) => includeForks || !repo.fork)
     .slice(0, repoLimit)
     .map((repo: any) => ({
@@ -405,21 +600,30 @@ async function syncGithub(username: string, repoLimit: number, includeForks: boo
       topics: repo.topics || [],
       updatedAt: repo.updated_at,
     }));
-  const events = eventsResponse.ok ? await eventsResponse.json() : [];
+
   const contributionGrid = buildContributionGrid(events);
 
+  // Collect rate-limit warning from any of the three calls
+  const rateLimitWarning =
+    profileResult.rateLimitWarning ||
+    reposResult.rateLimitWarning ||
+    eventsResult.rateLimitWarning;
+
   return {
-    profile: {
-      name: profile.name,
-      avatarUrl: profile.avatar_url,
-      bio: profile.bio,
-      url: profile.html_url,
-      followers: profile.followers,
-      publicRepos: profile.public_repos,
+    data: {
+      profile: {
+        name: profile.name,
+        avatarUrl: profile.avatar_url,
+        bio: profile.bio,
+        url: profile.html_url,
+        followers: profile.followers,
+        publicRepos: profile.public_repos,
+      },
+      recentPublicContributions: events.length,
+      contributionGrid,
+      repositories: repos,
     },
-    recentPublicContributions: events.length,
-    contributionGrid,
-    repositories: repos,
+    rateLimitWarning,
   };
 }
 
@@ -462,7 +666,7 @@ async function syncLeetCode(username: string) {
   if (!response.ok) throw new Error("LeetCode profile could not be loaded");
   const result = await response.json();
   if (!result.data?.matchedUser) throw new Error("LeetCode user not found");
-  return result.data;
+  return { data: result.data, rateLimitWarning: undefined as string | undefined };
 }
 
 function parseInsight<T extends { payload: string | null }>(insight: T) {
