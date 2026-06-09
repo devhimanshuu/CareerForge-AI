@@ -11,6 +11,7 @@ import { generateThumbnail } from "@/lib/helper";
 import useUpdateDocument from "@/features/document/use-update-document";
 import { toast } from "@/hooks/use-toast";
 import GithubSync from "../common/GithubSync";
+import LeetCodeSync from "../common/LeetCodeSync";
 import AIPhotoGenerator from "../common/AIPhotoGenerator";
 
 
@@ -161,7 +162,10 @@ const PersonalInfoForm = (props: { handleNext: () => void }) => {
             <h2 className="font-bold text-lg">Personal Information</h2>
             <p className="text-sm text-muted-foreground">Get Started with the personal information</p>
         </div>
-        <GithubSync />
+        <div className="flex flex-wrap gap-2">
+          <GithubSync />
+          <LeetCodeSync />
+        </div>
       </div>
 
       <div>
