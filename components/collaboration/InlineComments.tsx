@@ -71,6 +71,7 @@ export function InlineComments({
   // Load threads from DB on mount
   useEffect(() => {
     loadThreads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, sectionId]);
 
   const loadThreads = async () => {

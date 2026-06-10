@@ -81,8 +81,8 @@ export default function CookiePolicyPage() {
             {/* Introduction */}
             <div>
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6">
-                This Cookie Policy explains how CareerForge AI ("we," "our," or "us") uses cookies
-                and similar tracking technologies on our website and platform (the "Service"). By
+                This Cookie Policy explains how CareerForge AI (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;) uses cookies
+                and similar tracking technologies on our website and platform (the &ldquo;Service&rdquo;). By
                 continuing to browse or use the Service, you consent to our use of cookies as described
                 in this policy.
               </p>
@@ -121,7 +121,7 @@ export default function CookiePolicyPage() {
                 </li>
               </ul>
               <p className="text-base text-muted-foreground leading-relaxed mt-4">
-                Throughout this policy, we use the term "cookies" to refer to all such technologies.
+                Throughout this policy, we use the term &ldquo;cookies&rdquo; to refer to all such technologies.
               </p>
             </div>
 
@@ -230,7 +230,7 @@ export default function CookiePolicyPage() {
 
               <h3 className="text-lg font-semibold text-foreground mb-3 mt-6">3.2 Opting Out of Analytics</h3>
               <p className="text-base text-muted-foreground leading-relaxed mb-4">
-                You can opt out of PostHog analytics tracking by enabling "Do Not Track" in your browser
+                You can opt out of PostHog analytics tracking by enabling &ldquo;Do Not Track&rdquo; in your browser
                 settings, or by contacting us at{" "}
                 <a href="mailto:privacy@careerforge.ai" className="text-indigo-500 hover:text-indigo-600 underline">
                   privacy@careerforge.ai
@@ -259,7 +259,7 @@ export default function CookiePolicyPage() {
                   <strong className="text-foreground">Clerk:</strong> Authentication cookies for secure
                   identity management. See{" "}
                   <a href="https://clerk.com/legal/privacy" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:text-indigo-600 underline">
-                    Clerk's Privacy Policy
+                    Clerk&rsquo;s Privacy Policy
                   </a>
                   .
                 </li>
@@ -267,7 +267,7 @@ export default function CookiePolicyPage() {
                   <strong className="text-foreground">PostHog:</strong> Product analytics cookies for
                   understanding user behavior. See{" "}
                   <a href="https://posthog.com/privacy" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:text-indigo-600 underline">
-                    PostHog's Privacy Policy
+                    PostHog&rsquo;s Privacy Policy
                   </a>
                   .
                 </li>
@@ -275,7 +275,7 @@ export default function CookiePolicyPage() {
                   <strong className="text-foreground">Vercel:</strong> Hosting and performance monitoring.
                   See{" "}
                   <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:text-indigo-600 underline">
-                    Vercel's Privacy Policy
+                    Vercel&rsquo;s Privacy Policy
                   </a>
                   .
                 </li>
@@ -290,7 +290,7 @@ export default function CookiePolicyPage() {
               <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4">5. Updates to This Policy</h2>
               <p className="text-base text-muted-foreground leading-relaxed">
                 We may update this Cookie Policy from time to time to reflect changes in our practices or
-                applicable law. The "Last updated" date at the top of this page indicates when the most
+                applicable law. The &ldquo;Last updated&rdquo; date at the top of this page indicates when the most
                 recent changes were made. We encourage you to review this policy periodically.
               </p>
             </div>

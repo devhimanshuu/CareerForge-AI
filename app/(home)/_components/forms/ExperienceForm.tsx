@@ -73,6 +73,7 @@ const ExperienceForm = (props: { handleNext: () => void }) => {
         }))
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeInfo?.experiences]);
 
   useEffect(() => {
@@ -83,7 +84,7 @@ const ExperienceForm = (props: { handleNext: () => void }) => {
       ...resumeInfo,
       experiences: cleanedList,
     });
-  }, [experienceList]);
+  }, [experienceList, onUpdate, resumeInfo]);
 
   const handleChange = (
     e: { target: { name: string; value: string } },

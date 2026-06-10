@@ -67,6 +67,7 @@ const SkillsForm = () => {
         }))
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeInfo?.skills]);
 
   useEffect(() => {

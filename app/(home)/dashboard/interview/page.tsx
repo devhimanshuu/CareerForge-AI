@@ -422,6 +422,7 @@ const InterviewLab = () => {
         isProcessingAnswerRef.current = false;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedResumeInfo, jobDescription, targetRole, interviewConfig, speakLiveResponse],
   );
 
@@ -518,6 +519,7 @@ const InterviewLab = () => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetRole, selectedResumeInfo, jobDescription, interviewConfig, speakLiveResponse]);
 
   // ─── Live Mode: Cleanup ───────────────────────────────────────

@@ -49,6 +49,7 @@ const MarketData = () => {
     };
 
     fetchDetailAndLoad();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedResumeId]);
 
   // Load when region changes

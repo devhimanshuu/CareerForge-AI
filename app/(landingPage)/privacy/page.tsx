@@ -39,10 +39,10 @@ export default function PrivacyPolicyPage() {
             {/* Introduction */}
             <div>
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6">
-                CareerForge AI ("we," "our," or "us") is committed to protecting your privacy.
+                CareerForge AI (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;) is committed to protecting your privacy.
                 This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you
                 use our platform, including our website, resume builder, interview coach, job application tracker,
-                and all related services (collectively, the "Service").
+                and all related services (collectively, the &ldquo;Service&rdquo;).
               </p>
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
                 By accessing or using the Service, you agree to the terms outlined in this Privacy Policy. If you
@@ -59,7 +59,7 @@ export default function PrivacyPolicyPage() {
                 <li>
                   <strong className="text-foreground">Account Data:</strong> When you register, we collect your
                   name, email address, and authentication credentials via Clerk. We never store raw passwords;
-                  authentication is fully delegated to Clerk's secure identity platform.
+                  authentication is fully delegated to Clerk&rsquo;s secure identity platform.
                 </li>
                 <li>
                   <strong className="text-foreground">Resume Content:</strong> All information you input into the
@@ -115,9 +115,9 @@ export default function PrivacyPolicyPage() {
                 </li>
                 <li>
                   <strong className="text-foreground">AI Processing:</strong> Your resume content is processed
-                  through Groq's LLM inference API to generate tailored bullet points, keyword suggestions,
+                  through Groq&rsquo;s LLM inference API to generate tailored bullet points, keyword suggestions,
                   and career insights. Data is transmitted over encrypted channels and is not used to train
-                  third-party models per Groq's data usage policies.
+                  third-party models per Groq&rsquo;s data usage policies.
                 </li>
                 <li>
                   <strong className="text-foreground">Personalization:</strong> To tailor your experience
@@ -203,8 +203,8 @@ export default function PrivacyPolicyPage() {
               </p>
               <ul className="list-disc pl-6 space-y-2 text-muted-foreground leading-relaxed">
                 <li><strong className="text-foreground">Encryption:</strong> All data is encrypted in transit (TLS 1.3) and at rest (AES-256).</li>
-                <li><strong className="text-foreground">Authentication:</strong> We use Clerk's enterprise-grade authentication with multi-factor authentication (MFA) support.</li>
-                <li><strong className="text-foreground">Infrastructure Security:</strong> Our application is hosted on Vercel's secure edge network with DDoS protection, WAF rules, and automatic security patches.</li>
+                <li><strong className="text-foreground">Authentication:</strong> We use Clerk&rsquo;s enterprise-grade authentication with multi-factor authentication (MFA) support.</li>
+                <li><strong className="text-foreground">Infrastructure Security:</strong> Our application is hosted on Vercel&rsquo;s secure edge network with DDoS protection, WAF rules, and automatic security patches.</li>
                 <li><strong className="text-foreground">Database Security:</strong> Neon provides isolated compute environments with IP allowlisting, connection pooling, and automated backups.</li>
                 <li><strong className="text-foreground">Access Controls:</strong> Internal access to production data is strictly limited, logged, and requires multi-factor authentication.</li>
                 <li><strong className="text-foreground">Penetration Testing:</strong> We conduct regular security assessments and vulnerability scans.</li>
@@ -221,7 +221,7 @@ export default function PrivacyPolicyPage() {
               <ul className="list-disc pl-6 space-y-2 text-muted-foreground leading-relaxed">
                 <li><strong className="text-foreground">Access:</strong> Request a copy of the personal data we hold about you.</li>
                 <li><strong className="text-foreground">Rectification:</strong> Correct any inaccurate or incomplete data.</li>
-                <li><strong className="text-foreground">Erasure:</strong> Request deletion of your account and associated data ("right to be forgotten").</li>
+                <li><strong className="text-foreground">Erasure:</strong> Request deletion of your account and associated data (&ldquo;right to be forgotten&rdquo;).</li>
                 <li><strong className="text-foreground">Portability:</strong> Receive your data in a structured, machine-readable format.</li>
                 <li><strong className="text-foreground">Objection:</strong> Object to certain processing activities, including direct marketing.</li>
                 <li><strong className="text-foreground">Withdraw Consent:</strong> Withdraw previously given consent at any time.</li>
@@ -237,7 +237,7 @@ export default function PrivacyPolicyPage() {
 
             {/* Section 7 */}
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4">7. Children's Privacy</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4">7. Children&rsquo;s Privacy</h2>
               <p className="text-base text-muted-foreground leading-relaxed">
                 The Service is not directed to individuals under the age of 16. We do not knowingly collect
                 personal information from children. If we become aware that a child under 16 has provided us

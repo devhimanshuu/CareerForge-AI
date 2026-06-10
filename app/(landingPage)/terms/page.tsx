@@ -39,10 +39,10 @@ export default function TermsOfServicePage() {
             {/* Introduction */}
             <div>
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6">
-                Welcome to CareerForge AI. These Terms of Service ("Terms") govern your access to and use
+                Welcome to CareerForge AI. These Terms of Service (&ldquo;Terms&rdquo;) govern your access to and use
                 of the CareerForge AI platform, including our website, resume builder, interview coach, job
                 application tracker, AI podcast generator, and all related features, content, and services
-                (collectively, the "Service"), operated by CareerForge AI ("we," "our," or "us").
+                (collectively, the &ldquo;Service&rdquo;), operated by CareerForge AI (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;).
               </p>
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
                 By creating an account, accessing, or using the Service in any manner, you acknowledge that you
@@ -73,7 +73,7 @@ export default function TermsOfServicePage() {
               <h3 className="text-lg font-semibold text-foreground mb-3">1.3 Authentication Provider</h3>
               <p className="text-base text-muted-foreground leading-relaxed">
                 Account authentication is provided by Clerk, Inc. By using the Service, you also agree to
-                Clerk's terms of service and privacy policy. We do not store or have access to your raw
+                Clerk&rsquo;s terms of service and privacy policy. We do not store or have access to your raw
                 authentication credentials.
               </p>
             </div>
@@ -104,7 +104,7 @@ export default function TermsOfServicePage() {
               </p>
               <ul className="list-disc pl-6 space-y-2 text-muted-foreground leading-relaxed mb-4">
                 <li>Resell, sublicense, or commercially exploit any part of the Service</li>
-                <li>Copy, modify, or create derivative works of the Service's underlying code</li>
+                <li>Copy, modify, or create derivative works of the Service&rsquo;s underlying code</li>
                 <li>Use any data mining, scraping, or automated data extraction methods</li>
                 <li>Bypass or circumvent any security features or access restrictions</li>
                 <li>Use the Service to build a competing product or service</li>
@@ -148,7 +148,7 @@ export default function TermsOfServicePage() {
 
               <h3 className="text-lg font-semibold text-foreground mb-3">3.4 Price Changes</h3>
               <p className="text-base text-muted-foreground leading-relaxed">
-                We reserve the right to adjust pricing with 30 days' advance notice. Price changes will not
+                We reserve the right to adjust pricing with 30 days&rsquo; advance notice. Price changes will not
                 affect your current billing period and will only apply upon renewal.
               </p>
             </div>
@@ -160,7 +160,7 @@ export default function TermsOfServicePage() {
               <h3 className="text-lg font-semibold text-foreground mb-3 mt-6">4.1 Your Content</h3>
               <p className="text-base text-muted-foreground leading-relaxed mb-4">
                 You retain all ownership rights to the content you create, upload, or store through the Service
-                ("User Content"). By submitting User Content, you grant us a limited, worldwide, royalty-free
+                (&ldquo;User Content&rdquo;). By submitting User Content, you grant us a limited, worldwide, royalty-free
                 license to host, store, process, and display your content solely for the purpose of providing
                 the Service to you.
               </p>
@@ -170,7 +170,7 @@ export default function TermsOfServicePage() {
               <ul className="list-disc pl-6 space-y-2 text-muted-foreground leading-relaxed mb-4">
                 <li>Upload content that is unlawful, defamatory, harassing, or violates third-party rights</li>
                 <li>Use the Service to distribute malware, spam, phishing links, or other harmful code</li>
-                <li>Attempt to gain unauthorized access to other users' accounts or data</li>
+                <li>Attempt to gain unauthorized access to other users&rsquo; accounts or data</li>
                 <li>Interfere with or disrupt the Service, servers, or networks connected to the Service</li>
                 <li>Impersonate any person or entity, or falsely state your affiliation</li>
                 <li>Use the AI features to generate illegal, harmful, or unethical content</li>
@@ -179,7 +179,7 @@ export default function TermsOfServicePage() {
 
               <h3 className="text-lg font-semibold text-foreground mb-3">4.3 Resume Privacy Controls</h3>
               <p className="text-base text-muted-foreground leading-relaxed">
-                You control the visibility of your resumes. Resumes marked as "private" are not publicly
+                You control the visibility of your resumes. Resumes marked as &ldquo;private&rdquo; are not publicly
                 accessible. PDF generation is secured through a cryptographically hashed token derived from
                 our application secret key. You are responsible for configuring appropriate privacy settings.
               </p>
@@ -189,7 +189,7 @@ export default function TermsOfServicePage() {
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4">5. AI-Generated Content Disclaimer</h2>
               <p className="text-base text-muted-foreground leading-relaxed mb-4">
-                The Service uses artificial intelligence models (including Groq's LLM API via LangChain, and
+                The Service uses artificial intelligence models (including Groq&rsquo;s LLM API via LangChain, and
                 ElevenLabs for voice synthesis) to generate resume content, bullet points, interview responses,
                 and audio summaries. You acknowledge and agree that:
               </p>
@@ -211,7 +211,7 @@ export default function TermsOfServicePage() {
               <h3 className="text-lg font-semibold text-foreground mb-3 mt-6">6.1 Our IP</h3>
               <p className="text-base text-muted-foreground leading-relaxed mb-4">
                 The Service, including its original content, features, design, code, graphics, logos, and
-                trademarks ("CareerForge AI," the logo mark), are the exclusive intellectual property of
+                trademarks (&ldquo;CareerForge AI,&rdquo; the logo mark), are the exclusive intellectual property of
                 CareerForge AI and are protected by copyright, trademark, and other intellectual property laws.
               </p>
 
@@ -288,7 +288,7 @@ export default function TermsOfServicePage() {
               <p className="text-base text-muted-foreground leading-relaxed">
                 You agree to defend, indemnify, and hold harmless CareerForge AI, its affiliates, officers,
                 directors, employees, and agents from and against any and all claims, damages, obligations,
-                losses, liabilities, costs, and expenses (including reasonable attorneys' fees) arising from:
+                losses, liabilities, costs, and expenses (including reasonable attorneys&rsquo; fees) arising from:
                 (a) your use of and access to the Service; (b) your violation of any term of these Terms;
                 (c) your violation of any third-party right, including without limitation any privacy right
                 or intellectual property right; or (d) any claim that your User Content caused damage to a

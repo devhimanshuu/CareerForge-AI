@@ -68,6 +68,7 @@ const EducationForm = (props: { handleNext: () => void }) => {
         }))
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeInfo?.educations]);
 
   useEffect(() => {

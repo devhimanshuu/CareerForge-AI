@@ -342,7 +342,7 @@ export default function Home() {
                   <span className="px-2 py-0.5 bg-purple-500/10 text-purple-500 border border-purple-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">Tavily</span>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Powered by Tavily's advanced search API, this agent researches companies, industry
+                  Powered by Tavily&rsquo;s advanced search API, this agent researches companies, industry
                   trends, and salary benchmarks in real-time. Enriches your application context with
                   up-to-date market intelligence before every interview.
                 </p>
