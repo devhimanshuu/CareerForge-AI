@@ -51,7 +51,7 @@ export default function Home() {
   return (
     <div className="w-full overflow-hidden">
       {/* ===== Hero Section ===== */}
-      <section className="relative flex min-h-[92vh] w-full items-center justify-center overflow-hidden bg-background">
+      <section className="relative flex min-h-[90vh] sm:min-h-[92vh] w-full items-center justify-center overflow-hidden bg-background">
         {/* Falling Pattern Background */}
         <div className="absolute inset-0 z-0">
           <FallingPattern
@@ -66,7 +66,7 @@ export default function Home() {
         <div className="absolute top-[10%] left-[10%] w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] z-0 animate-pulse pointer-events-none" />
         <div className="absolute bottom-[20%] right-[10%] w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] z-0 pointer-events-none" />
 
-        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center justify-center px-5 pb-20 pt-20 text-center">
+        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center justify-center px-4 sm:px-5 pb-16 pt-24 sm:pt-20 sm:pb-20 text-center">
           {/* Badge */}
           <div className="animate-fade-up mb-8">
             <div className="inline-flex items-center gap-2 rounded-md border border-indigo-500/20 bg-background/80 px-4 py-2 text-sm font-medium shadow-sm glass">
@@ -79,12 +79,13 @@ export default function Home() {
 
           {/* Heading */}
           <h1
-            className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black tracking-tight animate-fade-up leading-[1.1] max-w-full mx-auto px-2 break-words font-display"
+            className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-black tracking-tight animate-fade-up leading-[1.1] max-w-full mx-auto px-1 sm:px-2 break-words font-display"
             style={{ animationDelay: "0.1s" }}
           >
             <span className="text-foreground">Supercharge Your </span>
+            <br className="hidden sm:block md:hidden" />
             <br className="hidden md:block" />
-            <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient py-2 inline-block min-w-[320px] md:min-w-[500px]">
+            <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient py-2 inline-block min-w-[260px] sm:min-w-[320px] md:min-w-[500px]">
               <TypewriterText
                 words={["Resumes", "Interviews", "Cover Letters", "Job Hunt"]}
                 typingSpeed={100}
@@ -97,7 +98,7 @@ export default function Home() {
 
           {/* Subheading */}
           <p
-            className="mt-8 text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-fade-up font-medium"
+            className="mt-6 sm:mt-8 text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-fade-up font-medium px-2 sm:px-0"
             style={{ animationDelay: "0.2s" }}
           >
             Stop guessing what recruiters want. CareerForge uses advanced AI to
@@ -107,7 +108,7 @@ export default function Home() {
 
           {/* CTA Buttons */}
           <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-12 animate-fade-up w-full sm:w-auto"
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mt-8 sm:mt-12 animate-fade-up w-full sm:w-auto px-2 sm:px-0"
             style={{ animationDelay: "0.3s" }}
           >
             <Button
@@ -133,10 +134,10 @@ export default function Home() {
 
           {/* Stats Bar */}
           <div
-            className="mt-16 grid w-full grid-cols-2 gap-4 rounded-lg border bg-card/80 px-4 py-6 shadow-sm animate-fade-up sm:mt-20 sm:gap-8 sm:px-6 sm:py-8 md:grid-cols-4"
+            className="mt-12 sm:mt-16 grid w-full grid-cols-2 gap-3 sm:gap-4 rounded-xl sm:rounded-lg border bg-card/80 px-3 sm:px-4 py-5 sm:py-6 shadow-sm animate-fade-up sm:mt-20 sm:gap-8 sm:px-6 sm:py-8 md:grid-cols-4"
           >
             <div className="flex flex-col items-center justify-center">
-              <div className="text-2xl sm:text-3xl font-black text-foreground flex items-center">
+              <div className="text-xl sm:text-2xl md:text-3xl font-black text-foreground flex items-center">
                 <AnimatedCounter target={10000} suffix="+" />
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium text-center">
@@ -179,21 +180,214 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ===== Agentic AI Section ===== */}
+      <section className="relative py-16 sm:py-24 md:py-32 px-4 sm:px-5 bg-gradient-to-b from-background via-cyan-500/[0.02] to-background overflow-hidden">
+        {/* Background Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/5 rounded-full blur-[150px] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto relative z-10">
+          {/* Section Header */}
+          <div className="text-center mb-12 sm:mb-16 md:mb-20">
+            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-cyan-500/20 bg-cyan-500/5 mb-6">
+              <Bot size={14} className="text-cyan-500" />
+              <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent font-semibold">
+                Agentic AI Engine
+              </span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight mb-4 sm:mb-6">
+              Your Personal{" "}
+              <span className="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 bg-clip-text text-transparent">
+                AI Career Agents
+              </span>
+            </h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-2 sm:px-0">
+              A fleet of specialized AI agents working in concert — each one a domain expert that automates
+              a piece of your job search pipeline, from scraping to interviewing.
+            </p>
+          </div>
+
+          {/* Agent Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+            {/* Agent 1: ATS Resume Optimizer */}
+            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-500/30 overflow-hidden">
+              {/* Glow on hover */}
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              {/* Icon */}
+              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-indigo-500/10">
+                <FileText className="text-indigo-500" size={26} />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg sm:text-xl font-bold text-foreground">ATS Resume Optimizer</h3>
+                  <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">LangChain</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                  Analyzes job descriptions against your resume using NVIDIA Kimi K2.6 + Groq Llama 3.3 70B.
+                  Generates tailored bullet points, identifies keyword gaps, and boosts ATS match scores with
+                  enterprise-grade structured output.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">NVIDIA NIM</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Groq Inference</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Zod Schema</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Agent 2: Auto-Apply Agent */}
+            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-emerald-500/10 hover:border-emerald-500/30 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-emerald-500/10">
+                <Zap className="text-emerald-500" size={26} />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg sm:text-xl font-bold text-foreground">Auto-Apply Agent</h3>
+                  <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">Automation</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                  One-click application package generation. Produces tailored cover letters, STAR-method
+                  interview answers, and rewrites every bullet point to match JD keywords — saving hours
+                  of manual tailoring per application.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Cover Letters</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">STAR Answers</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Gap Analysis</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Agent 3: Job Scraper Agent */}
+            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-amber-500/10 hover:border-amber-500/30 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-amber-500/10">
+                <Globe className="text-amber-500" size={26} />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg sm:text-xl font-bold text-foreground">Job Scraper Agent</h3>
+                  <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">Puppeteer</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                  Headless Chromium engine that bypasses WAF protections across LinkedIn, Indeed, and
+                  Glassdoor. Rotates user-agents and viewports to extract clean job details including
+                  hidden salary ranges and posting dates.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">WAF Bypass</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">UA Rotation</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Multi-Source</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Agent 4: Networking Agent */}
+            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-500/30 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-blue-500/10">
+                <Share2 className="text-blue-500" size={26} />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg sm:text-xl font-bold text-foreground">Networking Agent</h3>
+                  <span className="px-2 py-0.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">Outreach</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                  Generates contextual follow-ups, thank-you notes, recruiter connection requests, and
+                  negotiation scripts tailored to your application stage. Supports LinkedIn DM and email
+                  formats with timing recommendations.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">LinkedIn DM</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Email Templates</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Stage-Aware</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Agent 5: Interview Coach Agent */}
+            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-rose-500/10 hover:border-rose-500/30 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-500/20 to-pink-500/20 border border-rose-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-rose-500/10">
+                <Video className="text-rose-500" size={26} />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg sm:text-xl font-bold text-foreground">Interview Coach Agent</h3>
+                  <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">WebRTC</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                  Live WebRTC interview simulator with HD camera feed, real-time speech detection via
+                  AudioContext analyser, and ElevenLabs voice-synthesized recruiter questions. Records
+                  sessions for playback and self-review.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">WebRTC</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Silence Detection</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">ElevenLabs TTS</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Agent 6: Research Agent */}
+            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/10 hover:border-purple-500/30 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-violet-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-purple-500/10">
+                <Target className="text-purple-500" size={26} />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg sm:text-xl font-bold text-foreground">Web Research Agent</h3>
+                  <span className="px-2 py-0.5 bg-purple-500/10 text-purple-500 border border-purple-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">Tavily</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                  Powered by Tavily's advanced search API, this agent researches companies, industry
+                  trends, and salary benchmarks in real-time. Enriches your application context with
+                  up-to-date market intelligence before every interview.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Real-time Search</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Salary Intel</span>
+                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Company Insights</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom CTA */}
+          <div className="text-center mt-12 sm:mt-16">
+            <p className="text-sm text-muted-foreground mb-4 font-medium">
+              All agents share context through a unified pipeline — your resume data flows seamlessly
+              from optimization → application → networking → interview prep.
+            </p>
+            <Link
+              href="/sign-up"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-all duration-300 text-sm"
+            >
+              <Bot size={16} />
+              Deploy Your Agent Fleet
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ===== Interactive Feature Showcase ===== */}
-      <section className="relative py-20 px-5 bg-background">
+      <section className="relative py-16 sm:py-20 px-4 sm:px-5 bg-background">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-border mb-4 glass">
+          <div className="text-center mb-12 sm:mb-16">
+            <div className="inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium border border-border mb-4 glass">
               <Bot size="14px" className="text-indigo-500" />
               Live Interactive Demos
             </div>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight">
               Experience the{" "}
               <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
                 CareerForge Engine
               </span>
             </h2>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-2 sm:px-0">
               Click through the tabs below to test drive the core mechanics of our next-gen AI career suite.
             </p>
           </div>
@@ -256,17 +450,17 @@ export default function Home() {
             </div>
 
             {/* Right visual content */}
-            <div className="lg:col-span-8 h-[520px] rounded-3xl border border-border/50 bg-card/20 glass p-8 relative overflow-hidden flex flex-col justify-center">
+            <div className="lg:col-span-8 min-h-[400px] sm:h-[520px] rounded-2xl sm:rounded-3xl border border-border/50 bg-card/20 glass p-4 sm:p-8 relative overflow-hidden flex flex-col justify-center">
               {/* Decorative backgrounds */}
               <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none" />
               
               {/* Tab 1: ATS */}
               {activeTab === "ats" && (
                 <div className="space-y-6 animate-fade-in">
-                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-border/50 pb-4">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 border-b border-border/50 pb-3 sm:pb-4">
                     <div>
-                      <h4 className="font-bold text-lg text-foreground">ATS Target: Senior React Developer</h4>
-                      <p className="text-xs text-muted-foreground font-medium">Scraped from: techcareers.com/jobs/928421</p>
+                      <h4 className="font-bold text-base sm:text-lg text-foreground">ATS Target: Senior React Developer</h4>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">Scraped from: techcareers.com/jobs/928421</p>
                     </div>
                     <div className="px-3 py-1.5 bg-emerald-500/15 text-emerald-500 text-xs font-bold border border-emerald-500/25 rounded-lg flex items-center gap-1">
                       <CheckCircle2 size={12} /> Bypassed WAF
@@ -274,7 +468,7 @@ export default function Home() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                    <div className="md:col-span-5 flex flex-col items-center justify-center p-6 border border-border/50 bg-background/50 rounded-2xl text-center relative overflow-hidden">
+                    <div className="md:col-span-5 flex flex-col items-center justify-center p-4 sm:p-6 border border-border/50 bg-background/50 rounded-2xl text-center relative overflow-hidden">
                       {/* Circular score display */}
                       <div className="relative w-32 h-32 flex items-center justify-center">
                         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -326,11 +520,11 @@ export default function Home() {
 
               {/* Tab 2: Podcast */}
               {activeTab === "podcast" && (
-                <div className="space-y-6 animate-fade-in flex flex-col justify-between h-full">
-                  <div className="flex items-center justify-between border-b border-border/50 pb-4">
+                <div className="space-y-4 sm:space-y-6 animate-fade-in flex flex-col justify-between h-full">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 border-b border-border/50 pb-3 sm:pb-4">
                     <div>
-                      <h4 className="font-bold text-lg text-foreground">Podcast Overview: Parth_Resume.pdf</h4>
-                      <p className="text-xs text-muted-foreground font-medium">Topic: Professional Background & Technical Milestones</p>
+                      <h4 className="font-bold text-base sm:text-lg text-foreground">Podcast Overview: Parth_Resume.pdf</h4>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">Topic: Professional Background & Technical Milestones</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="px-2.5 py-1 bg-purple-500/10 text-purple-500 border border-purple-500/20 text-[10px] font-bold rounded-lg uppercase tracking-wider">Dual Voice Synthesized</span>
@@ -338,7 +532,7 @@ export default function Home() {
                   </div>
 
                   {/* Transcript Scroll Area */}
-                  <div className="flex-1 overflow-y-auto space-y-3 pr-2 py-2 max-h-[260px] scrollbar-thin">
+                  <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-1 sm:pr-2 py-1 sm:py-2 max-h-[200px] sm:max-h-[260px] scrollbar-thin">
                     {[
                       { role: "Host (Voice A)", text: "Hey everyone! Today we're diving into Parth's profile. He's a Full-Stack Dev with huge React experience, especially in building high-performance web systems.", active: true },
                       { role: "Candidate (Voice B)", text: "That's right! I focus on making apps responsive, visually outstanding, and fully ATS-friendly. The layout optimization is where it really shines.", active: false },
@@ -959,18 +1153,18 @@ export default function Home() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/privacy"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  Privacy
+                  Privacy Policy
                 </Link>
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/terms"
                   className="hover:text-indigo-500 transition-colors"
                 >
-                  Terms
+                  Terms of Service
                 </Link>
               </li>
             </ul>
@@ -982,9 +1176,9 @@ export default function Home() {
             © {new Date().getFullYear()} CareerForge AI. All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <Link href="#" className="hover:text-indigo-500 transition-colors">Privacy Policy</Link>
-            <Link href="#" className="hover:text-indigo-500 transition-colors">Terms of Service</Link>
-            <Link href="#" className="hover:text-indigo-500 transition-colors">Cookie Policy</Link>
+            <Link href="/privacy" className="hover:text-indigo-500 transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-indigo-500 transition-colors">Terms of Service</Link>
+            <Link href="/cookies" className="hover:text-indigo-500 transition-colors">Cookie Policy</Link>
           </div>
         </div>
       </footer>
