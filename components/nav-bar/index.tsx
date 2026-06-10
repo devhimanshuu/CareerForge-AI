@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from "react";
 import {
   Sparkles,
   Zap,
@@ -22,10 +23,32 @@ import {
 
 const NavBar = () => {
   const { setTheme } = useTheme();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll(); // check initial state
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <nav className="w-full sticky top-0 z-[9999] glass">
-      <div className="w-full mx-auto max-w-7xl px-5 py-3 flex items-center justify-between">
+    <nav
+      className={`fixed top-0 left-0 right-0 z-[9999] transition-all duration-500 ease-out ${
+        isScrolled
+          ? "mx-auto mt-4 max-w-[720px] rounded-full shadow-2xl shadow-indigo-500/10 glass-premium"
+          : "w-full rounded-none shadow-none glass-flat"
+      }`}
+    >
+      <div
+        className={`w-full mx-auto flex items-center justify-between transition-all duration-500 ease-out ${
+          isScrolled
+            ? "max-w-[700px] px-6 py-2.5"
+            : "max-w-7xl px-5 py-3"
+        }`}
+      >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
           <Image

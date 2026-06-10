@@ -11,6 +11,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export function Header() {
 	const [open, setOpen] = React.useState(false);
+	const [isScrolled, setIsScrolled] = React.useState(false);
 
 	const links = [
 		{
@@ -28,6 +29,15 @@ export function Header() {
 	];
 
 	React.useEffect(() => {
+		const handleScroll = () => {
+			setIsScrolled(window.scrollY > 20);
+		};
+
+		window.addEventListener('scroll', handleScroll);
+		return () => window.removeEventListener('scroll', handleScroll);
+	}, []);
+
+	React.useEffect(() => {
 		if (open) {
 			document.body.style.overflow = 'hidden';
 		} else {
@@ -40,10 +50,20 @@ export function Header() {
 
 	return (
 		<header
-			className='sticky top-0 z-[9999] w-full bg-background border-b border-border/40'
+			className={cn(
+				'fixed top-0 left-0 right-0 z-[9999] transition-all duration-700',
+				isScrolled
+					? 'mx-auto mt-4 max-w-[1100px] rounded-full glass-premium-header'
+					: 'w-full rounded-none border-b border-border/40 glass-flat-header'
+			)}
 		>
 			<nav
-				className='mx-auto flex h-[72px] w-full max-w-7xl items-center justify-between px-6 lg:px-8'
+				className={cn(
+					'mx-auto flex w-full items-center justify-between transition-all duration-700',
+					isScrolled
+						? 'max-w-[1080px] px-8 h-[56px]'
+						: 'max-w-7xl px-6 lg:px-8 h-[72px]'
+				)}
 			>
 				{/* Logo Section */}
 				<Link href="/" className="flex items-center gap-3 group shrink-0">
