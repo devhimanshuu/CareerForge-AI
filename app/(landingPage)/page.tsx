@@ -95,39 +95,17 @@ function LiveAgentPulse() {
   );
 }
 
-/* ── Pipeline Connector ── */
-function PipelineConnector({ direction = "right" }: { direction?: "right" | "down" }) {
-  return (
-    <div className={cn(
-      "flex items-center justify-center",
-      direction === "right" ? "hidden lg:flex w-12" : "flex lg:hidden h-8"
-    )}>
-      {direction === "right" ? (
-        <div className="flex items-center gap-1">
-          <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
-          <ArrowRight size={12} className="text-indigo-500/50" />
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-1">
-          <div className="h-6 w-px bg-gradient-to-b from-transparent via-indigo-500/40 to-transparent" />
-          <ChevronDown size={12} className="text-indigo-500/50" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Pipeline Visualization — Single Traveling Dot ── */
-const PIPELINE_DOT_COLORS: Record<string, { bg: string; glow: string }> = {
-  indigo: { bg: "#6366f1", glow: "rgba(99,102,241,0.6)" },
-  emerald: { bg: "#10b981", glow: "rgba(16,185,129,0.6)" },
-  amber: { bg: "#f59e0b", glow: "rgba(245,158,11,0.6)" },
-  blue: { bg: "#3b82f6", glow: "rgba(59,130,246,0.6)" },
-  rose: { bg: "#f43f5e", glow: "rgba(244,63,94,0.6)" },
-  violet: { bg: "#8b5cf6", glow: "rgba(139,92,246,0.6)" },
+/* ── Pipeline Visualization — SVG-Based Traveling Dot ── */
+const PIPELINE_COLORS: Record<string, { bg: string; glow: string }> = {
+  indigo: { bg: "#6366f1", glow: "rgba(99,102,241,0.7)" },
+  emerald: { bg: "#10b981", glow: "rgba(16,185,129,0.7)" },
+  amber: { bg: "#f59e0b", glow: "rgba(245,158,11,0.7)" },
+  blue: { bg: "#3b82f6", glow: "rgba(59,130,246,0.7)" },
+  rose: { bg: "#f43f5e", glow: "rgba(244,63,94,0.7)" },
+  violet: { bg: "#8b5cf6", glow: "rgba(139,92,246,0.7)" },
 };
 
-type ColorKey = keyof typeof PIPELINE_DOT_COLORS;
+type DotColorKey = keyof typeof PIPELINE_COLORS;
 
 function PipelineVisualization({
   agents,
@@ -136,41 +114,38 @@ function PipelineVisualization({
   agents: Array<{ id: string; icon: React.ReactNode; title: string; color: string }>;
   colorMap: Record<string, { bg: string; text: string; border: string; ring: string; glowColor: string; hoverBg: string; iconBg: string; iconBorder: string; edgeGlow: string }>;
 }) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const connRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [connPositions, setConnPositions] = useState<Array<{ left: number; right: number; y: number }>>([]);
-  /* activeConn = which connector the dot is currently travelling along */
-  const [activeConn, setActiveConn] = useState(0);
-  /* atSide = which side of the connector: 0 = left, 1 = right */
-  const [atSide, setAtSide] = useState(0);
+  const nodeRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [nodePositions, setNodePositions] = useState<Array<{ cx: number; cy: number }>>([]);
+  const [progress, setProgress] = useState(0); // 0 → 1 continuously
   const [isInView, setIsInView] = useState(false);
-  const [fadingOut, setFadingOut] = useState(false);
+  const animRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(0);
+  const progressRef = useRef(0);
 
   /* observe visibility */
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => setIsInView(entry.isIntersecting),
-      { threshold: 0.2 }
+      { threshold: 0.15 }
     );
-    const el = wrapperRef.current;
+    const el = containerRef.current;
     if (el) observer.observe(el);
     return () => { if (el) observer.unobserve(el); };
   }, []);
 
-  /* measure connector line positions */
+  /* measure icon node positions (center of each icon box) */
   useEffect(() => {
     const measure = () => {
       if (!containerRef.current) return;
       const cRect = containerRef.current.getBoundingClientRect();
-      setConnPositions(
-        connRefs.current.map((ref) => {
-          if (!ref) return { left: 0, right: 0, y: 0 };
+      setNodePositions(
+        nodeRefs.current.map((ref) => {
+          if (!ref) return { cx: 0, cy: 0 };
           const r = ref.getBoundingClientRect();
           return {
-            left: r.left - cRect.left,
-            right: r.right - cRect.left,
-            y: r.top + r.height / 2 - cRect.top,
+            cx: r.left + r.width / 2 - cRect.left,
+            cy: r.top + r.height / 2 - cRect.top,
           };
         })
       );
@@ -180,74 +155,120 @@ function PipelineVisualization({
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  /* cycle: left-of-conn → right-of-conn → left-of-next-conn → … */
+  /* smooth continuous animation loop */
   useEffect(() => {
-    if (!isInView || connPositions.length === 0) return;
-    const id = setInterval(() => {
-      setAtSide((prev) => {
-        if (prev === 0) {
-          /* was at left, move to right of same connector */
-          return 1;
+    if (!isInView || nodePositions.length < 2) return;
+
+    const speed = 0.12; // progress units per second (~8.3s for full pipeline)
+    const pauseAtEnd = 0.6; // seconds to pause before resetting
+    let pauseTimer = 0;
+    let paused = false;
+
+    const tick = (time: number) => {
+      if (lastTimeRef.current === 0) lastTimeRef.current = time;
+      const dt = (time - lastTimeRef.current) / 1000;
+      lastTimeRef.current = time;
+
+      if (paused) {
+        pauseTimer += dt;
+        if (pauseTimer >= pauseAtEnd) {
+          paused = false;
+          pauseTimer = 0;
+          progressRef.current = 0;
         }
-        /* was at right, jump to left of next connector */
-        setActiveConn((c) => {
-          const next = c + 1;
-          if (next >= connPositions.length) {
-            /* finished last connector → fade out & reset */
-            setFadingOut(true);
-            return 0;
-          }
-          return next;
-        });
-        return 0;
-      });
-    }, 1200);
-    return () => clearInterval(id);
-  }, [isInView, connPositions.length]);
+      } else {
+        progressRef.current += speed * dt;
+        if (progressRef.current >= 1) {
+          progressRef.current = 1;
+          paused = true;
+          pauseTimer = 0;
+        }
+      }
 
-  /* auto-hide fade-out */
-  useEffect(() => {
-    if (!fadingOut) return;
-    const t = setTimeout(() => setFadingOut(false), 400);
-    return () => clearTimeout(t);
-  }, [fadingOut]);
+      setProgress(progressRef.current);
+      animRef.current = requestAnimationFrame(tick);
+    };
 
-  const conn = connPositions[activeConn];
-  const dotX = conn ? (atSide === 0 ? conn.left : conn.right) : 0;
-  const dotY = conn ? conn.y : 0;
-  /* color: after crossing right side the dot has picked up that connector's exit colour */
-  const colorIdx = atSide === 1 ? activeConn + 1 : activeConn;
-  const color = (agents[Math.min(colorIdx, agents.length - 1)]?.color as ColorKey) || "indigo";
-  const ci = PIPELINE_DOT_COLORS[color];
-  const posDur = fadingOut ? 0.05 : 1.0;
+    lastTimeRef.current = 0;
+    animRef.current = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(animRef.current);
+      lastTimeRef.current = 0;
+    };
+  }, [isInView, nodePositions.length]);
 
-  /* which icon is "active" (glowing) — the one the dot just arrived at */
-  const glowIdx = atSide === 1 ? activeConn + 1 : activeConn;
+  const n = nodePositions.length;
+  if (n < 2) return null;
+
+  /* compute the total pipeline path length (sum of distances between consecutive nodes) */
+  const segmentLengths: number[] = [];
+  let totalLength = 0;
+  for (let i = 0; i < n - 1; i++) {
+    const dx = nodePositions[i + 1].cx - nodePositions[i].cx;
+    const dy = nodePositions[i + 1].cy - nodePositions[i].cy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    segmentLengths.push(len);
+    totalLength += len;
+  }
+
+  /* find the dot position along the path using progress (0→1) */
+  const targetDist = progress * totalLength;
+  let dotX = 0;
+  let dotY = 0;
+  let currentColor: DotColorKey = agents[0].color as DotColorKey;
+  let activeSegIdx = 0;
+  let segProgress = 0; // 0→1 within current segment
+
+  let accDist = 0;
+  for (let i = 0; i < n - 1; i++) {
+    if (targetDist <= accDist + segmentLengths[i] || i === n - 2) {
+      const segLen = segmentLengths[i];
+      const t = segLen > 0 ? Math.min((targetDist - accDist) / segLen, 1) : 0;
+      dotX = nodePositions[i].cx + (nodePositions[i + 1].cx - nodePositions[i].cx) * t;
+      dotY = nodePositions[i].cy + (nodePositions[i + 1].cy - nodePositions[i].cy) * t;
+      activeSegIdx = i;
+      segProgress = t;
+      /* color picks up the destination node's color once >50% through */
+      currentColor = (t > 0.5 ? agents[i + 1] : agents[i]).color as DotColorKey;
+      break;
+    }
+    accDist += segmentLengths[i];
+  }
+
+  const ci = PIPELINE_COLORS[currentColor];
+
+  /* which node is "active" (glowing) */
+  const glowIdx = segProgress > 0.5 ? activeSegIdx + 1 : activeSegIdx;
+
+  /* fade out the dot at the very end */
+  const dotOpacity = progress >= 0.98 ? Math.max(0, 1 - (progress - 0.98) * 50) : 1;
 
   return (
-    <div ref={wrapperRef} className="flex items-center justify-center">
-      <div ref={containerRef} className="relative flex items-center gap-0">
+    <div ref={containerRef} className="relative flex items-center justify-center">
+      {/* Icons + Connector Lines */}
+      <div className="relative flex items-center gap-0">
         {agents.map((agent, idx) => {
           const c = colorMap[agent.color];
-          const isGlowing = idx === Math.min(glowIdx, agents.length - 1) && !fadingOut;
+          const isGlowing = idx === Math.min(glowIdx, n - 1);
           return (
             <div key={agent.id} className="flex items-center">
               <div className="flex flex-col items-center gap-2">
                 <motion.div
+                  ref={(el) => { nodeRefs.current[idx] = el; }}
                   animate={{
-                    scale: isGlowing ? 1.1 : 1,
-                    borderColor: isGlowing ? PIPELINE_DOT_COLORS[agent.color].bg : "transparent",
+                    scale: isGlowing ? 1.12 : 1,
                   }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
                   className={cn(
-                    "w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-shadow duration-300",
+                    "w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-shadow duration-400",
                     c.bg, "text-white",
                     "shadow-lg"
                   )}
                   style={{
                     boxShadow: isGlowing
-                      ? `0 0 20px 4px ${PIPELINE_DOT_COLORS[agent.color].glow}`
+                      ? `0 0 24px 6px ${ci.glow}`
                       : undefined,
+                    borderColor: isGlowing ? ci.bg : "transparent",
                   }}
                 >
                   {agent.icon}
@@ -260,22 +281,19 @@ function PipelineVisualization({
                 </span>
               </div>
 
-              {/* Connector line — visible track the dot travels along */}
-              {idx < agents.length - 1 && (
-                <div
-                  ref={(el) => { connRefs.current[idx] = el; }}
-                  className="w-16 sm:w-20 h-[3px] rounded-full bg-border/40 mx-1 sm:mx-2 relative overflow-hidden"
-                >
-                  {/* Colored fill that grows as the dot passes */}
-                  <motion.div
+              {/* Connector line — filled progressively */}
+              {idx < n - 1 && (
+                <div className="w-16 sm:w-20 h-[3px] rounded-full bg-border/40 mx-1 sm:mx-2 relative overflow-hidden">
+                  {/* Base track */}
+                  <div className="absolute inset-0 rounded-full" />
+                  {/* Colored fill — clips to current segment progress */}
+                  <div
                     className="absolute inset-0 rounded-full origin-left"
-                    animate={{
-                      scaleX: idx <= activeConn && !fadingOut ? 1 : 0,
-                      opacity: idx <= activeConn && !fadingOut ? 1 : 0,
-                    }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
                     style={{
-                      background: `linear-gradient(to right, ${PIPELINE_DOT_COLORS[agents[idx].color].bg}, ${PIPELINE_DOT_COLORS[agents[idx + 1].color].bg})`,
+                      background: `linear-gradient(to right, ${PIPELINE_COLORS[agents[idx].color].bg}, ${PIPELINE_COLORS[agents[idx + 1].color].bg})`,
+                      transform: `scaleX(${idx < activeSegIdx ? 1 : idx === activeSegIdx ? segProgress : 0})`,
+                      opacity: idx <= activeSegIdx ? 1 : 0,
+                      transition: "none",
                     }}
                   />
                 </div>
@@ -284,66 +302,51 @@ function PipelineVisualization({
           );
         })}
 
-        {/* ── The Single Traveling Dot — sits ON the connector track ── */}
-        {connPositions.length > 0 && (
-          <>
-            {/* Soft glow halo — small, tight, on the line */}
-            <motion.div
-              className="absolute pointer-events-none z-10"
-              animate={{
-                x: dotX - 12,
-                y: dotY - 12,
-                opacity: fadingOut ? 0 : 0.7,
-              }}
-              transition={{
-                x: { duration: posDur, ease: [0.4, 0, 0.2, 1] },
-                y: { duration: posDur, ease: [0.4, 0, 0.2, 1] },
-                opacity: { duration: 0.3 },
-              }}
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: "50%",
-                background: `radial-gradient(circle, ${ci.glow} 0%, transparent 70%)`,
-              }}
+        {/* ── SVG Overlay for the Traveling Dot ── */}
+        {nodePositions.length >= 2 && (
+          <svg
+            className="absolute inset-0 pointer-events-none z-30"
+            width="100%"
+            height="100%"
+            style={{ overflow: "visible" }}
+          >
+            <defs>
+              <filter id="pipeline-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            {/* Outer glow ring */}
+            <circle
+              cx={dotX}
+              cy={dotY}
+              r={14}
+              fill={ci.glow}
+              opacity={dotOpacity * 0.4}
+              style={{ transition: "fill 0.3s" }}
             />
-            {/* Main dot — centered on the 3px track */}
-            <motion.div
-              className="absolute pointer-events-none z-20"
-              animate={{
-                x: dotX - 5,
-                y: dotY - 5,
-                backgroundColor: ci.bg,
-                boxShadow: `0 0 8px 3px ${ci.glow}`,
-                opacity: fadingOut ? 0 : 1,
-              }}
-              transition={{
-                x: { duration: posDur, ease: [0.4, 0, 0.2, 1] },
-                y: { duration: posDur, ease: [0.4, 0, 0.2, 1] },
-                backgroundColor: { duration: 0.35 },
-                boxShadow: { duration: 0.35 },
-                opacity: { duration: 0.3 },
-              }}
-              style={{ width: 10, height: 10, borderRadius: "50%" }}
+            {/* Main dot */}
+            <circle
+              cx={dotX}
+              cy={dotY}
+              r={6}
+              fill={ci.bg}
+              opacity={dotOpacity}
+              filter="url(#pipeline-glow)"
+              style={{ transition: "fill 0.3s" }}
             />
-            {/* Trailing afterglow — follows the dot along the line */}
-            <motion.div
-              className="absolute pointer-events-none z-[15]"
-              animate={{
-                x: dotX - 3,
-                y: dotY - 3,
-                backgroundColor: ci.bg,
-                opacity: fadingOut ? 0 : 0.4,
-              }}
-              transition={{
-                x: { duration: posDur + 0.2, ease: [0.4, 0, 0.2, 1] },
-                y: { duration: posDur + 0.2, ease: [0.4, 0, 0.2, 1] },
-                backgroundColor: { duration: 0.35 },
-                opacity: { duration: 0.3 },
-              }}
-              style={{ width: 6, height: 6, borderRadius: "50%", filter: "blur(2px)" }}
+            {/* Inner bright core */}
+            <circle
+              cx={dotX}
+              cy={dotY}
+              r={2.5}
+              fill="white"
+              opacity={dotOpacity * 0.9}
             />
-          </>
+          </svg>
         )}
       </div>
     </div>

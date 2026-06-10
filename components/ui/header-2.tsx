@@ -138,7 +138,7 @@ export function Header() {
 			{/* Mobile Menu */}
 			<div
 				className={cn(
-					'fixed top-[72px] right-0 bottom-0 left-0 z-[9998] flex flex-col glass-flat-header border-t border-border/30 lg:hidden transition-all duration-500 ease-out',
+					'fixed top-[72px] right-0 bottom-0 left-0 z-[9998] flex flex-col glass-mobile-menu border-t border-border/20 lg:hidden transition-all duration-500 ease-out',
 					open
 						? 'opacity-100 pointer-events-auto translate-y-0'
 						: 'opacity-0 pointer-events-none -translate-y-4',
@@ -151,7 +151,7 @@ export function Header() {
 								key={link.label}
 								href={link.href}
 								onClick={() => setOpen(false)}
-								className="text-lg font-semibold text-foreground hover:text-indigo-500 backdrop-blur-xl bg-white/60 border border-white/40 hover:bg-white/75 hover:border-indigo-500/50 transition-all duration-300 rounded-2xl px-5 py-4 shadow-md dark:bg-white/[0.06] dark:border-white/[0.08] dark:hover:bg-white/[0.12]"
+								className="text-lg font-semibold text-foreground hover:text-indigo-500 bg-background/60 border border-border/40 hover:bg-background/80 hover:border-indigo-500/50 transition-all duration-300 rounded-2xl px-5 py-4 shadow-md"
 							>
 								{link.label}
 							</Link>
@@ -161,7 +161,7 @@ export function Header() {
 						<Button
 							asChild
 							variant="outline"
-							className="w-full h-14 rounded-2xl font-semibold border-white/40 bg-white/55 backdrop-blur-xl hover:bg-white/70 hover:border-indigo-500/50 transition-all duration-300 text-foreground shadow-md dark:bg-white/[0.06] dark:border-white/[0.08] dark:hover:bg-white/[0.12]"
+							className="w-full h-14 rounded-2xl font-semibold border-border/40 bg-background/60 backdrop-blur-xl hover:bg-background/80 hover:border-indigo-500/50 transition-all duration-300 text-foreground shadow-md"
 						>
 							<Link href="/sign-in" onClick={() => setOpen(false)}>Sign In</Link>
 						</Button>
