@@ -90,7 +90,7 @@ const Header = () => {
     <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Left Section: Logo + Nav */}
-        <div className="flex min-w-0 items-center gap-6">
+        <div className="flex min-w-0 items-center gap-6 overflow-hidden">
           {/* Logo */}
           <Link
             href="/dashboard"
@@ -111,11 +111,10 @@ const Header = () => {
           </Link>
 
           {/* Divider */}
-          <div className="hidden md:block w-px h-5 bg-border/60" />
+          <div className="hidden md:block w-px h-5 bg-border/60 shrink-0" />
 
           {/* Navigation */}
-          <nav className="hidden md:flex items-center gap-1 overflow-x-auto min-w-0 md:flex-none scrollbar-none py-1">
-
+          <nav className="hidden md:flex items-center gap-0.5 overflow-x-auto min-w-0 scrollbar-none py-1">
             {navItems.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -126,23 +125,35 @@ const Header = () => {
                   key={item.href}
                   href={item.href}
                   className={`
-                    relative flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-all duration-200 shrink-0
+                    group relative flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold shrink-0
+                    transition-[background-color,color,box-shadow,transform] duration-300 ease-out
+                    hover:transition-[transform] hover:duration-300 hover:ease-[cubic-bezier(0.34,1.56,0.64,1)]
                     ${
                       isActive
-                        ? "bg-foreground text-background shadow-sm"
-                        : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                        ? "bg-foreground text-background shadow-sm scale-100"
+                        : "text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:scale-[1.04] active:scale-95"
                     }
                   `}
                 >
-                  <Icon size={14} />
+                  <Icon
+                    size={14}
+                    className={`transition-transform duration-300 ${
+                      isActive
+                        ? "scale-110 -rotate-6 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                        : "group-hover:rotate-12 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                    }`}
+                  />
                   {item.label}
                   {item.href === "/dashboard/automation" && agentAlerts > 0 && (
-                    <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-black text-white">
+                    <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-black text-white animate-pulse">
                       {agentAlerts}
                     </span>
                   )}
                   {isActive && (
-                    <span className="absolute -bottom-[13px] left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-indigo-500" />
+                    <span className="absolute -bottom-[13px] left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-indigo-500 animate-[slideIn_0.3s_ease-out_forwards]" />
+                  )}
+                  {!isActive && (
+                    <span className="absolute -bottom-[13px] left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-indigo-500 transition-all duration-300 group-hover:w-4" />
                   )}
                 </Link>
               );

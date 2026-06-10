@@ -1,15 +1,16 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useResumeContext } from "@/context/resume-info-provider";
 import { Button } from "@/components/ui/button";
-import { Loader, Plus, X } from "lucide-react";
+import { Loader, Plus, X, GraduationCap, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Reorder } from "framer-motion";
-import { GripVertical } from "lucide-react";
+import { Reorder, useDragControls } from "framer-motion";
 import { generateThumbnail } from "@/lib/helper";
 import { toast } from "@/hooks/use-toast";
 import useUpdateDocument from "@/features/document/use-update-document";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const initialState = {
   id: undefined,
@@ -43,32 +44,213 @@ const areListContentsEqual = (listA: any[], listB: any[]) => {
   return true;
 };
 
+const EducationCard = ({
+  item,
+  index,
+  educationList,
+  handleChange,
+  removeEducation,
+  isPending,
+}: {
+  item: any;
+  index: number;
+  educationList: any[];
+  handleChange: (e: any, index: number) => void;
+  removeEducation: (index: number) => void;
+  isPending: boolean;
+}) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const controls = useDragControls();
+
+  const isComplete = item.universityName && item.degree;
+
+  return (
+    <Reorder.Item
+      key={item._localId}
+      value={item}
+      className="bg-background"
+      dragListener={false}
+      dragControls={controls}
+    >
+      <div className="section-card overflow-hidden mb-4">
+        {/* Card Header - Collapsible */}
+        <div className="flex items-center gap-3 px-5 py-3.5">
+          <div
+            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
+            onPointerDown={(e) => controls.start(e)}
+          >
+            <GripVertical size={16} />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex-1 flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black",
+                  isComplete
+                    ? "bg-emerald-500/10 text-emerald-500"
+                    : "bg-muted text-muted-foreground"
+                )}
+              >
+                {index + 1}
+              </div>
+              <div>
+                <p className="text-sm font-bold">
+                  {item.universityName || `Education ${index + 1}`}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {item.degree ? `${item.degree}${item.major ? ` in ${item.major}` : ""}` : "Degree & major"}
+                </p>
+              </div>
+            </div>
+            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+
+          {educationList.length > 1 && (
+            <Button
+              variant="ghost"
+              type="button"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              onClick={() => removeEducation(index)}
+            >
+              <X size={14} />
+            </Button>
+          )}
+        </div>
+
+        {/* Collapsible Content */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="px-5 pb-5 space-y-4 border-t border-border/30 pt-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-muted-foreground">
+                    University Name
+                  </Label>
+                  <Input
+                    name="universityName"
+                    placeholder="MIT"
+                    required
+                    value={item?.universityName || ""}
+                    onChange={(e) => handleChange(e, index)}
+                    className="h-10 rounded-xl border-border/50 focus-visible:ring-indigo-500/50 focus-visible:ring-2 transition-all"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-muted-foreground">
+                      Degree
+                    </Label>
+                    <Input
+                      name="degree"
+                      placeholder="Bachelor of Science"
+                      required
+                      value={item?.degree || ""}
+                      onChange={(e) => handleChange(e, index)}
+                      className="h-10 rounded-xl border-border/50 focus-visible:ring-indigo-500/50 focus-visible:ring-2 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-muted-foreground">
+                      Major
+                    </Label>
+                    <Input
+                      name="major"
+                      placeholder="Computer Science"
+                      required
+                      value={item?.major || ""}
+                      onChange={(e) => handleChange(e, index)}
+                      className="h-10 rounded-xl border-border/50 focus-visible:ring-indigo-500/50 focus-visible:ring-2 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-muted-foreground">
+                      Start Date
+                    </Label>
+                    <Input
+                      name="startDate"
+                      type="date"
+                      required
+                      value={item?.startDate || ""}
+                      onChange={(e) => handleChange(e, index)}
+                      className="h-10 rounded-xl border-border/50 focus-visible:ring-indigo-500/50 focus-visible:ring-2 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-muted-foreground">
+                      End Date
+                    </Label>
+                    <Input
+                      name="endDate"
+                      type="date"
+                      required
+                      value={item?.endDate || ""}
+                      onChange={(e) => handleChange(e, index)}
+                      className="h-10 rounded-xl border-border/50 focus-visible:ring-indigo-500/50 focus-visible:ring-2 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-muted-foreground">
+                    Description
+                  </Label>
+                  <Textarea
+                    name="description"
+                    placeholder="GPA, honors, relevant coursework, activities..."
+                    required
+                    value={item.description || ""}
+                    onChange={(e) => handleChange(e, index)}
+                    className="min-h-[80px] rounded-xl border-border/50 focus-visible:ring-indigo-500/50 focus-visible:ring-2 transition-all resize-none"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </Reorder.Item>
+  );
+};
+
 const EducationForm = (props: { handleNext: () => void }) => {
   const { handleNext } = props;
   const { resumeInfo, onUpdate } = useResumeContext();
-
   const { mutateAsync, isPending } = useUpdateDocument();
 
   const [educationList, setEducationList] = React.useState(() => {
     const list = resumeInfo?.educations?.length
       ? resumeInfo.educations
       : [initialState];
-    return list.map(item => ({ ...item, _localId: item.id || crypto.randomUUID() }));
+    return list.map((item) => ({
+      ...item,
+      _localId: item.id || crypto.randomUUID(),
+    }));
   });
 
-  // Sync from context when resumeInfo.educations changes (e.g. after PDF import)
   useEffect(() => {
     const contextEducations = resumeInfo?.educations || [];
     if (!contextEducations.length) return;
     if (!areListContentsEqual(educationList, contextEducations)) {
       setEducationList(
-        contextEducations.map(item => ({
+        contextEducations.map((item) => ({
           ...item,
           _localId: item.id || crypto.randomUUID(),
         }))
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeInfo?.educations]);
 
   useEffect(() => {
@@ -85,7 +267,6 @@ const EducationForm = (props: { handleNext: () => void }) => {
     index: number
   ) => {
     const { name, value } = e.target;
-
     setEducationList((prevState) => {
       const newEducationList = [...prevState];
       newEducationList[index] = {
@@ -97,7 +278,10 @@ const EducationForm = (props: { handleNext: () => void }) => {
   };
 
   const addNewEducation = () => {
-    setEducationList([...educationList, { ...initialState, _localId: crypto.randomUUID() }]);
+    setEducationList([
+      ...educationList,
+      { ...initialState, _localId: crypto.randomUUID() },
+    ]);
   };
 
   const removeEducation = (index: number) => {
@@ -109,7 +293,6 @@ const EducationForm = (props: { handleNext: () => void }) => {
   const handleSubmit = useCallback(
     async (e: { preventDefault: () => void }) => {
       e.preventDefault();
-
       const thumbnail = await generateThumbnail();
       const currentNo = resumeInfo?.currentPosition
         ? resumeInfo.currentPosition + 1
@@ -143,135 +326,75 @@ const EducationForm = (props: { handleNext: () => void }) => {
   );
 
   return (
-    <div>
-      <div className="w-full">
-        <h2 className="font-bold text-lg">Education</h2>
-        <p className="text-sm">Add your education details</p>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-6"
+    >
+      {/* Section Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-bold text-lg flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center">
+              <GraduationCap size={16} className="text-amber-500" />
+            </div>
+            Education
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Add your academic background
+          </p>
+        </div>
       </div>
+
       <form onSubmit={handleSubmit}>
         <Reorder.Group
           axis="y"
           values={educationList}
           onReorder={setEducationList}
-          className="border w-full h-auto divide-y-[1px] rounded-md px-3 pb-4 my-5"
+          className="space-y-0"
         >
           {educationList?.map((item, index) => (
-            <Reorder.Item
+            <EducationCard
               key={item._localId}
-              value={item}
-              className="bg-background relative"
-            >
-              <div
-                className="relative grid grid-cols-1 sm:grid-cols-2
-                  mb-5 pt-4 gap-3
-                  "
-              >
-                <div className="absolute -left-6 top-6 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
-                  <GripVertical size="16px" />
-                </div>
-                {educationList?.length > 1 && (
-                  <Button
-                    variant="secondary"
-                    type="button"
-                    disabled={isPending}
-                    className="size-[20px] text-center
-                rounded-full absolute -top-3 -right-5
-                !bg-black dark:!bg-gray-600 text-white
-                "
-                    size="icon"
-                    onClick={() => removeEducation(index)}
-                  >
-                    <X size="13px" />
-                  </Button>
-                )}
-
-                <div className="col-span-1 sm:col-span-2">
-                  <Label className="text-sm">University Name</Label>
-                  <Input
-                    name="universityName"
-                    placeholder=""
-                    required
-                    value={item?.universityName || ""}
-                    onChange={(e) => handleChange(e, index)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Degree</Label>
-                  <Input
-                    name="degree"
-                    placeholder=""
-                    required
-                    value={item?.degree || ""}
-                    onChange={(e) => handleChange(e, index)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Major</Label>
-                  <Input
-                    name="major"
-                    placeholder=""
-                    required
-                    value={item?.major || ""}
-                    onChange={(e) => handleChange(e, index)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Start Date</Label>
-                  <Input
-                    name="startDate"
-                    type="date"
-                    placeholder=""
-                    required
-                    value={item?.startDate || ""}
-                    onChange={(e) => handleChange(e, index)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">End Date</Label>
-                  <Input
-                    name="endDate"
-                    type="date"
-                    placeholder=""
-                    required
-                    value={item?.endDate || ""}
-                    onChange={(e) => handleChange(e, index)}
-                  />
-                </div>
-                <div className="col-span-1 sm:col-span-2 mt-1">
-                  <Label className="text-sm">Description</Label>
-                  <Textarea
-                    name="description"
-                    placeholder=""
-                    required
-                    value={item.description || ""}
-                    onChange={(e) => handleChange(e, index)}
-                  />
-                </div>
-              </div>
-
-              {index === educationList.length - 1 &&
-                educationList.length < 5 && (
-                  <Button
-                    className="gap-1 mt-1 text-primary 
-                          border-primary/50"
-                    variant="outline"
-                    type="button"
-                    disabled={isPending}
-                    onClick={addNewEducation}
-                  >
-                    <Plus size="15px" />
-                    Add More Education
-                  </Button>
-                )}
-            </Reorder.Item>
+              item={item}
+              index={index}
+              educationList={educationList}
+              handleChange={handleChange}
+              removeEducation={removeEducation}
+              isPending={isPending}
+            />
           ))}
         </Reorder.Group>
-        <Button className="mt-4" type="submit" disabled={isPending}>
-          {isPending && <Loader size="15px" className="animate-spin" />}
-          Save Changes
+
+        {educationList.length < 5 && (
+          <Button
+            className="gap-2 w-full h-11 rounded-xl border-dashed border-2 border-border/50 bg-transparent hover:bg-muted/30 text-muted-foreground hover:text-foreground font-bold transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+            variant="outline"
+            type="button"
+            disabled={isPending}
+            onClick={addNewEducation}
+          >
+            <Plus size={16} />
+            Add Another Education
+          </Button>
+        )}
+
+        <Button
+          className="w-full h-11 rounded-xl font-bold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-500/10 mt-4"
+          type="submit"
+          disabled={isPending}
+        >
+          {isPending ? (
+            <Loader size="15px" className="animate-spin" />
+          ) : (
+            <>
+              Save & Continue
+              <span className="ml-1 text-xs opacity-70">→</span>
+            </>
+          )}
         </Button>
       </form>
-    </div>
+    </motion.div>
   );
 };
 

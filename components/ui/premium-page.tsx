@@ -32,7 +32,7 @@ const toneMap = {
 
 export const PremiumPage = ({ children, className }: PremiumPageProps) => {
   return (
-    <div className={cn("w-full min-h-[calc(100vh-56px)]", className)}>
+    <div className={cn("w-full min-h-full", className)}>
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {children}
       </div>

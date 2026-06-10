@@ -27,6 +27,7 @@ import {
   Briefcase,
   Clock,
   Mail,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -635,22 +636,28 @@ const AutomationHub = () => {
       )}
 
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <PremiumPanel className="p-6">
+        <PremiumPanel className="flex flex-col p-6">
           <AgentHeading icon={<Lightbulb size={18} />} title="Agentic Insights" description="Approve, dismiss, or complete generated recommendations." />
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 max-h-[520px] space-y-3 overflow-y-auto overscroll-contain rounded-xl pr-1 custom-scrollbar">
             {insights.length === 0 && <EmptyState text="Run an optimizer or networking agent to create insights." />}
-            {insights.slice(0, 12).map((insight) => (
-              <div key={insight.id} className="rounded-xl border p-4">
+            {insights.map((insight) => (
+              <div key={insight.id} className="rounded-xl border p-4 transition-colors hover:border-indigo-500/20">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500">{insight.type} · {insight.status}</p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500">{insight.type}</p>
+                      <StatusBadge status={insight.status} />
+                    </div>
                     <h3 className="mt-1 text-sm font-black">{insight.title}</h3>
-                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{insight.summary}</p>
-                    {insight.payload?.suggestedUpdate && <p className="mt-3 rounded-lg bg-indigo-500/5 p-3 text-xs font-semibold">{insight.payload.suggestedUpdate}</p>}
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">{insight.summary}</p>
+                    {insight.payload?.suggestedUpdate && <p className="mt-3 rounded-lg bg-indigo-500/5 p-3 text-xs font-semibold line-clamp-4">{insight.payload.suggestedUpdate}</p>}
+                    {insight.createdAt && (
+                      <p className="mt-2 text-[9px] font-semibold text-muted-foreground">{new Date(insight.createdAt).toLocaleDateString()}</p>
+                    )}
                   </div>
                   <div className="flex shrink-0 gap-1">
-                    <Button onClick={() => insight.payload?.patch && insight.payload.patch.kind !== "none" ? applyInsight(insight.id) : updateInsight(insight.id, "accepted")} variant="outline" size="icon" className="h-8 w-8 text-emerald-500"><Check size={13} /></Button>
-                    <Button onClick={() => updateInsight(insight.id, "dismissed")} variant="outline" size="icon" className="h-8 w-8 text-rose-500"><X size={13} /></Button>
+                    <Button onClick={() => insight.payload?.patch && insight.payload.patch.kind !== "none" ? applyInsight(insight.id) : updateInsight(insight.id, "accepted")} variant="outline" size="icon" className="h-8 w-8 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-600"><Check size={13} /></Button>
+                    <Button onClick={() => updateInsight(insight.id, "dismissed")} variant="outline" size="icon" className="h-8 w-8 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"><X size={13} /></Button>
                   </div>
                 </div>
               </div>
@@ -658,20 +665,23 @@ const AutomationHub = () => {
           </div>
         </PremiumPanel>
 
-        <PremiumPanel className="p-6">
+        <PremiumPanel className="flex flex-col p-6">
           <AgentHeading icon={<MessageSquare size={18} />} title="Recruiter Review Inbox" description="Resolve inline feedback from public review links." />
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 max-h-[520px] space-y-3 overflow-y-auto overscroll-contain rounded-xl pr-1 custom-scrollbar">
             {comments.length === 0 && <EmptyState text="Publish a portfolio link and ask a reviewer to leave feedback." />}
-            {comments.slice(0, 12).map((comment) => (
-              <div key={comment.id} className="rounded-xl border p-4">
+            {comments.map((comment) => (
+              <div key={comment.id} className="rounded-xl border p-4 transition-colors hover:border-violet-500/20">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-violet-500">{comment.documentTitle} · {comment.sectionId}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-violet-500">{comment.documentTitle} · {comment.sectionId}</p>
+                      <StatusBadge status={comment.status} />
+                    </div>
                     <h3 className="mt-1 text-sm font-black">{comment.reviewerName}</h3>
-                    {comment.selectedText && <p className="mt-2 border-l-2 border-violet-500 pl-2 text-[10px] italic text-muted-foreground">{comment.selectedText}</p>}
-                    <p className="mt-2 text-xs leading-relaxed">{comment.content}</p>
+                    {comment.selectedText && <p className="mt-2 border-l-2 border-violet-500 pl-2 text-[10px] italic text-muted-foreground line-clamp-2">{comment.selectedText}</p>}
+                    <p className="mt-2 text-xs leading-relaxed line-clamp-3">{comment.content}</p>
                     {comment.ownerReply && (
-                      <p className="mt-3 rounded-lg bg-emerald-500/5 p-3 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                      <p className="mt-3 rounded-lg bg-emerald-500/5 p-3 text-xs font-semibold text-emerald-700 dark:text-emerald-300 line-clamp-2">
                         Your reply: {comment.ownerReply}
                       </p>
                     )}
@@ -854,10 +864,230 @@ const SelectField = ({ value, onChange, options }: { value: string; onChange: (v
   </select>
 );
 
-const ResultPanel = ({ title, data }: { title: string; data: any }) => (
-  <PremiumPanel className="p-6">
-    <h2 className="mb-4 flex items-center gap-2 font-black"><ExternalLink size={16} className="text-indigo-500" /> {title}</h2>
-    <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-[11px] leading-relaxed text-slate-200">{JSON.stringify(data, null, 2)}</pre>
+const ResultPanel = ({ title, data }: { title: string; data: any }) => {
+  if (data?.profile && data?.repositories) return <GitHubResultPanel data={data} />;
+  if (data?.matchedUser) return <LeetCodeResultPanel data={data} />;
+  if (data?.companyBrief) return <NetworkResultPanel data={data} />;
+  return (
+    <PremiumPanel className="p-6">
+      <h2 className="mb-4 flex items-center gap-2 font-black"><ExternalLink size={16} className="text-indigo-500" /> {title}</h2>
+      <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-[11px] leading-relaxed text-slate-200">{JSON.stringify(data, null, 2)}</pre>
+    </PremiumPanel>
+  );
+};
+
+const GitHubResultPanel = ({ data }: { data: any }) => (
+  <PremiumPanel className="overflow-hidden p-0">
+    {/* Hero banner */}
+    <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-8 text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.15),transparent_60%)]" />
+      <div className="relative flex items-start gap-4">
+        {data.profile?.avatarUrl && (
+          <img src={data.profile.avatarUrl} alt="" className="h-16 w-16 rounded-2xl ring-2 ring-white/10" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Github size={18} className="text-indigo-300" />
+            <p className="text-xs font-bold uppercase tracking-widest text-indigo-300">GitHub Snapshot</p>
+          </div>
+          <h2 className="mt-2 text-xl font-black">{data.profile?.name || "Developer"}</h2>
+          {data.profile?.bio && <p className="mt-1 text-sm text-slate-300 line-clamp-2">{data.profile.bio}</p>}
+          {data.profile?.url && (
+            <a href={data.profile.url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-indigo-300 hover:text-indigo-200 transition-colors">
+              {data.profile.url.replace("https://github.com/", "github.com/")} <ExternalLink size={10} />
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+
+    {/* Stats row */}
+    <div className="grid grid-cols-3 border-b">
+      {[
+        { label: "Repos", value: data.profile?.publicRepos || 0, color: "indigo" },
+        { label: "Followers", value: data.profile?.followers || 0, color: "emerald" },
+        { label: "Recent Events", value: data.recentPublicContributions || 0, color: "amber" },
+      ].map((stat) => (
+        <div key={stat.label} className="px-4 py-4 text-center">
+          <p className="text-2xl font-black">{stat.value}</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p>
+        </div>
+      ))}
+    </div>
+
+    {/* Contribution grid */}
+    {data.contributionGrid?.length > 0 && (
+      <div className="border-b px-6 py-5">
+        <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Contribution Activity</p>
+        <div className="flex flex-wrap gap-[3px]">
+          {data.contributionGrid.map((day: { date: string; count: number }) => (
+            <div
+              key={day.date}
+              title={`${day.date}: ${day.count} commits`}
+              className="h-[11px] w-[11px] rounded-[2px] transition-all hover:ring-1 hover:ring-indigo-500/60"
+              style={{
+                backgroundColor: day.count === 0
+                  ? "rgba(99,102,241,0.08)"
+                  : day.count < 2
+                    ? "rgba(99,102,241,0.3)"
+                    : day.count < 4
+                      ? "rgba(99,102,241,0.55)"
+                      : "rgba(99,102,241,0.9)",
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* Top repositories */}
+    {data.repositories?.length > 0 && (
+      <div className="px-6 py-5">
+        <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Top Repositories</p>
+        <div className="space-y-2">
+          {data.repositories.map((repo: any) => (
+            <a
+              key={repo.name}
+              href={repo.url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between gap-4 rounded-xl border bg-background/60 p-4 transition-all hover:border-indigo-500/30 hover:bg-indigo-500/[0.03] group"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-black group-hover:text-indigo-600 transition-colors">{repo.name}</p>
+                {repo.description && <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{repo.description}</p>}
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                {repo.language && (
+                  <span className="flex items-center gap-1.5 rounded-full bg-background px-2.5 py-1 text-[10px] font-bold">
+                    <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                    {repo.language}
+                  </span>
+                )}
+                <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600">
+                  ★ {repo.stars}
+                </span>
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  {repo.forks} forks
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+  </PremiumPanel>
+);
+
+const LeetCodeResultPanel = ({ data }: { data: any }) => {
+  const profile = data.matchedUser?.profile;
+  const stats = data.matchedUser?.submitStatsGlobal?.acSubmissionNum || [];
+  const contest = data.userContestRanking;
+  const difficultyColors: Record<string, string> = {
+    All: "bg-slate-500",
+    Easy: "bg-emerald-500",
+    Medium: "bg-amber-500",
+    Hard: "bg-rose-500",
+  };
+
+  return (
+    <PremiumPanel className="overflow-hidden p-0">
+      {/* Hero banner */}
+      <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-amber-950 px-6 py-8 text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(245,158,11,0.15),transparent_60%)]" />
+        <div className="relative">
+          <div className="flex items-center gap-2">
+            <Trophy size={18} className="text-amber-300" />
+            <p className="text-xs font-bold uppercase tracking-widest text-amber-300">LeetCode Snapshot</p>
+          </div>
+          <h2 className="mt-2 text-xl font-black">{profile?.realName || "Developer"}</h2>
+          {profile?.aboutMe && <p className="mt-1 text-sm text-slate-300 line-clamp-2">{profile.aboutMe}</p>}
+          {contest && (
+            <div className="mt-4 flex items-center gap-4">
+              <div className="rounded-xl bg-white/10 px-4 py-2">
+                <p className="text-2xl font-black text-amber-300">{Math.round(contest.rating || 0)}</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Contest Rating</p>
+              </div>
+              <div className="rounded-xl bg-white/10 px-4 py-2">
+                <p className="text-2xl font-black text-white">Top {contest.topPercentage || 0}%</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Global Ranking</p>
+              </div>
+              <div className="rounded-xl bg-white/10 px-4 py-2">
+                <p className="text-2xl font-black text-white">{contest.attendedContestsCount || 0}</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Contests</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Difficulty breakdown */}
+      <div className="px-6 py-5">
+        <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Problems Solved</p>
+        <div className="space-y-3">
+          {stats.map((stat: any) => {
+            const total = stats[0]?.count || 1;
+            const pct = total > 0 ? Math.round((stat.count / total) * 100) : 0;
+            return (
+              <div key={stat.difficulty} className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold">{stat.difficulty}</span>
+                  <span className="text-xs font-black">{stat.count.toLocaleString()}</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted/50">
+                  <div
+                    className={`h-full rounded-full transition-all ${difficultyColors[stat.difficulty] || "bg-slate-400"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </PremiumPanel>
+  );
+};
+
+const NetworkResultPanel = ({ data }: { data: any }) => (
+  <PremiumPanel className="overflow-hidden p-0">
+    <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-violet-950 px-6 py-8 text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(139,92,246,0.15),transparent_60%)]" />
+      <div className="relative">
+        <div className="flex items-center gap-2">
+          <Network size={18} className="text-violet-300" />
+          <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Outreach Kit</p>
+        </div>
+        {data.companyBrief && <p className="mt-3 text-sm leading-relaxed text-slate-300">{data.companyBrief}</p>}
+      </div>
+    </div>
+    <div className="space-y-4 px-6 py-5">
+      {data.linkedinMessage && (
+        <div>
+          <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">LinkedIn Message</p>
+          <div className="rounded-xl bg-slate-950 p-4 text-[11px] leading-relaxed text-slate-200 whitespace-pre-wrap">{data.linkedinMessage}</div>
+        </div>
+      )}
+      {data.emailMessage && (
+        <div>
+          <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Email Draft</p>
+          <div className="rounded-xl bg-slate-950 p-4 text-[11px] leading-relaxed text-slate-200 whitespace-pre-wrap">{data.emailMessage}</div>
+        </div>
+      )}
+      {data.followUps?.length > 0 && (
+        <div>
+          <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Follow-up Sequence</p>
+          <div className="space-y-2">
+            {data.followUps.map((msg: string, idx: number) => (
+              <div key={idx} className="flex items-start gap-3 rounded-xl border p-3">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[10px] font-black text-violet-700">{idx + 1}</span>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">{msg}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   </PremiumPanel>
 );
 
