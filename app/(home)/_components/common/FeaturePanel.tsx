@@ -61,6 +61,7 @@ import TimeTraveler from "./TimeTraveler";
 import DigitalWalletCard from "./DigitalWalletCard";
 import TerminalEditor from "./TerminalEditor";
 import { useResumeContext } from "@/context/resume-info-provider";
+import { useSidebar } from "@/context/sidebar-context";
 
 interface FeaturePanelProps {
   isOpen: boolean;
@@ -101,9 +102,11 @@ const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode; colo
 function FeatureItem({
   feature,
   index,
+  onCollapseSidebar,
 }: {
   feature: FeatureDef;
   index: number;
+  onCollapseSidebar: () => void;
 }) {
   return (
     <motion.div
@@ -111,6 +114,10 @@ function FeatureItem({
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.03, duration: 0.3, ease: "easeOut" }}
       className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/60 transition-all duration-200 group border border-transparent hover:border-border/40 hover:shadow-sm"
+      onClick={() => {
+        // Collapse sidebar after a tick so the trigger's dialog/popover can mount first
+        requestAnimationFrame(() => onCollapseSidebar());
+      }}
     >
       <div
         className={cn(
@@ -137,6 +144,7 @@ function FeatureItem({
 /* ── Main Panel ── */
 const FeaturePanel = ({ isOpen, onClose }: FeaturePanelProps) => {
   const { resumeInfo } = useResumeContext();
+  const { collapsed, setCollapsed } = useSidebar();
   const [showTerminal, setShowTerminal] = useState(false);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
@@ -359,7 +367,7 @@ const FeaturePanel = ({ isOpen, onClose }: FeaturePanelProps) => {
                           </div>
                           <div className="space-y-0.5">
                             {catFeatures.map((feature, idx) => (
-                              <FeatureItem key={feature.id} feature={feature} index={groupIdx * 5 + idx} />
+                              <FeatureItem key={feature.id} feature={feature} index={groupIdx * 5 + idx} onCollapseSidebar={() => { if (!collapsed) setCollapsed(true); }} />
                             ))}
                           </div>
                         </motion.div>

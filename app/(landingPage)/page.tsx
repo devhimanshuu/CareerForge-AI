@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { SignUpButton } from "@clerk/nextjs";
 import {
@@ -34,6 +34,11 @@ import {
   Lock,
   Music,
   VolumeX,
+  Brain,
+  Network,
+  BarChart3,
+  Search,
+  Workflow,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -42,52 +47,444 @@ import { CyberneticBentoGrid } from "@/components/ui/cybernetic-bento-grid";
 import { TypewriterText } from "@/components/ui/typewriter-text";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { TestimonialMarquee } from "@/components/ui/testimonial-marquee";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+
+/* ── Live Agent Activity Pulse ── */
+function LiveAgentPulse() {
+  const [activeAgent, setActiveAgent] = useState(0);
+  const agents = [
+    { name: "ATS Optimizer", status: "Analyzing 3 job descriptions", color: "text-indigo-500" },
+    { name: "Job Scraper", status: "Scanning 12 new postings", color: "text-amber-500" },
+    { name: "Network Agent", status: "Drafting outreach for Google", color: "text-blue-500" },
+    { name: "Interview Coach", status: "Generating mock questions", color: "text-rose-500" },
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveAgent((prev) => (prev + 1) % agents.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-border/50 bg-card/60 backdrop-blur-xl shadow-lg">
+      <span className="relative flex h-2.5 w-2.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+      </span>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeAgent}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center gap-2"
+        >
+          <span className={cn("text-xs font-bold", agents[activeAgent].color)}>
+            {agents[activeAgent].name}
+          </span>
+          <span className="text-xs text-muted-foreground">—</span>
+          <span className="text-xs text-muted-foreground font-medium">
+            {agents[activeAgent].status}
+          </span>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ── Pipeline Connector ── */
+function PipelineConnector({ direction = "right" }: { direction?: "right" | "down" }) {
+  return (
+    <div className={cn(
+      "flex items-center justify-center",
+      direction === "right" ? "hidden lg:flex w-12" : "flex lg:hidden h-8"
+    )}>
+      {direction === "right" ? (
+        <div className="flex items-center gap-1">
+          <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
+          <ArrowRight size={12} className="text-indigo-500/50" />
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-1">
+          <div className="h-6 w-px bg-gradient-to-b from-transparent via-indigo-500/40 to-transparent" />
+          <ChevronDown size={12} className="text-indigo-500/50" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Pipeline Visualization — Single Traveling Dot ── */
+const PIPELINE_DOT_COLORS: Record<string, { bg: string; glow: string }> = {
+  indigo: { bg: "#6366f1", glow: "rgba(99,102,241,0.6)" },
+  emerald: { bg: "#10b981", glow: "rgba(16,185,129,0.6)" },
+  amber: { bg: "#f59e0b", glow: "rgba(245,158,11,0.6)" },
+  blue: { bg: "#3b82f6", glow: "rgba(59,130,246,0.6)" },
+  rose: { bg: "#f43f5e", glow: "rgba(244,63,94,0.6)" },
+  violet: { bg: "#8b5cf6", glow: "rgba(139,92,246,0.6)" },
+};
+
+type ColorKey = keyof typeof PIPELINE_DOT_COLORS;
+
+function PipelineVisualization({
+  agents,
+  colorMap,
+}: {
+  agents: Array<{ id: string; icon: React.ReactNode; title: string; color: string }>;
+  colorMap: Record<string, { bg: string; text: string; border: string; ring: string; glowColor: string; hoverBg: string; iconBg: string; iconBorder: string; edgeGlow: string }>;
+}) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const connRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [connPositions, setConnPositions] = useState<Array<{ left: number; right: number; y: number }>>([]);
+  /* activeConn = which connector the dot is currently travelling along */
+  const [activeConn, setActiveConn] = useState(0);
+  /* atSide = which side of the connector: 0 = left, 1 = right */
+  const [atSide, setAtSide] = useState(0);
+  const [isInView, setIsInView] = useState(false);
+  const [fadingOut, setFadingOut] = useState(false);
+
+  /* observe visibility */
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsInView(entry.isIntersecting),
+      { threshold: 0.2 }
+    );
+    const el = wrapperRef.current;
+    if (el) observer.observe(el);
+    return () => { if (el) observer.unobserve(el); };
+  }, []);
+
+  /* measure connector line positions */
+  useEffect(() => {
+    const measure = () => {
+      if (!containerRef.current) return;
+      const cRect = containerRef.current.getBoundingClientRect();
+      setConnPositions(
+        connRefs.current.map((ref) => {
+          if (!ref) return { left: 0, right: 0, y: 0 };
+          const r = ref.getBoundingClientRect();
+          return {
+            left: r.left - cRect.left,
+            right: r.right - cRect.left,
+            y: r.top + r.height / 2 - cRect.top,
+          };
+        })
+      );
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  /* cycle: left-of-conn → right-of-conn → left-of-next-conn → … */
+  useEffect(() => {
+    if (!isInView || connPositions.length === 0) return;
+    const id = setInterval(() => {
+      setAtSide((prev) => {
+        if (prev === 0) {
+          /* was at left, move to right of same connector */
+          return 1;
+        }
+        /* was at right, jump to left of next connector */
+        setActiveConn((c) => {
+          const next = c + 1;
+          if (next >= connPositions.length) {
+            /* finished last connector → fade out & reset */
+            setFadingOut(true);
+            return 0;
+          }
+          return next;
+        });
+        return 0;
+      });
+    }, 1200);
+    return () => clearInterval(id);
+  }, [isInView, connPositions.length]);
+
+  /* auto-hide fade-out */
+  useEffect(() => {
+    if (!fadingOut) return;
+    const t = setTimeout(() => setFadingOut(false), 400);
+    return () => clearTimeout(t);
+  }, [fadingOut]);
+
+  const conn = connPositions[activeConn];
+  const dotX = conn ? (atSide === 0 ? conn.left : conn.right) : 0;
+  const dotY = conn ? conn.y : 0;
+  /* color: after crossing right side the dot has picked up that connector's exit colour */
+  const colorIdx = atSide === 1 ? activeConn + 1 : activeConn;
+  const color = (agents[Math.min(colorIdx, agents.length - 1)]?.color as ColorKey) || "indigo";
+  const ci = PIPELINE_DOT_COLORS[color];
+  const posDur = fadingOut ? 0.05 : 1.0;
+
+  /* which icon is "active" (glowing) — the one the dot just arrived at */
+  const glowIdx = atSide === 1 ? activeConn + 1 : activeConn;
+
+  return (
+    <div ref={wrapperRef} className="flex items-center justify-center">
+      <div ref={containerRef} className="relative flex items-center gap-0">
+        {agents.map((agent, idx) => {
+          const c = colorMap[agent.color];
+          const isGlowing = idx === Math.min(glowIdx, agents.length - 1) && !fadingOut;
+          return (
+            <div key={agent.id} className="flex items-center">
+              <div className="flex flex-col items-center gap-2">
+                <motion.div
+                  animate={{
+                    scale: isGlowing ? 1.1 : 1,
+                    borderColor: isGlowing ? PIPELINE_DOT_COLORS[agent.color].bg : "transparent",
+                  }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className={cn(
+                    "w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-shadow duration-300",
+                    c.bg, "text-white",
+                    "shadow-lg"
+                  )}
+                  style={{
+                    boxShadow: isGlowing
+                      ? `0 0 20px 4px ${PIPELINE_DOT_COLORS[agent.color].glow}`
+                      : undefined,
+                  }}
+                >
+                  {agent.icon}
+                </motion.div>
+                <span className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors duration-300",
+                  isGlowing ? "text-foreground" : "text-muted-foreground"
+                )}>
+                  {agent.title.split(" ")[0]}
+                </span>
+              </div>
+
+              {/* Connector line — visible track the dot travels along */}
+              {idx < agents.length - 1 && (
+                <div
+                  ref={(el) => { connRefs.current[idx] = el; }}
+                  className="w-16 sm:w-20 h-[3px] rounded-full bg-border/40 mx-1 sm:mx-2 relative overflow-hidden"
+                >
+                  {/* Colored fill that grows as the dot passes */}
+                  <motion.div
+                    className="absolute inset-0 rounded-full origin-left"
+                    animate={{
+                      scaleX: idx <= activeConn && !fadingOut ? 1 : 0,
+                      opacity: idx <= activeConn && !fadingOut ? 1 : 0,
+                    }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    style={{
+                      background: `linear-gradient(to right, ${PIPELINE_DOT_COLORS[agents[idx].color].bg}, ${PIPELINE_DOT_COLORS[agents[idx + 1].color].bg})`,
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* ── The Single Traveling Dot — sits ON the connector track ── */}
+        {connPositions.length > 0 && (
+          <>
+            {/* Soft glow halo — small, tight, on the line */}
+            <motion.div
+              className="absolute pointer-events-none z-10"
+              animate={{
+                x: dotX - 12,
+                y: dotY - 12,
+                opacity: fadingOut ? 0 : 0.7,
+              }}
+              transition={{
+                x: { duration: posDur, ease: [0.4, 0, 0.2, 1] },
+                y: { duration: posDur, ease: [0.4, 0, 0.2, 1] },
+                opacity: { duration: 0.3 },
+              }}
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: "50%",
+                background: `radial-gradient(circle, ${ci.glow} 0%, transparent 70%)`,
+              }}
+            />
+            {/* Main dot — centered on the 3px track */}
+            <motion.div
+              className="absolute pointer-events-none z-20"
+              animate={{
+                x: dotX - 5,
+                y: dotY - 5,
+                backgroundColor: ci.bg,
+                boxShadow: `0 0 8px 3px ${ci.glow}`,
+                opacity: fadingOut ? 0 : 1,
+              }}
+              transition={{
+                x: { duration: posDur, ease: [0.4, 0, 0.2, 1] },
+                y: { duration: posDur, ease: [0.4, 0, 0.2, 1] },
+                backgroundColor: { duration: 0.35 },
+                boxShadow: { duration: 0.35 },
+                opacity: { duration: 0.3 },
+              }}
+              style={{ width: 10, height: 10, borderRadius: "50%" }}
+            />
+            {/* Trailing afterglow — follows the dot along the line */}
+            <motion.div
+              className="absolute pointer-events-none z-[15]"
+              animate={{
+                x: dotX - 3,
+                y: dotY - 3,
+                backgroundColor: ci.bg,
+                opacity: fadingOut ? 0 : 0.4,
+              }}
+              transition={{
+                x: { duration: posDur + 0.2, ease: [0.4, 0, 0.2, 1] },
+                y: { duration: posDur + 0.2, ease: [0.4, 0, 0.2, 1] },
+                backgroundColor: { duration: 0.35 },
+                opacity: { duration: 0.3 },
+              }}
+              style={{ width: 6, height: 6, borderRadius: "50%", filter: "blur(2px)" }}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("ats");
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  const agents = [
+    {
+      id: "ats",
+      icon: <Brain size={24} />,
+      title: "ATS Resume Optimizer",
+      subtitle: "LangChain Pipeline",
+      description: "Analyzes job descriptions against your resume using NVIDIA Kimi K2.6 + Groq Llama 3.3 70B. Generates tailored bullet points and boosts ATS match scores.",
+      color: "indigo",
+      gradient: "from-indigo-500 to-purple-600",
+      glowColor: "shadow-indigo-500/25",
+      tags: ["NVIDIA NIM", "Groq Inference", "Zod Schema"],
+      status: "Active",
+      metric: "90%+",
+      metricLabel: "Avg Match",
+    },
+    {
+      id: "auto-apply",
+      icon: <Zap size={24} />,
+      title: "Auto-Apply Agent",
+      subtitle: "One-Click Packages",
+      description: "Produces tailored cover letters, STAR-method interview answers, and rewrites every bullet point to match JD keywords — saving hours per application.",
+      color: "emerald",
+      gradient: "from-emerald-500 to-teal-600",
+      glowColor: "shadow-emerald-500/25",
+      tags: ["Cover Letters", "STAR Answers", "Gap Analysis"],
+      status: "Active",
+      metric: "3x",
+      metricLabel: "Faster Apps",
+    },
+    {
+      id: "scraper",
+      icon: <Search size={24} />,
+      title: "Job Scraper Agent",
+      subtitle: "Puppeteer Engine",
+      description: "Headless Chromium engine that bypasses WAF protections across LinkedIn, Indeed, and Glassdoor. Extracts clean job details including hidden salary ranges.",
+      color: "amber",
+      gradient: "from-amber-500 to-orange-600",
+      glowColor: "shadow-amber-500/25",
+      tags: ["WAF Bypass", "UA Rotation", "Multi-Source"],
+      status: "Active",
+      metric: "50+",
+      metricLabel: "Daily Jobs",
+    },
+    {
+      id: "networking",
+      icon: <Network size={24} />,
+      title: "Networking Agent",
+      subtitle: "Outreach Engine",
+      description: "Generates contextual follow-ups, recruiter connection requests, and negotiation scripts tailored to your application stage with timing recommendations.",
+      color: "blue",
+      gradient: "from-blue-500 to-cyan-600",
+      glowColor: "shadow-blue-500/25",
+      tags: ["LinkedIn DM", "Email Templates", "Stage-Aware"],
+      status: "Active",
+      metric: "85%",
+      metricLabel: "Response Rate",
+    },
+    {
+      id: "interview",
+      icon: <Video size={24} />,
+      title: "Interview Coach",
+      subtitle: "WebRTC Simulator",
+      description: "Live WebRTC interview simulator with HD camera feed, real-time speech detection, and ElevenLabs voice-synthesized recruiter questions for realistic practice.",
+      color: "rose",
+      gradient: "from-rose-500 to-pink-600",
+      glowColor: "shadow-rose-500/25",
+      tags: ["WebRTC", "Silence Detection", "ElevenLabs TTS"],
+      status: "Active",
+      metric: "24/7",
+      metricLabel: "Available",
+    },
+    {
+      id: "research",
+      icon: <BarChart3 size={24} />,
+      title: "Research Agent",
+      subtitle: "Tavily-Powered",
+      description: "Powered by Tavily's advanced search API, this agent researches companies, industry trends, and salary benchmarks in real-time for interview prep.",
+      color: "violet",
+      gradient: "from-violet-500 to-purple-600",
+      glowColor: "shadow-violet-500/25",
+      tags: ["Real-time Search", "Salary Intel", "Company Insights"],
+      status: "Active",
+      metric: "100+",
+      metricLabel: "Data Points",
+    },
+  ];
+
+  const colorMap: Record<string, { bg: string; text: string; border: string; ring: string; glowColor: string; hoverBg: string; iconBg: string; iconBorder: string; edgeGlow: string }> = {
+    indigo: { bg: "bg-indigo-500", text: "text-indigo-500", border: "border-indigo-500/30", ring: "ring-indigo-500/20", glowColor: "shadow-indigo-500/25", hoverBg: "bg-gradient-to-br from-indigo-500/[0.04] to-indigo-600/[0.02]", iconBg: "bg-indigo-500/10", iconBorder: "border-indigo-500/20", edgeGlow: "via-indigo-500/50" },
+    emerald: { bg: "bg-emerald-500", text: "text-emerald-500", border: "border-emerald-500/30", ring: "ring-emerald-500/20", glowColor: "shadow-emerald-500/25", hoverBg: "bg-gradient-to-br from-emerald-500/[0.04] to-emerald-600/[0.02]", iconBg: "bg-emerald-500/10", iconBorder: "border-emerald-500/20", edgeGlow: "via-emerald-500/50" },
+    amber: { bg: "bg-amber-500", text: "text-amber-500", border: "border-amber-500/30", ring: "ring-amber-500/20", glowColor: "shadow-amber-500/25", hoverBg: "bg-gradient-to-br from-amber-500/[0.04] to-amber-600/[0.02]", iconBg: "bg-amber-500/10", iconBorder: "border-amber-500/20", edgeGlow: "via-amber-500/50" },
+    blue: { bg: "bg-blue-500", text: "text-blue-500", border: "border-blue-500/30", ring: "ring-blue-500/20", glowColor: "shadow-blue-500/25", hoverBg: "bg-gradient-to-br from-blue-500/[0.04] to-blue-600/[0.02]", iconBg: "bg-blue-500/10", iconBorder: "border-blue-500/20", edgeGlow: "via-blue-500/50" },
+    rose: { bg: "bg-rose-500", text: "text-rose-500", border: "border-rose-500/30", ring: "ring-rose-500/20", glowColor: "shadow-rose-500/25", hoverBg: "bg-gradient-to-br from-rose-500/[0.04] to-rose-600/[0.02]", iconBg: "bg-rose-500/10", iconBorder: "border-rose-500/20", edgeGlow: "via-rose-500/50" },
+    violet: { bg: "bg-violet-500", text: "text-violet-500", border: "border-violet-500/30", ring: "ring-violet-500/20", glowColor: "shadow-violet-500/25", hoverBg: "bg-gradient-to-br from-violet-500/[0.04] to-violet-600/[0.02]", iconBg: "bg-violet-500/10", iconBorder: "border-violet-500/20", edgeGlow: "via-violet-500/50" },
+  };
+
   return (
     <div className="w-full overflow-hidden">
       {/* ===== Hero Section ===== */}
       <section className="relative flex min-h-[90vh] sm:min-h-[92vh] w-full items-center justify-center overflow-hidden bg-background">
-        {/* Falling Pattern Background */}
         <div className="absolute inset-0 z-0">
           <FallingPattern
             className="opacity-40 [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]"
             color="hsl(var(--primary))"
           />
         </div>
-
         <div className="absolute inset-x-0 top-0 z-0 h-80 bg-gradient-to-b from-indigo-500/10 via-background/60 to-transparent" />
-        
-        {/* Background Blobs */}
         <div className="absolute top-[10%] left-[10%] w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] z-0 animate-pulse pointer-events-none" />
         <div className="absolute bottom-[20%] right-[10%] w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] z-0 pointer-events-none" />
 
-        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center justify-center px-4 sm:px-5 pb-16 pt-24 sm:pt-20 sm:pb-20 text-center">
-          {/* Badge */}
+        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center justify-center px-4 sm:px-5 pb-16 pt-24 sm:pt-20 sm:pb-20 text-center mt-8">
           <div className="animate-fade-up mb-8">
-            <div className="inline-flex items-center gap-2 rounded-md border border-indigo-500/20 bg-background/80 px-4 py-2 text-sm font-medium shadow-sm glass">
+            <div className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium shadow-sm glass border border-indigo-500/20">
               <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
               <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent font-semibold">
-                Introducing CareerForge AI Suite
+                AI-Powered Career Platform — Now in Beta
               </span>
             </div>
           </div>
 
-          {/* Heading */}
           <h1
-            className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-black tracking-tight animate-fade-up leading-[1.1] max-w-full mx-auto px-1 sm:px-2 break-words font-display"
+            className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black tracking-tight animate-fade-up leading-[1.05] max-w-full mx-auto px-1 sm:px-2 break-words font-display"
             style={{ animationDelay: "0.1s" }}
           >
-            <span className="text-foreground">Supercharge Your </span>
+            <span className="text-foreground">Your AI-Native </span>
             <br className="hidden sm:block md:hidden" />
             <br className="hidden md:block" />
             <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient py-2 inline-block min-w-[260px] sm:min-w-[320px] md:min-w-[500px]">
               <TypewriterText
-                words={["Resumes", "Interviews", "Cover Letters", "Job Hunt"]}
+                words={["Career Co-Pilot", "Resume Builder", "Interview Coach", "Job Tracker", "Networking Guide", "Cover Letter Generator", "Salary Predictor"]}
                 typingSpeed={100}
                 deletingSpeed={60}
                 pauseDelay={2500}
@@ -96,17 +493,15 @@ export default function Home() {
             </span>
           </h1>
 
-          {/* Subheading */}
           <p
             className="mt-6 sm:mt-8 text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-fade-up font-medium px-2 sm:px-0"
             style={{ animationDelay: "0.2s" }}
           >
-            Stop guessing what recruiters want. CareerForge uses advanced AI to
-            build ATS-optimized resumes, prepare you for interviews, and track
-            your applications in one unified platform.
+            Six autonomous AI agents work together to optimize your resumes,
+            practice interviews, scrape jobs, and manage your entire pipeline —
+            so you can focus on landing the role, not the busywork.
           </p>
 
-          {/* CTA Buttons */}
           <div
             className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mt-8 sm:mt-12 animate-fade-up w-full sm:w-auto px-2 sm:px-0"
             style={{ animationDelay: "0.3s" }}
@@ -118,7 +513,7 @@ export default function Home() {
             >
               <Link href="/sign-up">
                 <Sparkles size="18px" />
-                Start Forging — It&apos;s Free
+                Start Building — Free
                 <ArrowRight size="16px" />
               </Link>
             </Button>
@@ -128,11 +523,12 @@ export default function Home() {
               size="lg"
               className="w-full sm:w-auto h-14 px-8 text-base font-semibold border-indigo-500/20 hover:bg-indigo-500/10 text-foreground transition-all duration-300 gap-2 rounded-xl glass"
             >
-              <Link href="#how-it-works">See How It Works</Link>
+              <Link href="#how-it-works">
+                Watch Demo
+              </Link>
             </Button>
           </div>
 
-          {/* Stats Bar */}
           <div
             className="mt-12 sm:mt-16 grid w-full grid-cols-2 gap-3 sm:gap-4 rounded-xl sm:rounded-lg border bg-card/80 px-3 sm:px-4 py-5 sm:py-6 shadow-sm animate-fade-up sm:mt-20 sm:gap-8 sm:px-6 sm:py-8 md:grid-cols-4"
           >
@@ -140,34 +536,26 @@ export default function Home() {
               <div className="text-xl sm:text-2xl md:text-3xl font-black text-foreground flex items-center">
                 <AnimatedCounter target={10000} suffix="+" />
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium text-center">
-                Resumes Created
-              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium text-center">Resumes Created</p>
             </div>
             <div className="flex flex-col items-center justify-center border-l-0 sm:border-l sm:border-border/50">
               <div className="text-2xl sm:text-3xl font-black text-foreground flex items-center">
                 <AnimatedCounter target={95} suffix="%" />
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium text-center">
-                ATS Pass Rate
-              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium text-center">ATS Pass Rate</p>
             </div>
             <div className="flex flex-col items-center justify-center border-l-0 md:border-l border-border/50 pt-4 sm:pt-0">
               <div className="text-2xl sm:text-3xl font-black text-foreground flex items-center">
                 <AnimatedCounter target={500} suffix="+" />
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium text-center">
-                Jobs Landed
-              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium text-center">Jobs Landed</p>
             </div>
             <div className="flex flex-col items-center justify-center border-l-0 sm:border-l sm:border-border/50 pt-4 sm:pt-0">
               <div className="text-2xl sm:text-3xl font-black text-foreground flex items-center gap-1">
                 <AnimatedCounter target={4} suffix=".9" />
                 <Star className="fill-yellow-400 text-yellow-400 w-4 h-4 sm:w-5 sm:h-5 ml-1" />
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium text-center">
-                User Rating
-              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium text-center">User Rating</p>
             </div>
           </div>
         </div>
@@ -180,196 +568,311 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== Agentic AI Section ===== */}
-      <section className="relative py-16 sm:py-24 md:py-32 px-4 sm:px-5 bg-gradient-to-b from-background via-cyan-500/[0.02] to-background overflow-hidden">
-        {/* Background Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/5 rounded-full blur-[150px] pointer-events-none" />
+      {/* ===== Agentic AI Section — Premium Redesign ===== */}
+      <section className="relative py-20 sm:py-28 md:py-36 px-4 sm:px-5 overflow-hidden">
+        {/* Premium Background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-indigo-950/[0.03] to-background" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-indigo-500/[0.04] rounded-full blur-[200px] pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-purple-500/[0.03] rounded-full blur-[180px] pointer-events-none" />
+
+        {/* Subtle Grid Pattern */}
+        <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{
+          backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
+          backgroundSize: '60px 60px'
+        }} />
+
+        {/* Floating Orbs */}
+        {[...Array(6)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              width: [80, 120, 60, 100, 70, 90][i],
+              height: [80, 120, 60, 100, 70, 90][i],
+              left: ["10%", "70%", "30%", "80%", "15%", "60%"][i],
+              top: ["20%", "60%", "80%", "30%", "50%", "10%"][i],
+              background: [
+                "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)",
+                "radial-gradient(circle, rgba(34,197,94,0.06) 0%, transparent 70%)",
+                "radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 70%)",
+                "radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)",
+                "radial-gradient(circle, rgba(244,63,94,0.06) 0%, transparent 70%)",
+                "radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)",
+              ][i],
+            }}
+            animate={{
+              y: [0, -30, 0, 20, 0],
+              x: [0, 15, -10, 5, 0],
+              scale: [1, 1.1, 0.95, 1.05, 1],
+            }}
+            transition={{
+              duration: [18, 22, 16, 20, 24, 19][i],
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
 
         <div className="max-w-7xl mx-auto relative z-10">
-          {/* Section Header */}
-          <div className="text-center mb-12 sm:mb-16 md:mb-20">
-            <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-cyan-500/20 bg-cyan-500/5 mb-6">
-              <Bot size={14} className="text-cyan-500" />
-              <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent font-semibold">
-                Agentic AI Engine
-              </span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight mb-4 sm:mb-6">
-              Your Personal{" "}
-              <span className="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 bg-clip-text text-transparent">
+          {/* ── Section Header ── */}
+          <div className="text-center mb-16 sm:mb-20 md:mb-24">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="mb-8"
+            >
+              <LiveAgentPulse />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="mb-6"
+            >
+              <div className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium border border-indigo-500/20 bg-indigo-500/5">
+                <Workflow size={14} className="text-indigo-500" />
+                <span className="bg-gradient-to-r from-indigo-400 to-blue-400 bg-clip-text text-transparent font-semibold">
+                  Autonomous Agent Fleet
+                </span>
+              </div>
+            </motion.div>
+
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight mb-6 sm:mb-8 leading-[1.1]"
+            >
+              <span className="text-foreground">Your Personal </span>
+              <span className="bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400 bg-clip-text text-transparent">
                 AI Career Agents
               </span>
-            </h2>
-            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-2 sm:px-0">
-              A fleet of specialized AI agents working in concert — each one a domain expert that automates
-              a piece of your job search pipeline, from scraping to interviewing.
-            </p>
-          </div>
+            </motion.h2>
 
-          {/* Agent Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-            {/* Agent 1: ATS Resume Optimizer */}
-            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-500/30 overflow-hidden">
-              {/* Glow on hover */}
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-              {/* Icon */}
-              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-indigo-500/10">
-                <FileText className="text-indigo-500" size={26} />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg sm:text-xl font-bold text-foreground">ATS Resume Optimizer</h3>
-                  <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">LangChain</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Analyzes job descriptions against your resume using NVIDIA Kimi K2.6 + Groq Llama 3.3 70B.
-                  Generates tailored bullet points, identifies keyword gaps, and boosts ATS match scores with
-                  enterprise-grade structured output.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">NVIDIA NIM</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Groq Inference</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Zod Schema</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Agent 2: Auto-Apply Agent */}
-            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-emerald-500/10 hover:border-emerald-500/30 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-emerald-500/10">
-                <Zap className="text-emerald-500" size={26} />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg sm:text-xl font-bold text-foreground">Auto-Apply Agent</h3>
-                  <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">Automation</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  One-click application package generation. Produces tailored cover letters, STAR-method
-                  interview answers, and rewrites every bullet point to match JD keywords — saving hours
-                  of manual tailoring per application.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Cover Letters</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">STAR Answers</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Gap Analysis</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Agent 3: Job Scraper Agent */}
-            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-amber-500/10 hover:border-amber-500/30 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-amber-500/10">
-                <Globe className="text-amber-500" size={26} />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg sm:text-xl font-bold text-foreground">Job Scraper Agent</h3>
-                  <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">Puppeteer</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Headless Chromium engine that bypasses WAF protections across LinkedIn, Indeed, and
-                  Glassdoor. Rotates user-agents and viewports to extract clean job details including
-                  hidden salary ranges and posting dates.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">WAF Bypass</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">UA Rotation</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Multi-Source</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Agent 4: Networking Agent */}
-            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-500/30 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-blue-500/10">
-                <Share2 className="text-blue-500" size={26} />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg sm:text-xl font-bold text-foreground">Networking Agent</h3>
-                  <span className="px-2 py-0.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">Outreach</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Generates contextual follow-ups, thank-you notes, recruiter connection requests, and
-                  negotiation scripts tailored to your application stage. Supports LinkedIn DM and email
-                  formats with timing recommendations.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">LinkedIn DM</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Email Templates</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Stage-Aware</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Agent 5: Interview Coach Agent */}
-            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-rose-500/10 hover:border-rose-500/30 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-500/20 to-pink-500/20 border border-rose-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-rose-500/10">
-                <Video className="text-rose-500" size={26} />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg sm:text-xl font-bold text-foreground">Interview Coach Agent</h3>
-                  <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">WebRTC</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Live WebRTC interview simulator with HD camera feed, real-time speech detection via
-                  AudioContext analyser, and ElevenLabs voice-synthesized recruiter questions. Records
-                  sessions for playback and self-review.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">WebRTC</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Silence Detection</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">ElevenLabs TTS</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Agent 6: Research Agent */}
-            <div className="group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-border/50 bg-card/30 glass transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/10 hover:border-purple-500/30 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-violet-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-              <div className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-500/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-purple-500/10">
-                <Target className="text-purple-500" size={26} />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg sm:text-xl font-bold text-foreground">Web Research Agent</h3>
-                  <span className="px-2 py-0.5 bg-purple-500/10 text-purple-500 border border-purple-500/20 text-[9px] font-bold rounded-md uppercase tracking-wider">Tavily</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Powered by Tavily&rsquo;s advanced search API, this agent researches companies, industry
-                  trends, and salary benchmarks in real-time. Enriches your application context with
-                  up-to-date market intelligence before every interview.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Real-time Search</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Salary Intel</span>
-                  <span className="px-2.5 py-1 bg-background/60 border border-border/40 rounded-lg text-[10px] font-semibold text-muted-foreground">Company Insights</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom CTA */}
-          <div className="text-center mt-12 sm:mt-16">
-            <p className="text-sm text-muted-foreground mb-4 font-medium">
-              All agents share context through a unified pipeline — your resume data flows seamlessly
-              from optimization → application → networking → interview prep.
-            </p>
-            <Link
-              href="/sign-up"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-all duration-300 text-sm"
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-2"
             >
-              <Bot size={16} />
-              Deploy Your Agent Fleet
-              <ArrowRight size={14} />
-            </Link>
+              Six specialized AI agents working in concert — each one a domain expert that automates
+              a piece of your job search pipeline, from scraping to interviewing.
+            </motion.p>
           </div>
+
+          {/* ── Agent Pipeline Visualization ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="mb-16 hidden lg:block"
+          >
+            <PipelineVisualization agents={agents} colorMap={colorMap} />
+          </motion.div>
+
+          {/* ── Agent Cards Grid ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+            {agents.map((agent, idx) => {
+              const colors = colorMap[agent.color];
+              return (
+                <motion.div
+                  key={agent.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: idx * 0.08 }}
+                  className="group relative"
+                >
+                  {/* Card */}
+                  <div className={cn(
+                    "relative h-full p-6 sm:p-7 rounded-2xl sm:rounded-3xl border transition-all duration-500",
+                    "bg-card/40 backdrop-blur-sm",
+                    "hover:-translate-y-1.5 hover:shadow-2xl",
+                    `hover:${colors.glowColor}`,
+                    `hover:${colors.border}`,
+                    "border-border/40",
+                    "overflow-hidden"
+                  )}>
+                    {/* Hover Gradient Overlay */}
+                    <div className={cn(
+                      "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
+                      colors.hoverBg
+                    )} />
+
+                    {/* Top Edge Glow on Hover */}
+                    <div className={cn(
+                      "absolute top-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+                      "bg-gradient-to-r from-transparent to-transparent",
+                      colors.edgeGlow
+                    )} />
+
+                    {/* Animated corner accent */}
+                    <div className="absolute top-0 right-0 w-20 h-20 overflow-hidden rounded-tr-2xl sm:rounded-tr-3xl pointer-events-none">
+                      <motion.div
+                        className={cn("absolute -top-10 -right-10 w-20 h-20 rounded-full opacity-[0.07]", colors.bg)}
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.07, 0.12, 0.07] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: idx * 0.5 }}
+                      />
+                    </div>
+
+                    {/* Content */}
+                    <div className="relative z-10">
+                      {/* Header: Icon + Status */}
+                      <div className="flex items-start justify-between mb-5">
+                        <div className="relative">
+                          {/* Orbiting ring */}
+                          <motion.div
+                            className="absolute -inset-2 rounded-2xl border border-dashed opacity-0 group-hover:opacity-100"
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                            style={{ borderColor: `hsl(var(--${agent.color}-500, 217 91% 60%) / 0.2)` }}
+                          />
+                          <div className={cn(
+                            "w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300",
+                            colors.iconBg, colors.text, colors.iconBorder,
+                            "group-hover:scale-110 group-hover:shadow-lg", colors.glowColor
+                          )}>
+                            <motion.div
+                              animate={{ rotate: [0, 5, -5, 0] }}
+                              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                            >
+                              {agent.icon}
+                            </motion.div>
+                          </div>
+                          {/* Floating dot */}
+                          <motion.div
+                            className={cn("absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-background", colors.bg)}
+                            animate={{ y: [0, -4, 0], scale: [1, 1.2, 1] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: idx * 0.3 }}
+                          />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn("h-2 w-2 rounded-full animate-pulse", colors.bg)} />
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                            {agent.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Title + Subtitle */}
+                      <div className="mb-3">
+                        <h3 className="text-lg sm:text-xl font-black text-foreground mb-1 tracking-tight">
+                          {agent.title}
+                        </h3>
+                        <span className={cn(
+                          "text-[10px] font-bold uppercase tracking-[0.15em]",
+                          colors.text
+                        )}>
+                          {agent.subtitle}
+                        </span>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-5">
+                        {agent.description}
+                      </p>
+
+                      {/* Metric Badge */}
+                      <div className="flex items-center gap-3 mb-5 p-3 rounded-xl bg-background/50 border border-border/30">
+                        <div className={cn("text-2xl font-black", colors.text)}>
+                          {agent.metric}
+                        </div>
+                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          {agent.metricLabel}
+                        </div>
+                      </div>
+
+                      {/* Tags */}
+                      <div className="flex flex-wrap gap-2">
+                        {agent.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg text-[10px] font-semibold",
+                              "bg-background/60 border border-border/40 text-muted-foreground",
+                              "transition-colors duration-200 group-hover:border-border/60"
+                            )}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* ── Pipeline Summary ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mt-16 sm:mt-20"
+          >
+            <div className="relative p-8 sm:p-10 rounded-3xl border border-border/40 bg-card/30 backdrop-blur-sm overflow-hidden">
+              {/* Background Glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/[0.02] via-purple-500/[0.02] to-cyan-500/[0.02] pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
+                {/* Left: Info */}
+                <div className="flex-1 text-center lg:text-left">
+                  <h3 className="text-xl sm:text-2xl font-black text-foreground mb-3">
+                    Unified Pipeline Intelligence
+                  </h3>
+                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl">
+                    All agents share context through a unified pipeline — your resume data flows seamlessly
+                    from optimization → scraping → application → networking → interview prep.
+                    Each agent learns from the others to compound your advantage.
+                  </p>
+                </div>
+
+                {/* Right: CTA */}
+                <div className="shrink-0">
+                  <Button
+                    asChild
+                    size="lg"
+                    className="h-14 px-8 text-sm font-bold bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-500 hover:from-indigo-600 hover:via-blue-600 hover:to-cyan-600 text-white shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all duration-300 gap-2 rounded-xl"
+                  >
+                    <Link href="/sign-up">
+                      <Bot size={16} />
+                      Deploy Your Agent Fleet
+                      <ArrowRight size={14} />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Bottom Stats */}
+              <div className="relative z-10 mt-8 pt-6 border-t border-border/30 grid grid-cols-2 sm:grid-cols-4 gap-6">
+                {[
+                  { value: "6", label: "Active Agents", icon: <Bot size={14} className="text-indigo-500" /> },
+                  { value: "24/7", label: "Always Running", icon: <Zap size={14} className="text-amber-500" /> },
+                  { value: "<2s", label: "Avg Response", icon: <Sparkles size={14} className="text-emerald-500" /> },
+                  { value: "100%", label: "Context Shared", icon: <Network size={14} className="text-blue-500" /> },
+                ].map((stat) => (
+                  <div key={stat.label} className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-background/50 border border-border/30">
+                      {stat.icon}
+                    </div>
+                    <div>
+                      <div className="text-lg font-black text-foreground">{stat.value}</div>
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -392,9 +895,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Interactive Interface */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left selector tabs */}
             <div className="lg:col-span-4 flex flex-col gap-3">
               {[
                 {
@@ -422,17 +923,15 @@ export default function Home() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`text-left p-6 rounded-2xl border transition-all duration-300 flex items-start gap-4 ${
-                    activeTab === tab.id
-                      ? "border-indigo-500/30 bg-indigo-500/5 shadow-lg shadow-indigo-500/5 glass"
-                      : "border-border/45 hover:border-border/80 hover:bg-card/20 bg-transparent"
-                  }`}
+                  className={`text-left p-6 rounded-2xl border transition-all duration-300 flex items-start gap-4 ${activeTab === tab.id
+                    ? "border-indigo-500/30 bg-indigo-500/5 shadow-lg shadow-indigo-500/5 glass"
+                    : "border-border/45 hover:border-border/80 hover:bg-card/20 bg-transparent"
+                    }`}
                 >
-                  <div className={`p-3 rounded-xl border flex items-center justify-center shrink-0 ${
-                    activeTab === tab.id
-                      ? "bg-indigo-500/10 border-indigo-500/30"
-                      : "bg-card border-border"
-                  }`}>
+                  <div className={`p-3 rounded-xl border flex items-center justify-center shrink-0 ${activeTab === tab.id
+                    ? "bg-indigo-500/10 border-indigo-500/30"
+                    : "bg-card border-border"
+                    }`}>
                     {tab.icon}
                   </div>
                   <div>
@@ -449,12 +948,9 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Right visual content */}
             <div className="lg:col-span-8 min-h-[400px] sm:h-[520px] rounded-2xl sm:rounded-3xl border border-border/50 bg-card/20 glass p-4 sm:p-8 relative overflow-hidden flex flex-col justify-center">
-              {/* Decorative backgrounds */}
               <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none" />
-              
-              {/* Tab 1: ATS */}
+
               {activeTab === "ats" && (
                 <div className="space-y-6 animate-fade-in">
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 border-b border-border/50 pb-3 sm:pb-4">
@@ -469,7 +965,6 @@ export default function Home() {
 
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                     <div className="md:col-span-5 flex flex-col items-center justify-center p-4 sm:p-6 border border-border/50 bg-background/50 rounded-2xl text-center relative overflow-hidden">
-                      {/* Circular score display */}
                       <div className="relative w-32 h-32 flex items-center justify-center">
                         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                           <circle cx="50" cy="50" r="40" stroke="hsl(var(--border))" strokeWidth="8" fill="transparent" />
@@ -518,7 +1013,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Tab 2: Podcast */}
               {activeTab === "podcast" && (
                 <div className="space-y-4 sm:space-y-6 animate-fade-in flex flex-col justify-between h-full">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 border-b border-border/50 pb-3 sm:pb-4">
@@ -531,18 +1025,16 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Transcript Scroll Area */}
                   <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-1 sm:pr-2 py-1 sm:py-2 max-h-[200px] sm:max-h-[260px] scrollbar-thin">
                     {[
                       { role: "Host (Voice A)", text: "Hey everyone! Today we're diving into Parth's profile. He's a Full-Stack Dev with huge React experience, especially in building high-performance web systems.", active: true },
                       { role: "Candidate (Voice B)", text: "That's right! I focus on making apps responsive, visually outstanding, and fully ATS-friendly. The layout optimization is where it really shines.", active: false },
                       { role: "Host (Voice A)", text: "Awesome! And I noticed you built custom web apps with real-time speech components too. That's a massive differentiator.", active: false }
                     ].map((line, idx) => (
-                      <div key={idx} className={`p-4 rounded-xl border transition-all duration-300 ${
-                        line.active 
-                          ? "bg-purple-500/5 border-purple-500/25 shadow-inner" 
-                          : "bg-background/40 border-border/30 opacity-70"
-                      }`}>
+                      <div key={idx} className={`p-4 rounded-xl border transition-all duration-300 ${line.active
+                        ? "bg-purple-500/5 border-purple-500/25 shadow-inner"
+                        : "bg-background/40 border-border/30 opacity-70"
+                        }`}>
                         <div className="flex items-center justify-between mb-1.5">
                           <span className={`text-xs font-bold ${line.active ? "text-purple-500" : "text-muted-foreground"}`}>{line.role}</span>
                           {line.active && <span className="flex h-2 w-2 rounded-full bg-purple-500 animate-pulse" />}
@@ -552,7 +1044,6 @@ export default function Home() {
                     ))}
                   </div>
 
-                  {/* Audio Controls */}
                   <div className="bg-background/80 border border-border/50 p-4 rounded-2xl flex items-center justify-between gap-6">
                     <div className="flex items-center gap-3">
                       <button className="w-10 h-10 rounded-full bg-purple-500 hover:bg-purple-600 transition-colors flex items-center justify-center text-white">
@@ -563,7 +1054,6 @@ export default function Home() {
                         <span className="text-[10px] text-muted-foreground font-semibold">0:24 / 2:15 • HOST & CANDIDATE</span>
                       </div>
                     </div>
-                    {/* Simulated Waveform */}
                     <div className="hidden sm:flex items-center gap-1 flex-1 max-w-[200px] justify-center">
                       {[15, 25, 45, 12, 35, 60, 25, 45, 15, 30, 48, 24, 15].map((val, i) => (
                         <div key={i} className="w-1 rounded-full bg-purple-500/20" style={{ height: `${val}px` }} />
@@ -576,7 +1066,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Tab 3: Mock Interview */}
               {activeTab === "mock" && (
                 <div className="space-y-6 animate-fade-in flex flex-col justify-between h-full">
                   <div className="flex items-center justify-between border-b border-border/50 pb-4">
@@ -590,16 +1079,12 @@ export default function Home() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center flex-1">
-                    {/* Camera view placeholder */}
                     <div className="md:col-span-6 h-56 rounded-2xl border border-border bg-black/60 relative overflow-hidden flex flex-col items-center justify-center group shadow-xl">
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_100%)] pointer-events-none" />
-                      
                       <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/25 flex items-center justify-center text-rose-500 animate-pulse">
                         <Video size={28} />
                       </div>
                       <span className="text-xs text-white/50 font-bold uppercase tracking-wider mt-3">Web-Cam Live Feed</span>
-                      
-                      {/* Video actions overlay */}
                       <div className="absolute bottom-3 inset-x-3 flex items-center justify-between bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-semibold text-white/80">
                         <span>USER CAMERA</span>
                         <div className="flex items-center gap-2">
@@ -609,7 +1094,6 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Question text panel */}
                     <div className="md:col-span-6 space-y-4">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500">
@@ -617,7 +1101,7 @@ export default function Home() {
                         </div>
                         <span className="text-xs font-bold text-rose-500 uppercase tracking-wider">Recruiter Voice Reading:</span>
                       </div>
-                      
+
                       <div className="p-4 bg-background/60 border border-rose-500/20 rounded-xl relative">
                         <div className="absolute -left-2 top-4 w-4 h-4 transform rotate-45 bg-background border-l border-b border-rose-500/20" />
                         <p className="text-sm font-semibold leading-relaxed text-foreground relative z-10">
@@ -693,16 +1177,14 @@ export default function Home() {
               },
             ].map((item, idx) => (
               <div key={idx} className="relative">
-                {/* Connector line */}
                 {idx < 3 && (
                   <div className="hidden lg:block absolute top-16 left-[60%] w-[80%] h-0.5 bg-gradient-to-r from-indigo-500/30 to-transparent" />
                 )}
-                
                 <div className="relative p-8 rounded-3xl border bg-gradient-to-br from-background to-card/50 hover:from-card/80 hover:to-background transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border-border/50">
                   <div className={`absolute -top-4 -left-4 w-12 h-12 rounded-2xl bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-${item.color}-500/30`}>
                     {item.step}
                   </div>
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-${item.color}-500/10 to-${item.color}-600/10 border border-${item.color}-500/20 flex items-center justify-center mb-6">
+                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br from-${item.color}-500/10 to-${item.color}-600/10 border border-${item.color}-500/20 flex items-center justify-center mb-6`}>
                     {item.icon}
                   </div>
                   <h3 className="text-xl font-bold text-foreground mb-3">{item.title}</h3>
@@ -732,7 +1214,6 @@ export default function Home() {
               See how CareerForge AI has transformed job searches across industries.
             </p>
           </div>
-
           <TestimonialMarquee />
         </div>
       </section>
@@ -754,11 +1235,9 @@ export default function Home() {
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               Start free and upgrade as you grow. No hidden fees, cancel anytime.
             </p>
-
-            {/* Toggle Billing Period */}
             <div className="flex items-center justify-center gap-3 mt-8">
               <span className={`text-sm font-semibold transition-colors ${billingPeriod === "monthly" ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
-              <button 
+              <button
                 onClick={() => setBillingPeriod(billingPeriod === "monthly" ? "yearly" : "monthly")}
                 className="w-14 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/35 p-1 relative flex items-center transition-all duration-300"
               >
@@ -771,20 +1250,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Pricing Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch max-w-6xl mx-auto">
             {[
               {
                 name: "Starter",
                 description: "Perfect for getting started with AI-powered career tools.",
                 price: { monthly: 0, yearly: 0 },
-                features: [
-                  "1 AI-optimized resume",
-                  "Basic ATS templates",
-                  "1 AI podcast generation",
-                  "1 mock interview session",
-                  "Basic job tracking",
-                ],
+                features: ["1 AI-optimized resume", "Basic ATS templates", "1 AI podcast generation", "1 mock interview session", "Basic job tracking"],
                 cta: "Get Started Free",
                 popular: false,
                 href: "/sign-up",
@@ -794,14 +1266,7 @@ export default function Home() {
                 name: "Pro",
                 description: "For serious job seekers who want maximum impact.",
                 price: { monthly: 19, yearly: 15 },
-                features: [
-                  "Unlimited AI resumes",
-                  "Full ATS job scraper",
-                  "Unlimited podcast generations",
-                  "Unlimited mock interviews",
-                  "Real-time market analytics",
-                  "Priority AI processing",
-                ],
+                features: ["Unlimited AI resumes", "Full ATS job scraper", "Unlimited podcast generations", "Unlimited mock interviews", "Real-time market analytics", "Priority AI processing"],
                 cta: "Upgrade to Pro",
                 popular: true,
                 href: "/sign-up",
@@ -811,40 +1276,28 @@ export default function Home() {
                 name: "Executive",
                 description: "Premium features for senior professionals and executives.",
                 price: { monthly: 49, yearly: 39 },
-                features: [
-                  "Everything in Pro",
-                  "Custom industry datasets",
-                  "1-on-1 strategy reviews",
-                  "Priority support",
-                  "Advanced networking tools",
-                  "API access",
-                ],
+                features: ["Everything in Pro", "Custom industry datasets", "1-on-1 strategy reviews", "Priority support", "Advanced networking tools", "API access"],
                 cta: "Get Executive",
                 popular: false,
                 href: "/sign-up",
                 color: "purple",
               },
             ].map((plan, idx) => (
-              <div 
+              <div
                 key={idx}
-                className={`relative flex flex-col justify-between p-8 rounded-3xl border transition-all duration-300 group hover:-translate-y-1 bg-gradient-to-br from-background to-card/30 ${
-                  plan.popular 
-                    ? "border-rose-500/40 shadow-xl shadow-rose-500/10 ring-1 ring-rose-500/20 scale-[1.02] z-10" 
-                    : "border-border/50 hover:border-border/80"
-                }`}
+                className={`relative flex flex-col justify-between p-8 rounded-3xl border transition-all duration-300 group hover:-translate-y-1 bg-gradient-to-br from-background to-card/30 ${plan.popular
+                  ? "border-rose-500/40 shadow-xl shadow-rose-500/10 ring-1 ring-rose-500/20 scale-[1.02] z-10"
+                  : "border-border/50 hover:border-border/80"
+                  }`}
               >
-                {/* Popular Badge */}
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-rose-500 to-pink-600 text-white text-[10px] font-black tracking-widest uppercase px-4 py-1.5 rounded-full border border-rose-400/30 shadow-md">
                     Most Popular
                   </div>
                 )}
-
                 <div>
                   <h3 className="font-bold text-2xl text-foreground mb-2">{plan.name}</h3>
                   <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{plan.description}</p>
-                  
-                  {/* Price */}
                   <div className="flex items-baseline gap-1 mb-8 pb-6 border-b border-border/50">
                     <span className="text-5xl font-black text-foreground">${billingPeriod === "monthly" ? plan.price.monthly : plan.price.yearly}</span>
                     <span className="text-lg font-semibold text-muted-foreground">/mo</span>
@@ -852,8 +1305,6 @@ export default function Home() {
                       <span className="text-xs text-muted-foreground ml-2 font-mono font-bold">Billed annually</span>
                     )}
                   </div>
-
-                  {/* Features List */}
                   <ul className="space-y-4">
                     {plan.features.map((feature, fIdx) => (
                       <li key={fIdx} className="flex items-start gap-3 text-sm text-foreground/90 font-medium">
@@ -863,15 +1314,13 @@ export default function Home() {
                     ))}
                   </ul>
                 </div>
-
                 <div className="mt-10">
-                  <Button 
-                    asChild 
-                    className={`w-full h-14 rounded-xl text-sm font-bold shadow-md transition-all duration-300 ${
-                      plan.popular 
-                        ? "bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white shadow-rose-500/25" 
-                        : "bg-background border border-indigo-500/20 hover:bg-indigo-500/10 text-foreground"
-                    }`}
+                  <Button
+                    asChild
+                    className={`w-full h-14 rounded-xl text-sm font-bold shadow-md transition-all duration-300 ${plan.popular
+                      ? "bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white shadow-rose-500/25"
+                      : "bg-background border border-indigo-500/20 hover:bg-indigo-500/10 text-foreground"
+                      }`}
                   >
                     <Link href={plan.href}>
                       {plan.cta}
@@ -885,10 +1334,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== Polished FAQ Accordion Section ===== */}
+      {/* ===== FAQ Section ===== */}
       <section id="faq" className="relative py-28 px-5 bg-background border-t border-border/40">
         <div className="absolute bottom-[10%] right-[10%] w-[350px] h-[350px] bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
-
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-20">
             <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-border mb-4 glass">
@@ -905,35 +1353,15 @@ export default function Home() {
               Everything you need to know about our parsing algorithms, data safety, and voice synthesis modules.
             </p>
           </div>
-
-          {/* Accordion list */}
           <div className="space-y-4">
             {[
-              {
-                q: "How does the ATS URL Scraper bypass security blocks?",
-                a: "Our job listing scraper is engineered using custom browser headers, automated user-agent rotation, and network delay strategies that emulate authentic browser requests. This allows the system to bypass basic Web Application Firewalls (WAF) to extract clean job details from LinkedIn, Indeed, and corporate boards safely."
-              },
-              {
-                q: "Is my private resume data shared or public?",
-                a: "No. Security is built into the core. All resumes created on CareerForge are linked to your personal Clerk authentication context. If your resume status is set to 'private', it is completely hidden from public access. When generating a PDF, our Puppeteer print engine securely requests the document with a temporary cryptographically hashed `pdfSecret` derived from the application secret key to ensure access is only granted to the printing engine."
-              },
-              {
-                q: "How does the AI Podcast Resume voice generation work?",
-                a: "The podcast engine analyzes your work history, experience bullets, and career summary to write a structured conversation script containing HOST (Voice A) and CANDIDATE (Voice B) dialogue lines. It then sequentially invokes local speech synthesis engines, applying tailored voice pitch and rates to simulate a live conversational style audio player."
-              },
-              {
-                q: "Can I cancel my Pro plan at any time?",
-                a: "Yes. There are no locking contracts or cancellation fees. You can cancel your subscription inside your billing settings at any time with a single click. You will retain access to all Pro features until the end of your current billing cycle."
-              },
-              {
-                q: "Does the builder support custom resume formats and spacing?",
-                a: "Absolutely. Our builder features a high-fidelity drag-and-drop section ordering editor, a custom layout spacing builder (paddings, margins, grid gaps), and visual theme colors (primary accents, text tones) so you can create a layout tailored to your style."
-              }
+              { q: "How does the ATS URL Scraper bypass security blocks?", a: "Our job listing scraper is engineered using custom browser headers, automated user-agent rotation, and network delay strategies that emulate authentic browser requests. This allows the system to bypass basic Web Application Firewalls (WAF) to extract clean job details from LinkedIn, Indeed, and corporate boards safely." },
+              { q: "Is my private resume data shared or public?", a: "No. Security is built into the core. All resumes created on CareerForge are linked to your personal Clerk authentication context. If your resume status is set to 'private', it is completely hidden from public access. When generating a PDF, our Puppeteer print engine securely requests the document with a temporary cryptographically hashed `pdfSecret` derived from the application secret key to ensure access is only granted to the printing engine." },
+              { q: "How does the AI Podcast Resume voice generation work?", a: "The podcast engine analyzes your work history, experience bullets, and career summary to write a structured conversation script containing HOST (Voice A) and CANDIDATE (Voice B) dialogue lines. It then sequentially invokes local speech synthesis engines, applying tailored voice pitch and rates to simulate a live conversational style audio player." },
+              { q: "Can I cancel my Pro plan at any time?", a: "Yes. There are no locking contracts or cancellation fees. You can cancel your subscription inside your billing settings at any time with a single click. You will retain access to all Pro features until the end of your current billing cycle." },
+              { q: "Does the builder support custom resume formats and spacing?", a: "Absolutely. Our builder features a high-fidelity drag-and-drop section ordering editor, a custom layout spacing builder (paddings, margins, grid gaps), and visual theme colors (primary accents, text tones) so you can create a layout tailored to your style." }
             ].map((item, idx) => (
-              <div 
-                key={idx}
-                className="border border-border/50 rounded-2xl overflow-hidden bg-card/30 glass transition-all"
-              >
+              <div key={idx} className="border border-border/50 rounded-2xl overflow-hidden bg-card/30 glass transition-all">
                 <button
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                   className="w-full flex items-center justify-between p-6 text-left hover:bg-card/50 transition-colors"
@@ -943,14 +1371,8 @@ export default function Home() {
                     {openFaq === idx ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </div>
                 </button>
-                <div 
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                    openFaq === idx ? "max-h-60 opacity-100 border-t border-border/50" : "max-h-0 opacity-0"
-                  }`}
-                >
-                  <p className="p-6 text-sm md:text-base leading-relaxed text-muted-foreground font-semibold bg-background/20">
-                    {item.a}
-                  </p>
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${openFaq === idx ? "max-h-60 opacity-100 border-t border-border/50" : "max-h-0 opacity-0"}`}>
+                  <p className="p-6 text-sm md:text-base leading-relaxed text-muted-foreground font-semibold bg-background/20">{item.a}</p>
                 </div>
               </div>
             ))}
@@ -962,31 +1384,18 @@ export default function Home() {
       <section className="relative py-32 px-5">
         <div className="max-w-5xl mx-auto">
           <div className="relative p-12 md:p-24 rounded-[3rem] bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 overflow-hidden shadow-2xl">
-            {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
             <div className="absolute bottom-0 left-0 w-72 h-72 bg-white/5 rounded-full blur-2xl" />
-            <FallingPattern
-              className="absolute inset-0 opacity-20"
-              color="rgba(255,255,255,0.5)"
-              backgroundColor="transparent"
-            />
-
+            <FallingPattern className="absolute inset-0 opacity-20" color="rgba(255,255,255,0.5)" backgroundColor="transparent" />
             <div className="relative z-10 text-center">
               <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight mb-6 leading-tight">
-                Ready to transform
-                <br />
-                your career?
+                Ready to transform<br />your career?
               </h2>
               <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-10 leading-relaxed">
                 Join thousands of professionals who have already accelerated their careers with AI-powered tools. Start building your future today.
               </p>
-
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Button
-                  asChild
-                  size="lg"
-                  className="h-14 px-10 text-base font-bold bg-white text-indigo-600 hover:bg-white/90 shadow-xl shadow-black/20 transition-all duration-300 gap-2 rounded-xl w-full sm:w-auto"
-                >
+                <Button asChild size="lg" className="h-14 px-10 text-base font-bold bg-white text-indigo-600 hover:bg-white/90 shadow-xl shadow-black/20 transition-all duration-300 gap-2 rounded-xl w-full sm:w-auto">
                   <Link href="/sign-up">
                     Start For Free
                     <ArrowRight size={16} />
@@ -1005,176 +1414,53 @@ export default function Home() {
       <footer className="border-t border-border/50 bg-card/30 pt-20 pb-10 px-5">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16">
           <div className="lg:col-span-2">
-            <div className="flex items-center gap-2 mb-6 group">
-              <Image
-                src="/CareerForge_ai_final.png"
-                alt="CareerForge AI Logo"
-                width={40}
-                height={40}
-                className="group-hover:scale-110 transition-all duration-300 drop-shadow-[0_0_12px_rgba(99,102,241,0.4)]"
-              />
-              <span className="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-indigo-500 to-indigo-400 bg-clip-text text-transparent">
-                CareerForge AI
-              </span>
+            <div className="flex items-center gap-3 mb-6 group">
+              <div className="relative">
+                <div className="absolute inset-0 bg-indigo-500/20 rounded-xl blur-lg group-hover:bg-indigo-500/30 transition-all duration-500" />
+                <Image src="/CareerForge_ai_final.png" alt="CareerForge AI Logo" width={40} height={40} className="relative group-hover:scale-110 transition-all duration-300 drop-shadow-[0_0_12px_rgba(99,102,241,0.4)]" />
+              </div>
+              <span className="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-indigo-500 to-indigo-400 bg-clip-text text-transparent">CareerForge AI</span>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mb-6">
-              The ultimate AI-powered career platform. Build stunning resumes, ace your interviews, and land your dream job faster than ever.
+              Six AI agents working in concert — from resume optimization and job scraping to interview coaching and networking. Build, apply, and land your dream role, faster.
             </p>
             <div className="flex items-center gap-3">
-              <a
-                href="https://www.linkedin.com/in/himanshu-guptaa"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"
-              >
-                <Linkedin size={18} />
-              </a>
-              <a
-                href="https://www.github.com/devhimanshuu"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"
-              >
-                <Github size={18} />
-              </a>
-              <a
-                href="https://himanshuguptaa.vercel.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"
-              >
-                <Globe size={18} />
-              </a>
-              <a
-                href="https://x.com/devhimanshuu"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"
-              >
-                <Twitter size={18} />
-              </a>
+              <a href="https://www.linkedin.com/in/himanshu-guptaa" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"><Linkedin size={18} /></a>
+              <a href="https://www.github.com/devhimanshuu" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"><Github size={18} /></a>
+              <a href="https://himanshuguptaa.vercel.app" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"><Globe size={18} /></a>
+              <a href="https://x.com/devhimanshuu" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"><Twitter size={18} /></a>
             </div>
           </div>
-
           <div>
             <h4 className="font-semibold mb-4 text-foreground">Product</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li>
-                <Link
-                  href="#features"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  Features
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#pricing"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#how-it-works"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  How It Works
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#faq"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  FAQ
-                </Link>
-              </li>
+              <li><Link href="#features" className="hover:text-indigo-500 transition-colors">Features</Link></li>
+              <li><Link href="#pricing" className="hover:text-indigo-500 transition-colors">Pricing</Link></li>
+              <li><Link href="#how-it-works" className="hover:text-indigo-500 transition-colors">How It Works</Link></li>
+              <li><Link href="#faq" className="hover:text-indigo-500 transition-colors">FAQ</Link></li>
             </ul>
           </div>
-
           <div>
             <h4 className="font-semibold mb-4 text-foreground">Resources</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li>
-                <Link
-                  href="#"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  Templates
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  Interview Prep
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  Help Center
-                </Link>
-              </li>
+              <li><Link href="#features" className="hover:text-indigo-500 transition-colors">Templates</Link></li>
+              <li><Link href="#how-it-works" className="hover:text-indigo-500 transition-colors">Interview Prep</Link></li>
+              <li><Link href="#faq" className="hover:text-indigo-500 transition-colors">Help Center</Link></li>
+              <li><Link href="#" className="hover:text-indigo-500 transition-colors">Blog</Link></li>
             </ul>
           </div>
-
           <div>
             <h4 className="font-semibold mb-4 text-foreground">Company</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li>
-                <Link
-                  href="#"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  Careers
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/privacy"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/terms"
-                  className="hover:text-indigo-500 transition-colors"
-                >
-                  Terms of Service
-                </Link>
-              </li>
+              <li><Link href="#" className="hover:text-indigo-500 transition-colors">About</Link></li>
+              <li><Link href="#pricing" className="hover:text-indigo-500 transition-colors">Pricing</Link></li>
+              <li><Link href="/privacy" className="hover:text-indigo-500 transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="hover:text-indigo-500 transition-colors">Terms of Service</Link></li>
             </ul>
           </div>
         </div>
-
         <div className="max-w-7xl mx-auto pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} CareerForge AI. All rights reserved.
-          </p>
+          <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} CareerForge AI. All rights reserved.</p>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="/privacy" className="hover:text-indigo-500 transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-indigo-500 transition-colors">Terms of Service</Link>
