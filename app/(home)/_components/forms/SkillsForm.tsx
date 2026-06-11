@@ -223,14 +223,15 @@ const SkillsForm = () => {
   useEffect(() => {
     const contextSkills = resumeInfo?.skills || [];
     if (!contextSkills.length) return;
-    if (!areListContentsEqual(skillsList, contextSkills)) {
-      setSkillsList(
-        contextSkills.map((item) => ({
-          ...item,
-          _localId: item.id?.toString() || crypto.randomUUID(),
-        }))
-      );
-    }
+    setSkillsList((prev) => {
+      if (areListContentsEqual(prev, contextSkills)) {
+        return prev;
+      }
+      return contextSkills.map((item) => ({
+        ...item,
+        _localId: item.id?.toString() || crypto.randomUUID(),
+      }));
+    });
   }, [resumeInfo?.skills]);
 
   useEffect(() => {

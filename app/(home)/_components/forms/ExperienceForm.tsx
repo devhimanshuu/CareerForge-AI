@@ -272,14 +272,15 @@ const ExperienceForm = (props: { handleNext: () => void }) => {
   useEffect(() => {
     const contextExperiences = resumeInfo?.experiences || [];
     if (!contextExperiences.length) return;
-    if (!areListContentsEqual(experienceList, contextExperiences)) {
-      setExperienceList(
-        contextExperiences.map((item) => ({
-          ...item,
-          _localId: item.id || crypto.randomUUID(),
-        }))
-      );
-    }
+    setExperienceList((prev) => {
+      if (areListContentsEqual(prev, contextExperiences)) {
+        return prev;
+      }
+      return contextExperiences.map((item) => ({
+        ...item,
+        _localId: item.id || crypto.randomUUID(),
+      }));
+    });
   }, [resumeInfo?.experiences]);
 
   useEffect(() => {

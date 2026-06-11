@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Loader, Sparkles, Upload, User, Camera, ChevronDown, ChevronUp, Check } from "lucide-react";
+import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
 import { useResumeContext } from "@/context/resume-info-provider";
 import { PersonalInfoType } from "@/types/resume.type";
@@ -229,14 +230,15 @@ const PersonalInfoForm = (props: { handleNext: () => void }) => {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="px-5 pb-5 flex flex-col sm:flex-row items-center gap-6">
-                  <div className="relative group">
-                    <div className="w-24 h-24 rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-border/50 flex items-center justify-center transition-all duration-300 group-hover:border-indigo-500/50">
+                <div className="px-5 pb-5 flex flex-col sm:flex-row items-center gap-6">                    <div className="relative group">
+                    <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-border/50 flex items-center justify-center transition-all duration-300 group-hover:border-indigo-500/50">
                       {personalInfo?.userImage ? (
-                        <img
+                        <Image
                           src={personalInfo.userImage}
                           alt="Profile"
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          sizes="96px"
                         />
                       ) : (
                         <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest text-center px-2">

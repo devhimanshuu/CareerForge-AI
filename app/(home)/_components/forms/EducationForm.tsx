@@ -243,14 +243,15 @@ const EducationForm = (props: { handleNext: () => void }) => {
   useEffect(() => {
     const contextEducations = resumeInfo?.educations || [];
     if (!contextEducations.length) return;
-    if (!areListContentsEqual(educationList, contextEducations)) {
-      setEducationList(
-        contextEducations.map((item) => ({
-          ...item,
-          _localId: item.id || crypto.randomUUID(),
-        }))
-      );
-    }
+    setEducationList((prev) => {
+      if (areListContentsEqual(prev, contextEducations)) {
+        return prev;
+      }
+      return contextEducations.map((item) => ({
+        ...item,
+        _localId: item.id || crypto.randomUUID(),
+      }));
+    });
   }, [resumeInfo?.educations]);
 
   useEffect(() => {
