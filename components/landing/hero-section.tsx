@@ -56,7 +56,7 @@ export function HeroSection() {
           className="mt-8 text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-fade-up font-medium"
           style={{ animationDelay: "0.2s" }}
         >
-          CareerForge AI is your end-to-end career platform — build ATS-optimized resumes, track applications, practice interviews, and showcase your portfolio with AI.
+          CareerForge AI brings together six specialized agents that optimize your resume, scrape jobs, coach you through interviews, and manage networking — so you land the right role without the grind.
         </p>
 
         {/* CTA Buttons */}

@@ -244,9 +244,9 @@ function PipelineVisualization({
   const dotOpacity = progress >= 0.98 ? Math.max(0, 1 - (progress - 0.98) * 50) : 1;
 
   return (
-    <div ref={containerRef} className="relative flex items-center justify-center">
+    <div ref={containerRef} className="relative flex items-center justify-center overflow-x-auto py-4 px-2">
       {/* Icons + Connector Lines */}
-      <div className="relative flex items-center gap-0">
+      <div className="relative flex items-center gap-0 min-w-fit mx-auto">
         {agents.map((agent, idx) => {
           const c = colorMap[agent.color];
           const isGlowing = idx === Math.min(glowIdx, n - 1);
@@ -500,9 +500,9 @@ export default function Home() {
             className="mt-6 sm:mt-8 text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-fade-up font-medium px-2 sm:px-0"
             style={{ animationDelay: "0.2s" }}
           >
-            Six autonomous AI agents work together to optimize your resumes,
-            practice interviews, scrape jobs, and manage your entire pipeline —
-            so you can focus on landing the role, not the busywork.
+            CareerForge AI brings together six specialized agents that optimize your resume,
+            scrape jobs, coach you through interviews, and manage networking —
+            so you land the right role without the grind.
           </p>
 
           <div
@@ -675,7 +675,7 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="mb-16 hidden lg:block"
+            className="mb-12 sm:mb-16"
           >
             <PipelineVisualization agents={agents} colorMap={colorMap} />
           </motion.div>
@@ -1425,7 +1425,7 @@ export default function Home() {
               <span className="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-indigo-500 to-indigo-400 bg-clip-text text-transparent">CareerForge AI</span>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mb-6">
-              Six AI agents working in concert — from resume optimization and job scraping to interview coaching and networking. Build, apply, and land your dream role, faster.
+              CareerForge AI brings together six specialized agents that optimize your resume, scrape jobs, coach you through interviews, and manage networking — so you land the right role without the grind.
             </p>
             <div className="flex items-center gap-3">
               <a href="https://www.linkedin.com/in/himanshu-guptaa" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors"><Linkedin size={18} /></a>
