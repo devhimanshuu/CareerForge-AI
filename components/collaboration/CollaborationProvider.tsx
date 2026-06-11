@@ -22,8 +22,8 @@ export function CollaborationProvider({
   children: React.ReactNode;
 }) {
   const [connectionState, setConnectionState] =
-    useState<ConnectionState>("connecting");
-  const [hasError, setHasError] = useState(false);
+    useState<ConnectionState>(IS_LIVEBLOCKS_CONFIGURED ? "connecting" : "error");
+  const [hasError, setHasError] = useState(!IS_LIVEBLOCKS_CONFIGURED);
   const { user, isLoaded } = useUser();
 
   // Reconnection logic
@@ -35,6 +35,11 @@ export function CollaborationProvider({
 
   // Derive connection state from user loading
   useEffect(() => {
+    if (!IS_LIVEBLOCKS_CONFIGURED) {
+      setHasError(true);
+      setConnectionState("error");
+      return;
+    }
     if (!isLoaded) {
       setConnectionState("connecting");
       return;
@@ -164,4 +169,4 @@ function getRandomColor() {
   return PRESENCE_COLORS[Math.floor(Math.random() * PRESENCE_COLORS.length)];
 }
 
-export { getRandomColor, PRESENCE_COLORS };
+export { getRandomColor, PRESENCE_COLORS, IS_LIVEBLOCKS_CONFIGURED };

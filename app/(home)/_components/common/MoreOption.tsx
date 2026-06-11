@@ -67,30 +67,23 @@ const MoreOption = () => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem
+            onClick={() => handleClick(resumeInfo?.status === "archived" ? "private" : "archived")}
+            disabled={isPending}
+            className="gap-2 cursor-pointer"
+          >
             {resumeInfo?.status === "archived" ? (
-              <Button
-                variant="ghost"
-                className="gap-1 !py-2 !cursor-pointer"
-                disabled={isPending}
-                onClick={() => handleClick("private")}
-              >
+              <>
                 <Redo size="15px" />
-                Retore resume
-                {isPending && <Loader size="15px" className="animate-spin" />}
-              </Button>
+                Restore resume
+              </>
             ) : (
-              <Button
-                variant="ghost"
-                className="gap-1  !py-2 !cursor-pointer"
-                disabled={isPending}
-                onClick={() => handleClick("archived")}
-              >
+              <>
                 <Trash2 size="15px" />
                 Move to Trash
-                {isPending && <Loader size="15px" className="animate-spin" />}
-              </Button>
+              </>
             )}
+            {isPending && <Loader size="15px" className="animate-spin ml-auto" />}
           </DropdownMenuItem>
 
           <ResumeBranchDialog

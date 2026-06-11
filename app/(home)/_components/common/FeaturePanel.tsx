@@ -103,10 +103,12 @@ function FeatureItem({
   feature,
   index,
   onCollapseSidebar,
+  onPanelCollapse,
 }: {
   feature: FeatureDef;
   index: number;
   onCollapseSidebar: () => void;
+  onPanelCollapse: () => void;
 }) {
   return (
     <motion.div
@@ -115,7 +117,6 @@ function FeatureItem({
       transition={{ delay: index * 0.03, duration: 0.3, ease: "easeOut" }}
       className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/60 transition-all duration-200 group border border-transparent hover:border-border/40 hover:shadow-sm"
       onClick={() => {
-        // Collapse sidebar after a tick so the trigger's dialog/popover can mount first
         requestAnimationFrame(() => onCollapseSidebar());
       }}
     >
@@ -134,7 +135,14 @@ function FeatureItem({
           {feature.description}
         </p>
       </div>
-      <div className="shrink-0 flex items-center">
+      <div
+        className="shrink-0 flex items-center"
+        onClick={(e) => {
+          e.stopPropagation();
+          /* Collapse the panel (slide off-screen) so the dialog has the full viewport */
+          requestAnimationFrame(() => onPanelCollapse());
+        }}
+      >
         {feature.trigger}
       </div>
     </motion.div>
@@ -146,6 +154,7 @@ const FeaturePanel = ({ isOpen, onClose }: FeaturePanelProps) => {
   const { resumeInfo } = useResumeContext();
   const { collapsed, setCollapsed } = useSidebar();
   const [showTerminal, setShowTerminal] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -174,6 +183,7 @@ const FeaturePanel = ({ isOpen, onClose }: FeaturePanelProps) => {
     if (isOpen) {
       setSearch("");
       setActiveCategory("all");
+      setPanelCollapsed(false);
       setTimeout(() => searchRef.current?.focus(), 300);
     }
   }, [isOpen]);
@@ -258,7 +268,7 @@ const FeaturePanel = ({ isOpen, onClose }: FeaturePanelProps) => {
 
             <motion.div
               initial={{ x: "-100%", opacity: 0.5 }}
-              animate={{ x: 0, opacity: 1 }}
+              animate={{ x: panelCollapsed ? "-100%" : 0, opacity: panelCollapsed ? 0.5 : 1 }}
               exit={{ x: "-100%", opacity: 0.5 }}
               transition={{ type: "spring", damping: 30, stiffness: 300, mass: 0.8 }}
               className="fixed top-0 left-0 bottom-0 z-[95] w-full max-w-sm bg-background border-r border-border shadow-2xl flex flex-col"
@@ -367,7 +377,7 @@ const FeaturePanel = ({ isOpen, onClose }: FeaturePanelProps) => {
                           </div>
                           <div className="space-y-0.5">
                             {catFeatures.map((feature, idx) => (
-                              <FeatureItem key={feature.id} feature={feature} index={groupIdx * 5 + idx} onCollapseSidebar={() => { if (!collapsed) setCollapsed(true); }} />
+                              <FeatureItem key={feature.id} feature={feature} index={groupIdx * 5 + idx} onCollapseSidebar={() => { if (!collapsed) setCollapsed(true); }} onPanelCollapse={() => setPanelCollapsed(true)} />
                             ))}
                           </div>
                         </motion.div>

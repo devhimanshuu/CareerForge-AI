@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser, useClerk } from "@clerk/nextjs";
@@ -38,6 +38,8 @@ import {
   Headphones,
   Flame,
   LogOut,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/context/sidebar-context";
@@ -192,6 +194,11 @@ const AppSidebar = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showFeaturePanel, setShowFeaturePanel] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+
+  /* ── Touch swipe to close ── */
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
 
   /* Detect if we're on an editor page */
   const isEditorPage = pathname?.includes("/document/") && pathname?.includes("/edit");
@@ -218,15 +225,45 @@ const AppSidebar = () => {
     return () => window.removeEventListener("keydown", handler);
   }, [mobileOpen]);
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!mobileOpen) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+    /* Close if swiping left > 60px and more horizontal than vertical */
+    if (deltaX < -60 && deltaY < 80) {
+      setMobileOpen(false);
+    }
+  };
+
   return (
     <>
       {/* Mobile hamburger */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="fixed top-3 left-3 z-[80] lg:hidden w-10 h-10 rounded-xl bg-background/80 backdrop-blur-md border border-border/50 shadow-lg flex items-center justify-center"
-      >
-        <LayoutDashboard size={18} className="text-foreground" />
-      </button>
+      <AnimatePresence>
+        {!mobileOpen && (
+          <motion.button
+            key="mobile-hamburger"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            onClick={() => setMobileOpen(true)}
+            className="fixed top-3 left-3 z-[80] lg:hidden w-10 h-10 rounded-xl bg-background/80 backdrop-blur-md border border-border/50 shadow-lg flex items-center justify-center"
+          >
+            <Image
+              src="/CareerForge_ai_final.png"
+              alt="CareerForge AI"
+              width={28}
+              height={28}
+              className="rounded-md"
+            />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Mobile backdrop */}
       <AnimatePresence>
@@ -243,6 +280,8 @@ const AppSidebar = () => {
 
       {/* Sidebar — fixed overlay on mobile, normal flex child on desktop */}
       <aside
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         className={cn(
           "bg-background border-r border-border/50 flex flex-col shrink-0 z-[70]",
           isMobile
@@ -279,6 +318,15 @@ const AppSidebar = () => {
               )}
             </AnimatePresence>
           </Link>
+          {/* Mobile close button */}
+          {isMobile && mobileOpen && (
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
 
         {/* ── Main Navigation ── */}
@@ -429,7 +477,7 @@ const AppSidebar = () => {
             {/* Sign Out Button */}
             <Tooltip label="Sign out">
               <button
-                onClick={() => signOut(() => { window.location.href = "/"; })}
+                onClick={() => setShowSignOutConfirm(true)}
                 className={cn(
                   "flex items-center justify-center gap-2 rounded-lg text-[10px] font-bold text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-all duration-200",
                   collapsed ? "w-8 h-8" : "px-2.5 py-1.5"
@@ -454,6 +502,50 @@ const AppSidebar = () => {
 
       {/* ── Feature Panel (full tool drawer) ── */}
       <FeaturePanel isOpen={showFeaturePanel} onClose={() => setShowFeaturePanel(false)} />
+
+      {/* ── Sign Out Confirmation Dialog ── */}
+      <AnimatePresence>
+        {showSignOutConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowSignOutConfirm(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-sm bg-background border border-border rounded-2xl shadow-2xl p-6 mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-rose-500/10 mx-auto mb-4">
+                <AlertTriangle size={22} className="text-rose-500" />
+              </div>
+              <h3 className="text-base font-bold text-center mb-1">Sign out of CareerForge AI?</h3>
+              <p className="text-xs text-muted-foreground text-center mb-6">
+                You&apos;ll need to sign in again to access your resumes and portfolios.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSignOutConfirm(false)}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-muted/50 hover:bg-muted transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => signOut(() => { window.location.href = "/"; })}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors duration-200 shadow-sm shadow-rose-600/20"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 };

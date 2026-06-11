@@ -11,7 +11,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { CollaborationProvider } from "@/components/collaboration/CollaborationProvider";
+import { CollaborationProvider, IS_LIVEBLOCKS_CONFIGURED } from "@/components/collaboration/CollaborationProvider";
 import { PresenceIndicator } from "@/components/collaboration/PresenceIndicator";
 import { Cursors } from "@/components/collaboration/Cursors";
 import { useParams, useSearchParams } from "next/navigation";
@@ -313,7 +313,7 @@ const EditResume = () => {
             </div>
           )}
 
-          {isCollabMode && <PresenceIndicator />}
+          {isCollabMode && IS_LIVEBLOCKS_CONFIGURED && <PresenceIndicator />}
 
           {/* Version History */}
           <Button
@@ -415,7 +415,7 @@ const EditResume = () => {
                   style={{ transform: `scale(${previewZoom / 100})` }}
                 >
                   <ResumePreview />
-                  {isCollabMode && <Cursors containerRef={previewRef} />}
+                  {isCollabMode && IS_LIVEBLOCKS_CONFIGURED && <Cursors containerRef={previewRef} />}
                 </div>
               </ResizablePanel>
             </ResizablePanelGroup>
