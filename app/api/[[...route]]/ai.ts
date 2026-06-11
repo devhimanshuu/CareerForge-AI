@@ -536,6 +536,45 @@ Return the corrected fields strictly as a JSON object matching this schema:
       return c.json({ error: error.message }, 500);
     }
   })
+  .post("/extract-job", getAuthUser, async (c) => {
+    try {
+      const { text } = await c.req.json();
+      if (!text || typeof text !== "string") {
+        return c.json({ error: "Text is required" }, 400);
+      }
+
+      const prompt = `You are a job description parser. Extract the following fields from this raw job posting text.
+Return ONLY a valid JSON object with these fields:
+- jobTitle: The job title/position name (string)
+- jobDescription: A cleaned-up, well-structured version of the full job description including responsibilities, requirements, and qualifications (string)
+- company: The company name (string or null if not found)
+- location: The job location (string or null if not found)
+- seniority: One of "junior", "mid-level", "senior", "lead", or null if unclear (string or null)
+
+Raw job posting text:
+{text}
+
+Return ONLY the JSON object, no other text.`;
+
+      const response = await chatModel.invoke([
+        { role: "user", content: prompt },
+      ]);
+      const textContent = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
+      const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("AI failed to return valid JSON");
+      const parsed = JSON.parse(jsonMatch[0]);
+      return c.json({
+        jobTitle: parsed.jobTitle || "",
+        jobDescription: parsed.jobDescription || "",
+        company: parsed.company || null,
+        location: parsed.location || null,
+        seniority: parsed.seniority || null,
+      });
+    } catch (error: any) {
+      console.error("Extract Job API Error:", error);
+      return c.json({ error: error.message || "Failed to extract job details" }, 500);
+    }
+  })
   .post("/resume-doctor-fix", getAuthUser, async (c) => {
     try {
       const { resumeData } = await c.req.json();

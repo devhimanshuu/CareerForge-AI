@@ -22,10 +22,25 @@ import {
   AlertCircle,
   Radio,
   MessageCircle,
+  Link as LinkIcon,
+  Zap,
+  CheckCircle2,
+  ChevronDown,
+  SlidersHorizontal,
+  Clock,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   PremiumPage,
   PremiumPageHeader,
@@ -65,6 +80,12 @@ const InterviewLab = () => {
   const [selectedResumeId, setSelectedResumeId] = useState("");
   const [targetRole, setTargetRole] = useState("");
   const [jobDescription, setJobDescription] = useState("");
+  const [jobUrl, setJobUrl] = useState("");
+  const [isFetchingJob, setIsFetchingJob] = useState(false);
+  const [jobFetched, setJobFetched] = useState(false);
+  const [recentJobs, setRecentJobs] = useState<Array<{ url: string; title: string; company: string; timestamp: number }>>([]);
+  const [showRecentJobs, setShowRecentJobs] = useState(false);
+  const recentJobsRef = useRef<HTMLDivElement>(null);
   const [selectedResumeInfo, setSelectedResumeInfo] = useState<any>(null);
   const [interviewConfig, setInterviewConfig] = useState({
     interviewType: "mixed",
@@ -75,6 +96,10 @@ const InterviewLab = () => {
 
   // Mode state
   const [interviewMode, setInterviewMode] = useState<InterviewMode>("turn-based");
+
+  // Dropdown state for setup panels (accordion: only one open at a time)
+  const [designOpen, setDesignOpen] = useState(true);
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   // Session state
   const [step, setStep] = useState<"setup" | "interviewing" | "feedback">("setup");
@@ -114,9 +139,45 @@ const InterviewLab = () => {
   const sessionManagerRef = useRef<InterviewSessionManager | null>(null);
   const silenceDetectorRef = useRef<ReturnType<typeof createSilenceDetector> | null>(null);
   const livePollingRef = useRef<NodeJS.Timeout | null>(null);
-  const accumulatedTranscriptRef = useRef<string>("");
   const isProcessingAnswerRef = useRef(false);
+  const hasSpokenRef = useRef(false);
   const liveTTSAudioRef = useRef<HTMLAudioElement | null>(null);
+  const isAISpeakingRef = useRef(false);
+  const isCleaningUpRef = useRef(false);
+  const sendLiveToAIRef = useRef<((msgs: Message[]) => Promise<void>) | null>(null);
+  const targetRoleRef = useRef(targetRole);
+  const selectedResumeInfoRef = useRef(selectedResumeInfo);
+  const jobDescriptionRef = useRef(jobDescription);
+  const interviewConfigRef = useRef(interviewConfig);
+
+  // Keep refs in sync with latest state
+  useEffect(() => { targetRoleRef.current = targetRole; }, [targetRole]);
+  useEffect(() => { selectedResumeInfoRef.current = selectedResumeInfo; }, [selectedResumeInfo]);
+  useEffect(() => { jobDescriptionRef.current = jobDescription; }, [jobDescription]);
+  useEffect(() => { interviewConfigRef.current = interviewConfig; }, [interviewConfig]);
+
+  // Load recent jobs from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("careerforge_recent_jobs");
+      if (stored) {
+        setRecentJobs(JSON.parse(stored));
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }, []);
+
+  // Close recent jobs dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (recentJobsRef.current && !recentJobsRef.current.contains(event.target as Node)) {
+        setShowRecentJobs(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const voiceState = loading
     ? "thinking"
@@ -229,26 +290,25 @@ const InterviewLab = () => {
 
   // ─── Live Mode: Audio Level Polling ────────────────────────────
   useEffect(() => {
-    if (!isLiveSession || step !== "interviewing") return;
-
-    const pollAudioLevel = () => {
+    if (!isLiveSession || step !== "interviewing") return;      const pollAudioLevel = () => {
       const manager = sessionManagerRef.current;
       if (!manager) return;
 
       const level = manager.getAudioLevel();
       setLiveUserAudioLevel(level);
 
-      // Update video panel state based on audio level
-      if (level > 0.1) {
+      // Track if user has spoken at all (skip when AI is speaking)
+      if (level > 0.1 && !isAISpeakingRef.current) {
+        hasSpokenRef.current = true;
         setVideoPanelState("speaking");
-      } else if (isLiveSession) {
+      } else if (isLiveSession && !isAISpeakingRef.current) {
         setVideoPanelState("active");
       }
 
-      // Silence detection
-      if (silenceDetectorRef.current && !isProcessingAnswerRef.current) {
+      // Silence detection — skip when AI is speaking or already processing
+      if (silenceDetectorRef.current && !isProcessingAnswerRef.current && !isAISpeakingRef.current) {
         const silenceDetected = silenceDetectorRef.current.check(level);
-        if (silenceDetected && accumulatedTranscriptRef.current.trim()) {
+        if (silenceDetected && hasSpokenRef.current) {
           handleLiveAnswerComplete();
         }
       }
@@ -265,10 +325,27 @@ const InterviewLab = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLiveSession, step]);
 
+  // ─── Live Mode: Helper to restart recording for next answer ──────
+  const restartRecordingForNextAnswer = useCallback(() => {
+    hasSpokenRef.current = false;
+    const mgr = sessionManagerRef.current;
+    if (mgr && !isCleaningUpRef.current) {
+      try {
+        mgr.startRecording();
+      } catch (err) {
+        console.error("Failed to restart recording:", err);
+      }
+    }
+  }, []);
+
   // ─── Live Mode: TTS for AI responses ──────────────────────────
   const speakLiveResponse = useCallback(
     async (text: string) => {
-      if (isLiveMuted || typeof window === "undefined") return;
+      if (isLiveMuted || typeof window === "undefined") {
+        // Even when muted, restart recording for next answer
+        restartRecordingForNextAnswer();
+        return;
+      }
 
       window.speechSynthesis.cancel();
       liveTTSAudioRef.current?.pause();
@@ -277,6 +354,7 @@ const InterviewLab = () => {
       let cancelled = false;
 
       setVideoPanelState("idle");
+      isAISpeakingRef.current = true;
 
       try {
         // Try ElevenLabs first
@@ -293,12 +371,20 @@ const InterviewLab = () => {
           if (!cancelled) {
             setLiveAIAudioLevel(0);
             setVideoPanelState("active");
+            isAISpeakingRef.current = false;
+            // Reset silence detector after AI finishes speaking
+            silenceDetectorRef.current?.reset();
+            // Restart recording for next user answer
+            restartRecordingForNextAnswer();
           }
         };
         audio.onerror = () => {
           if (!cancelled) {
             setLiveAIAudioLevel(0);
             setVideoPanelState("active");
+            isAISpeakingRef.current = false;
+            silenceDetectorRef.current?.reset();
+            restartRecordingForNextAnswer();
           }
         };
 
@@ -313,12 +399,18 @@ const InterviewLab = () => {
           if (!cancelled) {
             setLiveAIAudioLevel(0);
             setVideoPanelState("active");
+            isAISpeakingRef.current = false;
+            silenceDetectorRef.current?.reset();
+            restartRecordingForNextAnswer();
           }
         };
         utterance.onerror = () => {
           if (!cancelled) {
             setLiveAIAudioLevel(0);
             setVideoPanelState("active");
+            isAISpeakingRef.current = false;
+            silenceDetectorRef.current?.reset();
+            restartRecordingForNextAnswer();
           }
         };
 
@@ -330,41 +422,90 @@ const InterviewLab = () => {
         if (objectUrl) URL.revokeObjectURL(objectUrl);
       };
     },
-    [isLiveMuted, voiceConfig],
+    [isLiveMuted, voiceConfig, restartRecordingForNextAnswer],
   );
 
-  // ─── Live Mode: Handle user finished speaking (silence detected) ──
+  // ─── Live Mode: Transcribe accumulated audio and send to AI ──────
   const handleLiveAnswerComplete = useCallback(async () => {
     if (isProcessingAnswerRef.current) return;
 
-    const answerText = accumulatedTranscriptRef.current.trim();
-    if (!answerText) return;
+    const manager = sessionManagerRef.current;
+    if (!manager) return;
 
     isProcessingAnswerRef.current = true;
-    accumulatedTranscriptRef.current = "";
     silenceDetectorRef.current?.reset();
+    hasSpokenRef.current = false;
     setIsLiveListening(false);
     setVideoPanelState("idle");
 
-    // Add user entry to transcript
-    const userEntry: TranscriptEntry = {
-      id: `user-${Date.now()}`,
-      speaker: "user",
-      text: answerText,
-      timestamp: new Date(),
-    };
-    setTranscriptEntries((prev) => [...prev, userEntry]);
+    try {
+      // Stop recording and get full audio
+      manager.stopRecording();
+      const fullRecording = manager.getFullRecording();
 
-    // Update messages for AI context
-    const userMsg: Message = { role: "user", content: answerText };
-    setMessages((prev) => {
-      const updated = [...prev, userMsg];
-      // Send to AI
-      sendLiveToAI(updated);
-      return updated;
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      let answerText = "";
+
+      // Transcribe the complete audio blob (has proper headers)
+      if (fullRecording && fullRecording.size > 500) {
+        const currentTargetRole = targetRoleRef.current;
+        const currentSkills = selectedResumeInfoRef.current?.skills || [];
+        const keyterms = [currentTargetRole, ...currentSkills.map((s: any) => s.name)]
+          .filter(Boolean)
+          .join(",");
+
+        try {
+          const result = await manager.transcribeChunk(fullRecording, keyterms);
+          if (result.success && result.text.trim()) {
+            answerText = result.text.trim();
+          }
+        } catch (err) {
+          console.error("Transcription failed:", err);
+        }
+      }
+
+      if (!answerText) {
+        // No answer captured — restart recording and wait for user
+        isProcessingAnswerRef.current = false;
+        restartRecordingForNextAnswer();
+        return;
+      }
+
+      // Add user entry to transcript
+      const userEntry: TranscriptEntry = {
+        id: `user-${Date.now()}`,
+        speaker: "user",
+        text: answerText,
+        timestamp: new Date(),
+      };
+      setTranscriptEntries((prev) => [...prev, userEntry]);
+
+      // Update messages for AI context and send to AI
+      const userMsg: Message = { role: "user", content: answerText };
+      setMessages((prev) => {
+        const updated = [...prev, userMsg];
+        sendLiveToAIRef.current?.(updated);
+        return updated;
+      });
+    } catch (err) {
+      console.error("Error in handleLiveAnswerComplete:", err);
+      isProcessingAnswerRef.current = false;
+      restartRecordingForNextAnswer();
+    }
+  }, [restartRecordingForNextAnswer]);
+
+  // ─── Live Mode: Manual "Done Speaking" handler ─────────────────
+  const handleDoneSpeaking = useCallback(() => {
+    if (isProcessingAnswerRef.current) return;
+    if (!hasSpokenRef.current) {
+      toast({
+        title: "Nothing to submit",
+        description: "Please speak your answer before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+    handleLiveAnswerComplete();
+  }, [handleLiveAnswerComplete]);
 
   // ─── Live Mode: Send transcript to AI ─────────────────────────
   const sendLiveToAI = useCallback(
@@ -376,11 +517,11 @@ const InterviewLab = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            resumeData: selectedResumeInfo || {},
-            jobDescription,
-            targetRole,
+            resumeData: selectedResumeInfoRef.current || {},
+            jobDescription: jobDescriptionRef.current,
+            targetRole: targetRoleRef.current,
             messages: currentMessages,
-            config: interviewConfig,
+            config: interviewConfigRef.current,
           }),
         });
 
@@ -422,12 +563,15 @@ const InterviewLab = () => {
         isProcessingAnswerRef.current = false;
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedResumeInfo, jobDescription, targetRole, interviewConfig, speakLiveResponse],
+    [speakLiveResponse],
   );
 
+  // Keep the ref in sync with the latest sendLiveToAI
+  useEffect(() => {
+    sendLiveToAIRef.current = sendLiveToAI;
+  }, [sendLiveToAI]);
+
   // ─── Live Mode: Start live session ────────────────────────────
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const startLiveSession = useCallback(async () => {
     if (!targetRole.trim()) {
       toast({
@@ -443,8 +587,9 @@ const InterviewLab = () => {
     setUserAnswer("");
     setEvaluation(null);
     setTranscriptEntries([]);
-    accumulatedTranscriptRef.current = "";
     isProcessingAnswerRef.current = false;
+    hasSpokenRef.current = false;
+    isCleaningUpRef.current = false;
 
     try {
       // Initialize WebRTC session
@@ -459,22 +604,8 @@ const InterviewLab = () => {
       // Initialize silence detector
       silenceDetectorRef.current = createSilenceDetector(0.08, 2000);
 
-      // Start continuous audio recording with chunk transcription
-      manager.startRecording(async (blob) => {
-        if (isProcessingAnswerRef.current) return;
-
-        const result = await manager.transcribeChunk(
-          blob,
-          [targetRole, ...(selectedResumeInfo?.skills || []).map((s: any) => s.name)]
-            .filter(Boolean)
-            .join(","),
-        );
-
-        if (result.success && result.text.trim()) {
-          accumulatedTranscriptRef.current += (accumulatedTranscriptRef.current ? " " : "") + result.text.trim();
-          setIsLiveListening(true);
-        }
-      }, 2000);
+      // Start continuous audio recording (batch transcription on silence/done)
+      manager.startRecording();
 
       // Get the first question from AI
       const res = await fetch("/api/ai/interview-session", {
@@ -510,25 +641,37 @@ const InterviewLab = () => {
       }
     } catch (e: any) {
       console.error(e);
+      let description = e.message || "Failed to start live interview.";
+      if (e.name === "NotAllowedError" || e.message?.includes("permission")) {
+        description = "Camera/microphone access was denied. Please allow permissions and try again.";
+      } else if (e.name === "NotFoundError") {
+        description = "No camera or microphone found. Please connect a device and try again.";
+      } else if (e.name === "NotReadableError") {
+        description = "Camera/microphone is already in use by another application.";
+      }
       toast({
         title: "Live Session Failed",
-        description: e.message || "Failed to start live interview. Check camera/mic permissions.",
+        description,
         variant: "destructive",
       });
       cleanupLiveSession();
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetRole, selectedResumeInfo, jobDescription, interviewConfig, speakLiveResponse]);
 
   // ─── Live Mode: Cleanup ───────────────────────────────────────
   const cleanupLiveSession = useCallback(() => {
+    // Guard against double-cleanup
+    if (isCleaningUpRef.current) return;
+    isCleaningUpRef.current = true;
+
     sessionManagerRef.current?.cleanup();
     sessionManagerRef.current = null;
     silenceDetectorRef.current = null;
     isProcessingAnswerRef.current = false;
-    accumulatedTranscriptRef.current = "";
+    hasSpokenRef.current = false;
 
     if (livePollingRef.current) {
       clearInterval(livePollingRef.current);
@@ -739,6 +882,110 @@ const InterviewLab = () => {
     setCurrentQuestion("");
     setUserAnswer("");
     setEvaluation(null);
+    setJobUrl("");
+    setJobFetched(false);
+    setIsFetchingJob(false);
+    setShowRecentJobs(false);
+  };
+
+  // ─── Auto-fill job from URL ──────────────────────────────────
+  const handleAutoFillJob = async () => {
+    if (!jobUrl.trim()) return;
+    setIsFetchingJob(true);
+    try {
+      // Validate URL format
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(jobUrl.trim());
+      } catch {
+        throw new Error("Please enter a valid URL (e.g. https://linkedin.com/jobs/...)"
+        );
+      }
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        throw new Error("Only http and https URLs are supported");
+      }
+
+      // Step 1: Fetch raw text from URL
+      const fetchRes = await fetch("/api/fetch-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: jobUrl.trim() }),
+      });
+      if (!fetchRes.ok) throw new Error("Failed to fetch URL content");
+      const fetchData = await fetchRes.json();
+      if (!fetchData.text) throw new Error("No content extracted from URL");
+
+      // Step 2: AI extract structured job details
+      const extractRes = await fetch("/api/ai/extract-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: fetchData.text }),
+      });
+      if (!extractRes.ok) throw new Error("Failed to extract job details");
+      const extractData = await extractRes.json();
+
+      // Step 3: Auto-fill form fields
+      if (extractData.jobTitle) setTargetRole(extractData.jobTitle);
+      if (extractData.jobDescription) setJobDescription(extractData.jobDescription);
+      setJobFetched(true);
+
+      // Step 4: Save to recent jobs
+      const newJob = {
+        url: jobUrl.trim(),
+        title: extractData.jobTitle || "Unknown Position",
+        company: extractData.company || "Unknown Company",
+        timestamp: Date.now(),
+      };
+      setRecentJobs((prev) => {
+        const filtered = prev.filter((j) => j.url !== newJob.url);
+        const updated = [newJob, ...filtered].slice(0, 10);
+        localStorage.setItem("careerforge_recent_jobs", JSON.stringify(updated));
+        return updated;
+      });
+
+      toast({
+        title: "Job Details Extracted",
+        description: extractData.company
+          ? `Auto-filled from ${extractData.company}${extractData.location ? ` (${extractData.location})` : ""}`
+          : "Job details have been auto-filled successfully.",
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Extraction Failed",
+        description: err.message || "Could not extract job details. Try pasting the description manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetchingJob(false);
+    }
+  };
+
+  // Select a recent job to auto-fill
+  const handleSelectRecentJob = (job: { url: string; title: string; company: string }) => {
+    setJobUrl(job.url);
+    setTargetRole(job.title);
+    setJobFetched(false);
+    setShowRecentJobs(false);
+    toast({
+      title: "Job Selected",
+      description: `Loaded ${job.title} from ${job.company}`,
+    });
+  };
+
+  // Remove a recent job
+  const handleRemoveRecentJob = (url: string) => {
+    setRecentJobs((prev) => {
+      const updated = prev.filter((j) => j.url !== url);
+      localStorage.setItem("careerforge_recent_jobs", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Clear all recent jobs
+  const handleClearRecentJobs = () => {
+    setRecentJobs([]);
+    localStorage.removeItem("careerforge_recent_jobs");
   };
 
   return (
@@ -763,7 +1010,7 @@ const InterviewLab = () => {
       />
 
       {/* Dynamic Stats Banner */}
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
         <PremiumStatCard
           icon={<Gauge size={18} />}
           label="Delivery Score"
@@ -785,6 +1032,13 @@ const InterviewLab = () => {
           detail={evaluation ? "Recommendations" : "Clean slate"}
           tone="amber"
         />
+        <PremiumStatCard
+          icon={<Radio size={18} />}
+          label="Interview Mode"
+          value={interviewMode === "live" ? "Live" : "Turn"}
+          detail={interviewMode === "live" ? "Real-time conversation" : "Record & submit"}
+          tone="slate"
+        />
       </div>
 
       <AnimatePresence mode="wait">
@@ -795,310 +1049,618 @@ const InterviewLab = () => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="max-w-2xl mx-auto"
+            className="w-full"
           >
-            <PremiumPanel className="p-8 space-y-6">
-              <div className="flex items-center gap-3 border-b pb-4">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                  <Play size={20} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">Configure Mock Interview</h2>
-                  <p className="text-xs text-muted-foreground">Setup target role and background parameters.</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {/* ─── Mode Toggle ──────────────────────────────── */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                    Interview Mode
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setInterviewMode("turn-based")}
-                      className={cn(
-                        "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
-                        interviewMode === "turn-based"
-                          ? "border-indigo-500 bg-indigo-500/5 text-indigo-600"
-                          : "border-border/50 bg-muted/20 text-muted-foreground hover:border-indigo-300"
-                      )}
-                    >
-                      <MessageCircle size={20} />
-                      <span className="text-xs font-bold">Turn-based</span>
-                      <span className="text-[10px] opacity-70">Record & submit each answer</span>
-                    </button>
-                    <button
-                      onClick={() => setInterviewMode("live")}
-                      className={cn(
-                        "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
-                        interviewMode === "live"
-                          ? "border-violet-500 bg-violet-500/5 text-violet-600"
-                          : "border-border/50 bg-muted/20 text-muted-foreground hover:border-violet-300"
-                      )}
-                    >
-                      <Radio size={20} />
-                      <span className="text-xs font-bold">Live Conversation</span>
-                      <span className="text-[10px] opacity-70">Real-time video interview with AI</span>
-                    </button>
+            {/* Landscape header card */}
+            <PremiumPanel className="p-6 md:p-8 mb-6 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-violet-500/5 pointer-events-none" />
+              <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25">
+                    <Play size={22} fill="currentColor" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-foreground">Configure Mock Interview</h2>
+                    <p className="text-xs text-muted-foreground">Setup target role, background parameters, and interview style.</p>
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                    1. Choose Context Resume (Optional)
-                  </label>
-                  <select
-                    className="w-full h-11 px-3 bg-muted/30 border border-border/70 rounded-xl text-sm focus:ring-2 ring-indigo-500/20 outline-none"
-                    value={selectedResumeId}
-                    onChange={(e) => setSelectedResumeId(e.target.value)}
+                {/* Quick Mode Switcher */}
+                <div className="flex items-center gap-2 p-1 rounded-xl bg-muted/30 border border-border/50">
+                  <button
+                    onClick={() => setInterviewMode("turn-based")}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all",
+                      interviewMode === "turn-based"
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/25"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
                   >
-                    <option value="">-- No resume context (pure interview) --</option>
-                    {resumes.map((resume: any) => (
-                      <option key={resume.documentId} value={resume.documentId}>
-                        {resume.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                    2. Target Job Title
-                  </label>
-                  <Input
-                    placeholder="e.g. Senior Frontend Engineer"
-                    value={targetRole}
-                    onChange={(e) => setTargetRole(e.target.value)}
-                    className="h-11 rounded-xl"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                    3. Target Job Description (Optional)
-                  </label>
-                  <Textarea
-                    placeholder="Paste the Job Description to tailor the interview questions specifically to the position..."
-                    value={jobDescription}
-                    onChange={(e) => setJobDescription(e.target.value)}
-                    className="min-h-[150px] rounded-xl resize-none"
-                  />
-                </div>
-
-                <VoiceStudio value={voiceConfig} onChange={setVoiceConfig} />
-
-                <div className="space-y-3 rounded-2xl border bg-muted/20 p-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Interview Design</p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <ConfigSelect
-                      label="Format"
-                      value={interviewConfig.interviewType}
-                      options={["mixed", "behavioral", "technical", "case-study", "leadership"]}
-                      onChange={(interviewType) => setInterviewConfig({ ...interviewConfig, interviewType })}
-                    />
-                    <ConfigSelect
-                      label="Difficulty"
-                      value={interviewConfig.difficulty}
-                      options={["adaptive", "standard", "challenging", "expert"]}
-                      onChange={(difficulty) => setInterviewConfig({ ...interviewConfig, difficulty })}
-                    />
-                    <ConfigSelect
-                      label="Feedback"
-                      value={interviewConfig.feedbackStyle}
-                      options={["supportive", "direct", "strict"]}
-                      onChange={(feedbackStyle) => setInterviewConfig({ ...interviewConfig, feedbackStyle })}
-                    />
-                  </div>
-                  <label className="block space-y-2">
-                    <span className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground"><span>Major Questions</span><span className="text-indigo-500">{interviewConfig.questionCount}</span></span>
-                    <input type="range" min={2} max={10} value={interviewConfig.questionCount} onChange={(event) => setInterviewConfig({ ...interviewConfig, questionCount: Number(event.target.value) })} className="w-full accent-indigo-500" />
-                  </label>
+                    <MessageCircle size={14} />
+                    Turn-based
+                  </button>
+                  <button
+                    onClick={() => setInterviewMode("live")}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all",
+                      interviewMode === "live"
+                        ? "bg-violet-600 text-white shadow-md shadow-violet-500/25"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Radio size={14} />
+                    Live Conversation
+                  </button>
                 </div>
               </div>
-
-              <Button
-                onClick={interviewMode === "live" ? startLiveSession : handleStartSession}
-                disabled={loading}
-                className={cn(
-                  "w-full h-12 rounded-xl text-white font-bold gap-2 text-sm",
-                  interviewMode === "live"
-                    ? "bg-violet-600 hover:bg-violet-700"
-                    : "bg-indigo-600 hover:bg-indigo-700"
-                )}
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : interviewMode === "live" ? (
-                  <>
-                    <Radio size={16} />
-                    Start Live Interview
-                  </>
-                ) : (
-                  <>
-                    <Play size={16} fill="currentColor" />
-                    Initialize AI Recruiter
-                  </>
-                )}
-              </Button>
             </PremiumPanel>
+
+            {/* Landscape two-column setup form */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+              {/* Left: Form fields (3/5 width) */}
+              <PremiumPanel className="lg:col-span-3 p-6 md:p-8 space-y-5 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500" />
+                <div className="space-y-4">
+                  {/* Job Link Auto-fill */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      Job Posting Link (Auto-fill)
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          placeholder="Paste job link (LinkedIn, Indeed, etc.)"
+                          value={jobUrl}
+                          onChange={(e) => {
+                            setJobUrl(e.target.value);
+                            setJobFetched(false);
+                          }}
+                          className="h-11 rounded-xl pl-9"
+                        />
+                      </div>
+                      <Button
+                        onClick={handleAutoFillJob}
+                        disabled={isFetchingJob || !jobUrl.trim()}
+                        className="h-11 rounded-xl px-4 gap-2 shrink-0 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20"
+                      >
+                        {isFetchingJob ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : jobFetched ? (
+                          <CheckCircle2 size={14} />
+                        ) : (
+                          <Zap size={14} />
+                        )}
+                        {isFetchingJob ? "Extracting..." : jobFetched ? "Done" : "Auto-fill"}
+                      </Button>
+                    </div>
+                    {jobFetched && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-[10px] text-emerald-500 font-bold flex items-center gap-1"
+                      >
+                        <CheckCircle2 size={10} /> Job details extracted and filled below
+                      </motion.p>
+                    )}
+                  </div>
+
+                  {/* Recent Jobs History */}
+                  {recentJobs.length > 0 && (
+                    <div ref={recentJobsRef} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowRecentJobs(!showRecentJobs)}
+                        className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Clock size={12} />
+                        Recent Jobs ({recentJobs.length})
+                        <motion.div animate={{ rotate: showRecentJobs ? 180 : 0 }} transition={{ duration: 0.15 }}>
+                          <ChevronDown size={10} />
+                        </motion.div>
+                      </button>
+                      <AnimatePresence>
+                        {showRecentJobs && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="mt-2 rounded-xl border bg-muted/30 divide-y divide-border/50 max-h-[240px] overflow-y-auto">
+                              {recentJobs.map((job) => (
+                                <div
+                                  key={job.url}
+                                  className="flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors group"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSelectRecentJob(job)}
+                                    className="flex-1 text-left min-w-0"
+                                  >
+                                    <p className="text-xs font-bold text-foreground truncate">
+                                      {job.title}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground truncate">
+                                      {job.company} · {new URL(job.url).hostname.replace("www.", "")}
+                                    </p>
+                                  </button>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSelectRecentJob(job)}
+                                      className="w-7 h-7 rounded-lg flex items-center justify-center text-indigo-500 hover:bg-indigo-500/10 transition-colors"
+                                      title="Use this job"
+                                    >
+                                      <Zap size={12} />
+                                    </button>
+                                    <a
+                                      href={job.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                      title="Open in new tab"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <ExternalLink size={11} />
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveRecentJob(job.url);
+                                      }}
+                                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
+                                      title="Remove from history"
+                                    >
+                                      <X size={11} />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleClearRecentJobs}
+                              className="mt-2 text-[10px] font-bold text-destructive hover:text-destructive/80 transition-colors"
+                            >
+                              Clear all history
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      Context Resume (Optional)
+                    </label>
+                    <Select value={selectedResumeId || undefined} onValueChange={(v) => setSelectedResumeId(v || "")}>
+                      <SelectTrigger className="h-11 rounded-xl bg-muted/30 border-border/70">
+                        <SelectValue placeholder="No resume context (pure interview)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {resumes.map((resume: any) => (
+                          <SelectItem key={resume.documentId} value={resume.documentId}>
+                            {resume.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      Target Job Title
+                    </label>
+                    <Input
+                      placeholder="e.g. Senior Frontend Engineer"
+                      value={targetRole}
+                      onChange={(e) => setTargetRole(e.target.value)}
+                      className="h-11 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      Target Job Description (Optional)
+                    </label>
+                    <Textarea
+                      placeholder="Paste the Job Description to tailor the interview questions specifically to the position..."
+                      value={jobDescription}
+                      onChange={(e) => setJobDescription(e.target.value)}
+                      className="min-h-[120px] rounded-xl resize-none"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={interviewMode === "live" ? startLiveSession : handleStartSession}
+                  disabled={loading}
+                  className={cn(
+                    "w-full h-12 rounded-xl text-white font-bold gap-2 text-sm shadow-lg",
+                    interviewMode === "live"
+                      ? "bg-violet-600 hover:bg-violet-700 shadow-violet-500/25"
+                      : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25"
+                  )}
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : interviewMode === "live" ? (
+                    <>
+                      <Radio size={16} />
+                      Start Live Interview
+                    </>
+                  ) : (
+                    <>
+                      <Play size={16} fill="currentColor" />
+                      Initialize AI Recruiter
+                    </>
+                  )}
+                </Button>
+              </PremiumPanel>
+
+              {/* Right: Config & Voice (2/5 width) */}
+              <div className="lg:col-span-2 space-y-5">
+                {/* Interview Design Dropdown */}
+                <PremiumPanel className="relative overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!designOpen) {
+                        setVoiceOpen(false);
+                      }
+                      setDesignOpen(!designOpen);
+                    }}
+                    className="w-full flex items-center justify-between p-5 group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                        <SlidersHorizontal size={14} className="text-emerald-500" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-bold text-foreground">Interview Design</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {interviewConfig.interviewType} · {interviewConfig.difficulty} · {interviewConfig.questionCount}Q's
+                        </p>
+                      </div>
+                    </div>
+                    <motion.div
+                      animate={{ rotate: designOpen ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ChevronDown size={16} className="text-muted-foreground" />
+                    </motion.div>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {designOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-5 pb-5 space-y-4">
+                          <div className="grid grid-cols-1 gap-3">
+                            <ConfigSelect
+                              label="Format"
+                              value={interviewConfig.interviewType}
+                              options={["mixed", "behavioral", "technical", "case-study", "leadership"]}
+                              onChange={(interviewType) => setInterviewConfig({ ...interviewConfig, interviewType })}
+                            />
+                            <ConfigSelect
+                              label="Difficulty"
+                              value={interviewConfig.difficulty}
+                              options={["adaptive", "standard", "challenging", "expert"]}
+                              onChange={(difficulty) => setInterviewConfig({ ...interviewConfig, difficulty })}
+                            />
+                            <ConfigSelect
+                              label="Feedback Style"
+                              value={interviewConfig.feedbackStyle}
+                              options={["supportive", "direct", "strict"]}
+                              onChange={(feedbackStyle) => setInterviewConfig({ ...interviewConfig, feedbackStyle })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <span className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                              <span>Major Questions</span>
+                              <span className="text-indigo-500 tabular-nums">{interviewConfig.questionCount}</span>
+                            </span>
+                            <input
+                              type="range"
+                              min={2}
+                              max={10}
+                              value={interviewConfig.questionCount}
+                              onChange={(event) => setInterviewConfig({ ...interviewConfig, questionCount: Number(event.target.value) })}
+                              className="w-full accent-indigo-500"
+                            />
+                            <div className="flex justify-between text-[9px] font-bold text-muted-foreground/50">
+                              <span>Quick (2)</span>
+                              <span>Deep (10)</span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </PremiumPanel>
+
+                {/* Voice Studio Dropdown */}
+                <PremiumPanel className="relative overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!voiceOpen) {
+                        setDesignOpen(false);
+                      }
+                      setVoiceOpen(!voiceOpen);
+                    }}
+                    className="w-full flex items-center justify-between p-5 group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 to-purple-500" />
+                      <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                        <Volume2 size={14} className="text-violet-500" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-bold text-foreground">Recruiter Voice Studio</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {voiceConfig.role === "recruiter" ? "Professional Recruiter" : voiceConfig.role === "technical" ? "Technical Interviewer" : voiceConfig.role === "executive" ? "Executive Interviewer" : "Career Coach"} · {voiceConfig.speed.toFixed(1)}x speed
+                        </p>
+                      </div>
+                    </div>
+                    <motion.div
+                      animate={{ rotate: voiceOpen ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ChevronDown size={16} className="text-muted-foreground" />
+                    </motion.div>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {voiceOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-5 pb-5">
+                          <VoiceStudio value={voiceConfig} onChange={setVoiceConfig} compact />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </PremiumPanel>
+
+                {/* Mode description card */}
+                <PremiumPanel className={cn(
+                  "p-5 relative overflow-hidden transition-all duration-300",
+                  interviewMode === "live"
+                    ? "border-violet-500/30 bg-violet-500/5"
+                    : "border-indigo-500/30 bg-indigo-500/5"
+                )}>
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                      interviewMode === "live"
+                        ? "bg-violet-500/10 text-violet-500"
+                        : "bg-indigo-500/10 text-indigo-500"
+                    )}>
+                      {interviewMode === "live" ? <Radio size={18} /> : <MessageCircle size={18} />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">
+                        {interviewMode === "live" ? "Live Conversation Mode" : "Turn-based Mode"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+                        {interviewMode === "live"
+                          ? "Real-time video interview with AI. Your camera and mic will be activated for a natural conversation flow."
+                          : "Record and submit each answer individually. Type or speak your responses at your own pace."
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </PremiumPanel>
+              </div>
+            </div>
           </motion.div>
         )}
 
-        {/* ─── INTERVIEWING STEP ────────────────────────────────── */}
+        {/* ─── INTERVIEWING STEP (Turn-based) ──────────────────── */}
         {step === "interviewing" && interviewMode === "turn-based" && (
           <motion.div
             key="interviewing"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="grid grid-cols-1 gap-6 lg:grid-cols-3"
+            className="w-full"
           >
-            {/* Live Recruiter View */}
-            <PremiumPanel className="lg:col-span-2 flex flex-col min-h-[500px]">
-              {/* Camera feed mockup / glow */}
-              <div className="aspect-video relative bg-slate-950 flex flex-col items-center justify-center overflow-hidden border-b">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-violet-500/10" />
+            {/* Landscape interviewing layout: video + question on left, answer + logs on right */}
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+              {/* Left: Video feed + Question (wider) */}
+              <div className="xl:col-span-8 flex flex-col gap-5">
+                {/* Video / Visualizer - landscape aspect ratio */}
+                <PremiumPanel className="flex flex-col relative overflow-hidden">
+                  <div className="w-full aspect-video lg:aspect-[16/7] relative bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-violet-500/10" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.08),transparent_70%)]" />
 
-                <div className="absolute top-4 right-4 z-20">
-                  <Button
-                    onClick={() => setIsMuted(!isMuted)}
-                    variant="ghost"
-                    size="icon"
-                    className="w-8 h-8 rounded-lg bg-slate-900/80 backdrop-blur-md border border-white/10 hover:bg-slate-800 text-white hover:text-white"
-                  >
-                    {isMuted ? (
-                      <VolumeX size={14} className="text-red-400" />
-                    ) : (
-                      <Volume2 size={14} className="text-emerald-400" />
-                    )}
-                  </Button>
-                </div>
-
-                <div className="relative z-10 flex flex-col items-center justify-center">
-                  <motion.div
-                    animate={{
-                      scale: voiceState !== "idle" ? [1, 1.12, 1] : 1,
-                      opacity: voiceState !== "idle" ? [0.35, 0.75, 0.35] : 0.45,
-                    }}
-                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                    className="absolute h-32 w-32 rounded-full bg-indigo-500 blur-2xl"
-                  />
-                  <div className="relative rounded-3xl border border-white/10 bg-slate-900/80 px-8 py-6 shadow-xl shadow-indigo-500/20 backdrop-blur-md">
-                    <AudioVisualizer state={voiceState} />
-                  </div>
-                </div>
-
-                <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center z-20">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/10">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white">Question {questionIndex} of {interviewConfig.questionCount}</span>
-                  </div>
-
-                  {isRecording && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/20 backdrop-blur-md border border-red-500/30">
-                      <span className="text-[10px] font-black text-red-400 tracking-wider">REC {formatTime(recordingTime)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Chat interaction zone */}
-              <div className="flex-1 p-6 flex flex-col gap-6 bg-muted/10">
-                <div className="space-y-2">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-500 flex items-center gap-1.5">
-                    <Sparkles size={12} />
-                    AI Recruiter
-                  </h3>
-                  <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-md leading-relaxed font-bold text-slate-800 dark:text-slate-100">
-                    {currentQuestion}
-                  </div>
-                </div>
-
-                {/* User Response Area */}
-                <div className="space-y-4 flex-1 flex flex-col justify-end">
-                  <div className="relative">
-                    <Textarea
-                      placeholder="Type your structured STAR answer here, or click 'Record Audio' to respond verbally..."
-                      value={userAnswer}
-                      onChange={(e) => setUserAnswer(e.target.value)}
-                      disabled={loading || transcribing}
-                      className="min-h-[120px] rounded-2xl pr-12 focus-visible:ring-indigo-500/30 border-border/70 resize-none text-sm font-medium leading-relaxed"
-                    />
-
-                    {transcribing && (
-                      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-2xl flex items-center justify-center gap-2">
-                        <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
-                        <span className="text-xs font-bold text-indigo-600 animate-pulse">Transcribing your voice...</span>
+                    {/* Top bar */}
+                    <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-20">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/10">
+                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-white">Question {questionIndex} of {interviewConfig.questionCount}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/20 backdrop-blur-md border border-indigo-500/30">
+                          <Sparkles size={10} className="text-indigo-400" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300">AI Recruiter</span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-3">
-                    {isRecording ? (
                       <Button
-                        onClick={stopRecording}
-                        className="flex-1 h-12 bg-red-600 hover:bg-red-700 text-white rounded-xl gap-2 font-bold transition-all shadow-md shadow-red-500/10"
+                        onClick={() => setIsMuted(!isMuted)}
+                        variant="ghost"
+                        size="icon"
+                        className="w-8 h-8 rounded-lg bg-slate-900/80 backdrop-blur-md border border-white/10 hover:bg-slate-800 text-white hover:text-white"
                       >
-                        <StopCircle size={18} />
-                        Stop Recording
+                        {isMuted ? (
+                          <VolumeX size={14} className="text-red-400" />
+                        ) : (
+                          <Volume2 size={14} className="text-emerald-400" />
+                        )}
                       </Button>
-                    ) : (
-                      <Button
-                        onClick={startRecording}
-                        disabled={loading || transcribing}
-                        variant="outline"
-                        className="flex-1 h-12 rounded-xl gap-2 border-indigo-500/30 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold"
-                      >
-                        <Mic size={18} />
-                        Record Audio
-                      </Button>
-                    )}
+                    </div>
 
-                    <Button
-                      onClick={handleSubmitAnswer}
-                      disabled={loading || transcribing || !userAnswer.trim()}
-                      className="px-8 h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold gap-2 text-sm shadow-lg shadow-indigo-500/15"
-                    >
-                      {loading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          Submit Answer
-                          <ChevronRight size={16} />
-                        </>
+                    {/* Center visualizer */}
+                    <div className="relative z-10 flex flex-col items-center justify-center">
+                      <motion.div
+                        animate={{
+                          scale: voiceState !== "idle" ? [1, 1.15, 1] : 1,
+                          opacity: voiceState !== "idle" ? [0.3, 0.7, 0.3] : 0.4,
+                        }}
+                        transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                        className="absolute h-36 w-36 rounded-full bg-indigo-500 blur-3xl"
+                      />
+                      <motion.div
+                        animate={{
+                          scale: voiceState !== "idle" ? [1, 1.08, 1] : 1,
+                          opacity: voiceState !== "idle" ? [0.2, 0.5, 0.2] : 0.3,
+                        }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut", delay: 0.3 }}
+                        className="absolute h-48 w-48 rounded-full bg-violet-500 blur-3xl"
+                      />
+                      <div className="relative rounded-3xl border border-white/10 bg-slate-900/80 px-10 py-7 shadow-xl shadow-indigo-500/20 backdrop-blur-md">
+                        <AudioVisualizer state={voiceState} />
+                      </div>
+                    </div>
+
+                    {/* Bottom bar */}
+                    <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center z-20">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20">
+                          <span className="text-[10px] font-bold text-emerald-400">STAR Format</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/30 backdrop-blur-md border border-border/30">
+                          <span className="text-[10px] font-bold text-muted-foreground capitalize">{interviewConfig.difficulty} Difficulty</span>
+                        </div>
+                      </div>
+                      {isRecording && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/20 backdrop-blur-md border border-red-500/30 animate-pulse">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                          <span className="text-[10px] font-black text-red-400 tracking-wider">REC {formatTime(recordingTime)}</span>
+                        </div>
                       )}
-                    </Button>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </PremiumPanel>
+                </PremiumPanel>
 
-            {/* Conversation Logs */}
-            <div className="space-y-6">
-              <PremiumPanel className="p-5 flex flex-col h-full max-h-[500px]">
-                <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 border-b pb-2">
+                {/* Question + Answer zone */}
+                <PremiumPanel className="p-5 md:p-6 flex flex-col gap-5 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500" />
+                  {/* Current question display */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                        <Sparkles size={13} className="text-indigo-500" />
+                      </div>
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-500">AI Recruiter</h3>
+                    </div>
+                    <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-sm leading-relaxed font-bold text-slate-800 dark:text-slate-100">
+                      {currentQuestion}
+                    </div>
+                  </div>
+
+                  {/* Answer textarea */}
+                  <div className="space-y-3 flex-1">
+                    <div className="relative">
+                      <Textarea
+                        placeholder="Type your structured STAR answer here, or click 'Record Audio' to respond verbally..."
+                        value={userAnswer}
+                        onChange={(e) => setUserAnswer(e.target.value)}
+                        disabled={loading || transcribing}
+                        className="min-h-[100px] rounded-2xl pr-12 focus-visible:ring-indigo-500/30 border-border/70 resize-none text-sm font-medium leading-relaxed"
+                      />
+                      {transcribing && (
+                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-2xl flex items-center justify-center gap-2">
+                          <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+                          <span className="text-xs font-bold text-indigo-600 animate-pulse">Transcribing your voice...</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      {isRecording ? (
+                        <Button
+                          onClick={stopRecording}
+                          className="sm:flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-xl gap-2 font-bold transition-all shadow-md shadow-red-500/10"
+                        >
+                          <StopCircle size={16} />
+                          Stop Recording
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={startRecording}
+                          disabled={loading || transcribing}
+                          variant="outline"
+                          className="sm:flex-1 h-11 rounded-xl gap-2 border-indigo-500/30 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold"
+                        >
+                          <Mic size={16} />
+                          Record Audio
+                        </Button>
+                      )}
+                      <Button
+                        onClick={handleSubmitAnswer}
+                        disabled={loading || transcribing || !userAnswer.trim()}
+                        className="sm:flex-1 h-11 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold gap-2 text-sm shadow-lg shadow-indigo-500/15"
+                      >
+                        {loading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            Submit Answer
+                            <ChevronRight size={16} />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </PremiumPanel>
+              </div>
+
+              {/* Right: Session Logs */}
+              <PremiumPanel className="xl:col-span-4 p-5 flex flex-col min-h-[400px] max-h-[700px] relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
+                <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 border-b pb-3">
                   <MessageSquare size={14} />
                   Session Logs
+                  <span className="ml-auto text-[9px] font-bold bg-muted/50 px-2 py-0.5 rounded-full">
+                    {messages.filter(m => m.role === "assistant").length} Q&apos;s
+                  </span>
                 </h3>
-
-                <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
                   {messages.map((m, idx) => (
-                    <div
+                    <motion.div
                       key={idx}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
                       className={cn(
-                        "p-4 rounded-2xl max-w-[85%] text-xs leading-relaxed font-semibold",
+                        "p-4 rounded-2xl text-xs leading-relaxed font-semibold",
                         m.role === "assistant"
-                          ? "bg-indigo-500/5 text-indigo-700 dark:text-indigo-300 border border-indigo-500/10 self-start"
-                          : "bg-muted text-muted-foreground ml-auto self-end"
+                          ? "bg-indigo-500/5 text-indigo-700 dark:text-indigo-300 border border-indigo-500/10"
+                          : "bg-muted text-muted-foreground ml-6"
                       )}
                     >
                       <span className="block font-black text-[9px] uppercase tracking-widest opacity-60 mb-1">
                         {m.role === "assistant" ? "Interviewer" : "Candidate"}
                       </span>
                       {m.content}
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </PremiumPanel>
@@ -1113,32 +1675,47 @@ const InterviewLab = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="grid grid-cols-1 gap-6 lg:grid-cols-3"
+            className="w-full"
           >
-            {/* Left: Video + AI Visualizer */}
-            <div className="lg:col-span-2 flex flex-col gap-4">
-              {/* Video panel */}
-              <PremiumPanel className="p-3">
-                <VideoPanel
-                  mediaStream={liveMediaStream}
-                  state={videoPanelState}
-                  isMuted={isLiveMuted}
-                  onToggleMute={() => {
-                    setIsLiveMuted(!isLiveMuted);
-                    if (!isLiveMuted) {
-                      window.speechSynthesis.cancel();
-                      liveTTSAudioRef.current?.pause();
-                    }
-                  }}
-                  isVideoOff={isVideoOff}
-                  onToggleVideo={() => setIsVideoOff(!isVideoOff)}
-                  isLive={isLiveSession}
-                />
-              </PremiumPanel>
+            {/* Landscape live interview layout */}
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+              {/* Left: Video + AI Visualizer (wider) */}
+              <div className="xl:col-span-8 flex flex-col gap-5">
+                {/* Video panel - landscape aspect ratio */}
+                <PremiumPanel className="p-2 relative overflow-hidden">
+                  <VideoPanel
+                    mediaStream={liveMediaStream}
+                    state={videoPanelState}
+                    isMuted={isLiveMuted}
+                    onToggleMute={() => {
+                      setIsLiveMuted(!isLiveMuted);
+                      if (!isLiveMuted) {
+                        window.speechSynthesis.cancel();
+                        liveTTSAudioRef.current?.pause();
+                      }
+                    }}
+                    isVideoOff={isVideoOff}
+                    onToggleVideo={() => setIsVideoOff(!isVideoOff)}
+                    isLive={isLiveSession}
+                  />
+                </PremiumPanel>
 
-              {/* AI visualizer + current question */}
-              <PremiumPanel className="p-5">
-                <div className="flex items-center gap-3 mb-3">
+                {/* AI visualizer + current question */}
+                <PremiumPanel className="p-5 md:p-6 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                      <Sparkles size={13} className="text-violet-500" />
+                    </div>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-violet-500">AI Interviewer</h3>
+                    {loading && (
+                      <div className="ml-auto flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                        <Loader2 size={12} className="animate-spin text-amber-500" />
+                        <span className="text-[10px] font-bold text-amber-500">Processing...</span>
+                      </div>
+                    )}
+                  </div>
+
                   <AudioVisualizer
                     state={
                       loading
@@ -1153,46 +1730,50 @@ const InterviewLab = () => {
                     userAudioLevel={liveUserAudioLevel}
                     aiAudioLevel={liveAIAudioLevel}
                   />
-                </div>
 
-                {currentQuestion && (
-                  <div className="mt-3 p-4 rounded-2xl bg-violet-500/5 border border-violet-500/10">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-violet-500 flex items-center gap-1.5 mb-2">
-                      <Sparkles size={12} />
-                      AI Interviewer
-                    </h3>
-                    <p className="text-sm leading-relaxed font-bold text-slate-800 dark:text-slate-100">
-                      {currentQuestion}
-                    </p>
-                  </div>
-                )}
-
-                {/* Live status bar */}
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">
-                      Question {questionIndex} of {interviewConfig.questionCount}
-                    </span>
-                  </div>
-
-                  {loading && (
-                    <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                      <Loader2 size={12} className="animate-spin text-amber-500" />
-                      <span className="text-[10px] font-bold text-amber-500">Processing...</span>
+                  {currentQuestion && (
+                    <div className="mt-4 p-4 rounded-2xl bg-violet-500/5 border border-violet-500/10">
+                      <p className="text-sm leading-relaxed font-bold text-slate-800 dark:text-slate-100">
+                        {currentQuestion}
+                      </p>
                     </div>
                   )}
-                </div>
+
+                  {/* Live status bar + Done Speaking */}
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">
+                        Question {questionIndex} of {interviewConfig.questionCount}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={handleDoneSpeaking}
+                        disabled={loading || isProcessingAnswerRef.current}
+                        size="sm"
+                        className="h-8 rounded-lg px-3 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-bold shadow-md shadow-violet-500/20"
+                      >
+                        <CheckCircle2 size={12} />
+                        Done Speaking
+                      </Button>
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20">
+                        <span className="text-[10px] font-bold text-emerald-400">Live</span>
+                      </div>
+                    </div>
+                  </div>
+                </PremiumPanel>
+              </div>
+
+              {/* Right: Live Transcript */}
+              <PremiumPanel className="xl:col-span-4 p-5 flex flex-col min-h-[400px] max-h-[700px] relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-fuchsia-500" />
+                <LiveTranscript
+                  entries={transcriptEntries}
+                  isListening={isLiveListening && !loading}
+                />
               </PremiumPanel>
             </div>
-
-            {/* Right: Live Transcript */}
-            <PremiumPanel className="p-5 flex flex-col min-h-[500px] max-h-[700px]">
-              <LiveTranscript
-                entries={transcriptEntries}
-                isListening={isLiveListening && !loading}
-              />
-            </PremiumPanel>
           </motion.div>
         )}
 
@@ -1203,68 +1784,119 @@ const InterviewLab = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="grid grid-cols-1 gap-6 lg:grid-cols-3"
+            className="w-full"
           >
-            {/* Scorecard Analysis */}
-            <PremiumPanel className="lg:col-span-2 p-8 space-y-8">
-              <div className="flex items-center gap-3 border-b pb-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                  <Trophy size={20} />
+            {/* Score summary banner */}
+            <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-4">
+              <PremiumPanel className="p-5 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent" />
+                <div className="relative">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Delivery</p>
+                  <p className="text-3xl font-black text-indigo-500 mt-1">{evaluation.deliveryScore}%</p>
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">AI Grading Report</h2>
-                  <p className="text-xs text-muted-foreground">Comprehensive performance metrics and analytics.</p>
+              </PremiumPanel>
+              <PremiumPanel className="p-5 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent" />
+                <div className="relative">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Content</p>
+                  <p className="text-3xl font-black text-emerald-500 mt-1">{evaluation.contentScore}%</p>
                 </div>
-              </div>
+              </PremiumPanel>
+              <PremiumPanel className="p-5 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent" />
+                <div className="relative">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Overall</p>
+                  <p className="text-3xl font-black text-violet-500 mt-1">{Math.round((evaluation.deliveryScore + evaluation.contentScore) / 2)}%</p>
+                </div>
+              </PremiumPanel>
+              <PremiumPanel className="p-5 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent" />
+                <div className="relative">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Action Items</p>
+                  <p className="text-3xl font-black text-amber-500 mt-1">{evaluation.actionItems.length}</p>
+                </div>
+              </PremiumPanel>
+            </div>
 
-              {/* Summary */}
-              <div className="space-y-3 p-5 rounded-2xl bg-muted/30 border">
-                <h3 className="text-xs font-black uppercase tracking-widest text-indigo-500">Executive Summary</h3>
-                <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200 font-medium">
-                  {evaluation.summary}
-                </p>
-              </div>
+            {/* Landscape feedback layout */}
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+              {/* Scorecard Analysis (wider) */}
+              <PremiumPanel className="xl:col-span-8 p-6 md:p-8 space-y-8 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+                <div className="flex items-center gap-3 border-b pb-4">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                    <Trophy size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground">AI Grading Report</h2>
+                    <p className="text-xs text-muted-foreground">Comprehensive performance metrics and analytics.</p>
+                  </div>
+                </div>
 
-              {/* Key Findings */}
-              <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <CheckCircle size={14} className="text-emerald-500" />
-                  Key Strengths & Observations
-                </h3>
-                <ul className="space-y-2.5">
-                  {evaluation.findings.map((item: string, idx: number) => (
-                    <li key={idx} className="flex gap-3 text-sm font-semibold p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                {/* Summary */}
+                <div className="space-y-3 p-5 rounded-2xl bg-muted/30 border">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-indigo-500">Executive Summary</h3>
+                  <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200 font-medium">
+                    {evaluation.summary}
+                  </p>
+                </div>
 
-              {/* Action Items */}
-              <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <AlertCircle size={14} className="text-amber-500" />
-                  Actionable Improvement Areas
-                </h3>
-                <ul className="space-y-2.5">
-                  {evaluation.actionItems.map((item: string, idx: number) => (
-                    <li key={idx} className="flex gap-3 text-sm font-semibold p-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </PremiumPanel>
+                {/* Key Findings */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <CheckCircle size={14} className="text-emerald-500" />
+                    Key Strengths & Observations
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {evaluation.findings.map((item: string, idx: number) => (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                        className="flex gap-3 text-sm font-semibold p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10"
+                      >
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 shrink-0" />
+                        {item}
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
 
-            {/* Conversation Logs recap */}
-            <div className="space-y-6">
-              <PremiumPanel className="p-5 flex flex-col max-h-[500px]">
-                <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground border-b pb-2">
+                {/* Action Items */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <AlertCircle size={14} className="text-amber-500" />
+                    Actionable Improvement Areas
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {evaluation.actionItems.map((item: string, idx: number) => (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                        className="flex gap-3 text-sm font-semibold p-4 rounded-xl bg-amber-500/5 border border-amber-500/10"
+                      >
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 shrink-0" />
+                        {item}
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </PremiumPanel>
+
+              {/* Conversation Logs recap */}
+              <PremiumPanel className="xl:col-span-4 p-5 flex flex-col max-h-[600px] relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-slate-500 to-gray-500" />
+                <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 border-b pb-3">
+                  <MessageSquare size={14} />
                   Session Recap
+                  <span className="ml-auto text-[9px] font-bold bg-muted/50 px-2 py-0.5 rounded-full">
+                    {messages.length} msgs
+                  </span>
                 </h3>
-                <div className="overflow-y-auto space-y-4 flex-1">
+                <div className="overflow-y-auto space-y-3 flex-1">
                   {messages.map((m, idx) => (
                     <div key={idx} className="space-y-1">
                       <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">
@@ -1296,12 +1928,21 @@ const ConfigSelect = ({
   options: string[];
   onChange: (value: string) => void;
 }) => (
-  <label className="space-y-1.5">
+  <div className="space-y-1.5">
     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
-    <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border bg-background px-3 text-xs font-bold capitalize">
-      {options.map((option) => <option key={option} value={option}>{option.replace("-", " ")}</option>)}
-    </select>
-  </label>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-10 rounded-lg text-xs font-bold capitalize">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option} value={option} className="text-xs font-bold capitalize">
+            {option.replace("-", " ")}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
 );
 
 export default InterviewLab;

@@ -457,17 +457,18 @@ const JobTrackerPage = () => {
               </DialogHeader>
 
               <div className="grid grid-cols-1 gap-3 rounded-xl border bg-muted/20 p-4 md:grid-cols-2">
-                <select
-                  value={selectedResumeId}
-                  onChange={(event) => setSelectedResumeId(event.target.value)}
-                  className="h-10 rounded-md border bg-background px-3 text-xs font-bold"
-                >
-                  {resumes.map((document: any) => (
-                    <option key={document.documentId} value={document.documentId}>
-                      {document.title}
-                    </option>
-                  ))}
-                </select>
+                <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
+                  <SelectTrigger className="h-10 text-xs font-bold">
+                    <SelectValue placeholder="Select resume" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {resumes.map((document: any) => (
+                      <SelectItem key={document.documentId} value={document.documentId}>
+                        {document.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Input
                   placeholder="Target role override"
                   value={preferences.targetRole}
@@ -479,27 +480,29 @@ const JobTrackerPage = () => {
                   onChange={(event) => setPreferences({ ...preferences, region: event.target.value })}
                 />
                 <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={preferences.workMode}
-                    onChange={(event) => setPreferences({ ...preferences, workMode: event.target.value })}
-                    className="h-10 rounded-md border bg-background px-3 text-xs font-bold"
-                  >
-                    <option value="any">Any work mode</option>
-                    <option value="remote">Remote</option>
-                    <option value="hybrid">Hybrid</option>
-                    <option value="onsite">On-site</option>
-                  </select>
-                  <select
-                    value={preferences.seniority}
-                    onChange={(event) => setPreferences({ ...preferences, seniority: event.target.value })}
-                    className="h-10 rounded-md border bg-background px-3 text-xs font-bold"
-                  >
-                    <option value="any level">Any level</option>
-                    <option value="junior">Junior</option>
-                    <option value="mid-level">Mid-level</option>
-                    <option value="senior">Senior</option>
-                    <option value="lead">Lead</option>
-                  </select>
+                  <Select value={preferences.workMode} onValueChange={(v) => setPreferences({ ...preferences, workMode: v })}>
+                    <SelectTrigger className="h-10 text-xs font-bold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any work mode</SelectItem>
+                      <SelectItem value="remote">Remote</SelectItem>
+                      <SelectItem value="hybrid">Hybrid</SelectItem>
+                      <SelectItem value="onsite">On-site</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={preferences.seniority} onValueChange={(v) => setPreferences({ ...preferences, seniority: v })}>
+                    <SelectTrigger className="h-10 text-xs font-bold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any level">Any level</SelectItem>
+                      <SelectItem value="junior">Junior</SelectItem>
+                      <SelectItem value="mid-level">Mid-level</SelectItem>
+                      <SelectItem value="senior">Senior</SelectItem>
+                      <SelectItem value="lead">Lead</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="md:col-span-2 flex items-center gap-3">
                   <label className="flex-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
@@ -732,7 +735,6 @@ const JobTrackerPage = () => {
           </DialogContent>
         </Dialog>
       </div>
-      </div>
 
       {/* Kanban Board */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
@@ -835,6 +837,7 @@ const JobTrackerPage = () => {
             </div>
           </div>
         ))}
+      </div>
       </div>
 
       {/* Detail Modal / Cover Letter Generator */}

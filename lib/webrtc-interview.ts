@@ -36,16 +36,19 @@ export class InterviewSessionManager {
       audio: config.audio,
       video: config.video
         ? {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "user",
-          }
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user",
+        }
         : false,
     });
 
     // Set up AudioContext + AnalyserNode for volume monitoring
     if (config.audio) {
       this.audioContext = new AudioContext();
+      if (this.audioContext.state === "suspended") {
+        await this.audioContext.resume();
+      }
       const source = this.audioContext.createMediaStreamSource(this.mediaStream);
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
@@ -61,9 +64,14 @@ export class InterviewSessionManager {
    * Start recording audio in chunks of `intervalMs` milliseconds.
    * Each chunk is passed to the `onChunk` callback.
    */
-  startRecording(onChunk: (blob: Blob) => void, intervalMs: number = 2000): void {
+  startRecording(): void {
     if (!this.mediaStream) {
       throw new Error("No active media stream. Call startSession() first.");
+    }
+
+    // If already recording, stop first
+    if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
+      this.mediaRecorder.stop();
     }
 
     this.chunks = [];
@@ -81,7 +89,6 @@ export class InterviewSessionManager {
     this.mediaRecorder.ondataavailable = (event: BlobEvent) => {
       if (event.data.size > 0) {
         this.chunks.push(event.data);
-        onChunk(event.data);
       }
     };
 
@@ -89,7 +96,7 @@ export class InterviewSessionManager {
       this.isRecordingActive = false;
     };
 
-    this.mediaRecorder.start(intervalMs);
+    this.mediaRecorder.start();
   }
 
   /**
@@ -196,7 +203,7 @@ export class InterviewSessionManager {
     }
 
     if (this.audioContext) {
-      this.audioContext.close().catch(() => {});
+      this.audioContext.close().catch(() => { });
       this.audioContext = null;
     }
 
