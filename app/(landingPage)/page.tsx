@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { SignUpButton } from "@clerk/nextjs";
 import {
@@ -53,19 +53,19 @@ import { cn } from "@/lib/utils";
 /* ── Live Agent Activity Pulse ── */
 function LiveAgentPulse() {
   const [activeAgent, setActiveAgent] = useState(0);
-  const agents = [
+  const agents = useMemo(() => [
     { name: "ATS Optimizer", status: "Analyzing 3 job descriptions", color: "text-indigo-500" },
     { name: "Job Scraper", status: "Scanning 12 new postings", color: "text-amber-500" },
     { name: "Network Agent", status: "Drafting outreach for Google", color: "text-blue-500" },
     { name: "Interview Coach", status: "Generating mock questions", color: "text-rose-500" },
-  ];
+  ], []);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveAgent((prev) => (prev + 1) % agents.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [agents.length]);
 
   return (
     <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-border/50 bg-card/60 backdrop-blur-xl shadow-lg">

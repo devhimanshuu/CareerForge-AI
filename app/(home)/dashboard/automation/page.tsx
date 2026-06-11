@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   Bot,
@@ -883,7 +884,7 @@ const GitHubResultPanel = ({ data }: { data: any }) => (
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.15),transparent_60%)]" />
       <div className="relative flex items-start gap-4">
         {data.profile?.avatarUrl && (
-          <img src={data.profile.avatarUrl} alt="" className="h-16 w-16 rounded-2xl ring-2 ring-white/10" />
+          <Image src={data.profile.avatarUrl} alt="" width={64} height={64} className="h-16 w-16 rounded-2xl ring-2 ring-white/10" />
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

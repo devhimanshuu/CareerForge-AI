@@ -563,13 +563,45 @@ const InterviewLab = () => {
         isProcessingAnswerRef.current = false;
       }
     },
-    [speakLiveResponse],
+    [speakLiveResponse, cleanupLiveSession],
   );
 
   // Keep the ref in sync with the latest sendLiveToAI
   useEffect(() => {
     sendLiveToAIRef.current = sendLiveToAI;
   }, [sendLiveToAI]);
+
+  // ─── Live Mode: Cleanup ───────────────────────────────────────
+  const cleanupLiveSession = useCallback(() => {
+    // Guard against double-cleanup
+    if (isCleaningUpRef.current) return;
+    isCleaningUpRef.current = true;
+
+    sessionManagerRef.current?.cleanup();
+    sessionManagerRef.current = null;
+    silenceDetectorRef.current = null;
+    isProcessingAnswerRef.current = false;
+    hasSpokenRef.current = false;
+
+    if (livePollingRef.current) {
+      clearInterval(livePollingRef.current);
+      livePollingRef.current = null;
+    }
+
+    liveTTSAudioRef.current?.pause();
+    liveTTSAudioRef.current = null;
+
+    if (typeof window !== "undefined") {
+      window.speechSynthesis.cancel();
+    }
+
+    setLiveMediaStream(null);
+    setIsLiveSession(false);
+    setVideoPanelState("idle");
+    setLiveUserAudioLevel(0);
+    setLiveAIAudioLevel(0);
+    setIsLiveListening(false);
+  }, []);
 
   // ─── Live Mode: Start live session ────────────────────────────
   const startLiveSession = useCallback(async () => {
@@ -658,40 +690,7 @@ const InterviewLab = () => {
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetRole, selectedResumeInfo, jobDescription, interviewConfig, speakLiveResponse]);
-
-  // ─── Live Mode: Cleanup ───────────────────────────────────────
-  const cleanupLiveSession = useCallback(() => {
-    // Guard against double-cleanup
-    if (isCleaningUpRef.current) return;
-    isCleaningUpRef.current = true;
-
-    sessionManagerRef.current?.cleanup();
-    sessionManagerRef.current = null;
-    silenceDetectorRef.current = null;
-    isProcessingAnswerRef.current = false;
-    hasSpokenRef.current = false;
-
-    if (livePollingRef.current) {
-      clearInterval(livePollingRef.current);
-      livePollingRef.current = null;
-    }
-
-    liveTTSAudioRef.current?.pause();
-    liveTTSAudioRef.current = null;
-
-    if (typeof window !== "undefined") {
-      window.speechSynthesis.cancel();
-    }
-
-    setLiveMediaStream(null);
-    setIsLiveSession(false);
-    setVideoPanelState("idle");
-    setLiveUserAudioLevel(0);
-    setLiveAIAudioLevel(0);
-    setIsLiveListening(false);
-  }, []);
+  }, [targetRole, selectedResumeInfo, jobDescription, interviewConfig, speakLiveResponse, cleanupLiveSession]);
 
   // ─── Existing: Turn-based session start ────────────────────────
   const handleStartSession = async () => {
@@ -1323,7 +1322,7 @@ const InterviewLab = () => {
                       <div className="text-left">
                         <p className="text-xs font-bold text-foreground">Interview Design</p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {interviewConfig.interviewType} · {interviewConfig.difficulty} · {interviewConfig.questionCount}Q's
+                          {interviewConfig.interviewType} · {interviewConfig.difficulty} · {interviewConfig.questionCount}Q&apos;s
                         </p>
                       </div>
                     </div>
