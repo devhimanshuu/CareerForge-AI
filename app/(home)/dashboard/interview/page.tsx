@@ -338,6 +338,38 @@ const InterviewLab = () => {
     }
   }, []);
 
+  // ─── Live Mode: Cleanup ───────────────────────────────────────
+  const cleanupLiveSession = useCallback(() => {
+    // Guard against double-cleanup
+    if (isCleaningUpRef.current) return;
+    isCleaningUpRef.current = true;
+
+    sessionManagerRef.current?.cleanup();
+    sessionManagerRef.current = null;
+    silenceDetectorRef.current = null;
+    isProcessingAnswerRef.current = false;
+    hasSpokenRef.current = false;
+
+    if (livePollingRef.current) {
+      clearInterval(livePollingRef.current);
+      livePollingRef.current = null;
+    }
+
+    liveTTSAudioRef.current?.pause();
+    liveTTSAudioRef.current = null;
+
+    if (typeof window !== "undefined") {
+      window.speechSynthesis.cancel();
+    }
+
+    setLiveMediaStream(null);
+    setIsLiveSession(false);
+    setVideoPanelState("idle");
+    setLiveUserAudioLevel(0);
+    setLiveAIAudioLevel(0);
+    setIsLiveListening(false);
+  }, []);
+
   // ─── Live Mode: TTS for AI responses ──────────────────────────
   const speakLiveResponse = useCallback(
     async (text: string) => {
@@ -570,38 +602,6 @@ const InterviewLab = () => {
   useEffect(() => {
     sendLiveToAIRef.current = sendLiveToAI;
   }, [sendLiveToAI]);
-
-  // ─── Live Mode: Cleanup ───────────────────────────────────────
-  const cleanupLiveSession = useCallback(() => {
-    // Guard against double-cleanup
-    if (isCleaningUpRef.current) return;
-    isCleaningUpRef.current = true;
-
-    sessionManagerRef.current?.cleanup();
-    sessionManagerRef.current = null;
-    silenceDetectorRef.current = null;
-    isProcessingAnswerRef.current = false;
-    hasSpokenRef.current = false;
-
-    if (livePollingRef.current) {
-      clearInterval(livePollingRef.current);
-      livePollingRef.current = null;
-    }
-
-    liveTTSAudioRef.current?.pause();
-    liveTTSAudioRef.current = null;
-
-    if (typeof window !== "undefined") {
-      window.speechSynthesis.cancel();
-    }
-
-    setLiveMediaStream(null);
-    setIsLiveSession(false);
-    setVideoPanelState("idle");
-    setLiveUserAudioLevel(0);
-    setLiveAIAudioLevel(0);
-    setIsLiveListening(false);
-  }, []);
 
   // ─── Live Mode: Start live session ────────────────────────────
   const startLiveSession = useCallback(async () => {
