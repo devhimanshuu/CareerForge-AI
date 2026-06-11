@@ -127,7 +127,7 @@ const Header = () => {
                   className={`
                     group relative flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold shrink-0
                     transition-[background-color,color,box-shadow,transform] duration-300 ease-out
-                    hover:transition-[transform] hover:duration-300 hover:ease-[cubic-bezier(0.34,1.56,0.64,1)]
+                    hover:transition-[transform] hover:duration-300 hover:[transitionTimingFunction:cubic-bezier(0.34,1.56,0.64,1)]
                     ${
                       isActive
                         ? "bg-foreground text-background shadow-sm scale-100"
@@ -139,8 +139,8 @@ const Header = () => {
                     size={14}
                     className={`transition-transform duration-300 ${
                       isActive
-                        ? "scale-110 -rotate-6 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                        : "group-hover:rotate-12 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                        ? "scale-110 -rotate-6 [transitionTimingFunction:cubic-bezier(0.34,1.56,0.64,1)]"
+                        : "group-hover:rotate-12 [transitionTimingFunction:cubic-bezier(0.34,1.56,0.64,1)]"
                     }`}
                   />
                   {item.label}

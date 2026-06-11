@@ -286,10 +286,10 @@ const AppSidebar = () => {
           "bg-background border-r border-border/50 flex flex-col shrink-0 z-[70]",
           isMobile
             ? cn(
-                "fixed top-0 left-0 bottom-0 transition-[width,transform] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                "fixed top-0 left-0 bottom-0 transition-[width,transform] duration-300 [transitionTimingFunction:cubic-bezier(0.4,0,0.2,1)]",
                 mobileOpen ? "translate-x-0" : "-translate-x-full"
               )
-            : "relative transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+            : "relative transition-[width] duration-300 [transitionTimingFunction:cubic-bezier(0.4,0,0.2,1)]",
           collapsed ? "w-[68px]" : "w-[240px]"
         )}
       >
