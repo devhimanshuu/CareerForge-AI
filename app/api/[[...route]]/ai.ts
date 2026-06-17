@@ -626,7 +626,7 @@ Return the FULL updated resume JSON object matching the exact schema of the inpu
             eq(documentTable.userId, userId),
             ne(documentTable.status, "archived")
           ),
-          orderBy: desc(documentTable.updatedAt),
+          orderBy: [desc(documentTable.updatedAt)],
           with: {
             personalInfo: true,
             experiences: true,

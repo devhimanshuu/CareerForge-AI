@@ -12,14 +12,20 @@ import {
   Target,
   FileText,
   ListTodo,
+  Linkedin,
+  DollarSign,
+  Globe,
+  SplitSquareHorizontal,
 } from "lucide-react";
 
 export const BentoItem = ({
   className,
   children,
+  innerClassName = "flex-col",
 }: {
   className?: string;
   children: React.ReactNode;
+  innerClassName?: string;
 }) => {
   const itemRef = useRef<HTMLDivElement>(null);
 
@@ -56,7 +62,7 @@ export const BentoItem = ({
           background: `radial-gradient(600px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(99, 102, 241, 0.15), transparent 40%)`,
         }}
       />
-      <div className="relative z-10 flex h-full flex-col">{children}</div>
+      <div className={cn("relative z-10 flex h-full", innerClassName)}>{children}</div>
     </div>
   );
 };
@@ -76,12 +82,12 @@ export const CyberneticBentoGrid = () => {
           </span>
         </h2>
         <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-          From AI-powered content generation and live market intelligence to interview prep and visual job tracking.
+          From AI-powered content generation and live market intelligence to portfolio generation and visual job tracking.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 auto-rows-[250px]">
-        {/* Large Feature Item - Resume Parser & AI Builder */}
+        {/* 1. Large Feature Item - Resume Parser & AI Builder (2x2) */}
         <BentoItem className="md:col-span-2 md:row-span-2 flex flex-col justify-between">
           <div>
             <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 border border-indigo-500/20">
@@ -111,7 +117,7 @@ export const CyberneticBentoGrid = () => {
           </div>
         </BentoItem>
 
-        {/* Job Tracker */}
+        {/* 2. Job Tracker (2x1) */}
         <BentoItem className="md:col-span-2">
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mb-4 border border-blue-500/20">
             <ListTodo className="text-blue-500" size="20px" />
@@ -133,18 +139,18 @@ export const CyberneticBentoGrid = () => {
           </div>
         </BentoItem>
 
-        {/* ATS URL Scraper */}
+        {/* 3. Salary Negotiation Simulator (1x1) - Replaces ATS Scraper */}
         <BentoItem>
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4 border border-orange-500/20">
-            <FileText className="text-orange-500" size="20px" />
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 border border-emerald-500/20">
+            <DollarSign className="text-emerald-500" size="20px" />
           </div>
-          <h2 className="text-xl font-bold">ATS URL Scraper</h2>
+          <h2 className="text-xl font-bold">Salary Simulator</h2>
           <p className="mt-2 text-muted-foreground text-sm">
-            Paste any job link. Our optimized scraper bypasses standard WAF walls to pull requirements and score your resume alignment.
+            Roleplay with an AI tech recruiter. Practice anchoring higher and leveraging offers based on real market bands.
           </p>
         </BentoItem>
 
-        {/* ATS Optimized Templates */}
+        {/* 4. ATS Optimized Templates (1x1) */}
         <BentoItem>
           <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-4 border border-cyan-500/20">
             <Shield className="text-cyan-500" size="20px" />
@@ -155,34 +161,38 @@ export const CyberneticBentoGrid = () => {
           </p>
         </BentoItem>
 
-        {/* Interview Prep Lab */}
+        {/* 5. Personal Portfolio Generator (2x2) - Replaces Mock Interview */}
         <BentoItem className="md:col-span-2 md:row-span-2 flex flex-col">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center mb-6 border border-rose-500/20">
-            <Trophy className="text-rose-500" size="24px" />
+          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-6 border border-purple-500/20">
+            <Globe className="text-purple-500" size="24px" />
           </div>
-          <h2 className="text-3xl font-bold">AI Mock Interview Lab</h2>
+          <h2 className="text-3xl font-bold">Personal Portfolio Generator</h2>
           <p className="mt-3 text-muted-foreground text-lg max-w-sm">
-            Simulate real face-to-face interviews. Features an interactive camera overlay, voice-synthesized recruiter questions, and dynamic mute/unmute control.
+            Turn your resume into a stunning, multi-page portfolio website instantly. Support for custom vanity domains, global themes, and Google Analytics.
           </p>
-          <div className="mt-8 flex-1 bg-gradient-to-t from-rose-500/10 to-transparent rounded-xl border border-rose-500/20 flex flex-col justify-end p-4 relative overflow-hidden">
+          <div className="mt-8 flex-1 bg-gradient-to-t from-purple-500/10 to-transparent rounded-xl border border-purple-500/20 flex flex-col justify-end p-4 relative overflow-hidden">
             <div className="absolute inset-0 flex items-center justify-center opacity-10">
-              <Trophy size={120} className="text-rose-500" />
+              <Globe size={120} className="text-purple-500" />
             </div>
-            <div className="relative z-10 space-y-3">
-              <div className="bg-background/80 backdrop-blur p-3 rounded-lg border shadow-sm self-start max-w-[80%] text-xs border-rose-500/30">
-                &quot;Can you describe a challenging technical problem you solved recently?&quot;
+            <div className="relative z-10 w-[80%] mx-auto h-[70%] bg-background rounded-t-xl border-x border-t border-purple-500/30 shadow-2xl p-4 flex flex-col gap-2">
+              <div className="w-full flex justify-between items-center border-b border-border/50 pb-2">
+                <span className="text-xs font-bold">johndoe.com</span>
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 rounded-full bg-rose-500" />
+                  <div className="w-2 h-2 rounded-full bg-amber-500" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                </div>
               </div>
-              <div className="bg-rose-500 text-white p-3 rounded-lg shadow-sm self-end max-w-[80%] text-xs ml-auto">
-                &quot;Sure, in my last project I optimized database queries...&quot;
-              </div>
+              <div className="w-1/2 h-3 bg-muted rounded-full mt-2" />
+              <div className="w-3/4 h-2 bg-muted/50 rounded-full" />
             </div>
           </div>
         </BentoItem>
 
-        {/* Live Career Intel */}
+        {/* 6. Live Career Intel (1x1) */}
         <BentoItem>
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20">
-            <Sparkles className="text-purple-500" size="20px" />
+          <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center mb-4 border border-violet-500/20">
+            <Sparkles className="text-violet-500" size="20px" />
           </div>
           <h2 className="text-xl font-bold">Live Market Intel</h2>
           <p className="mt-2 text-muted-foreground text-sm">
@@ -190,10 +200,10 @@ export const CyberneticBentoGrid = () => {
           </p>
         </BentoItem>
  
-        {/* Secure PDF Print Engine */}
+        {/* 7. Secure PDF Print Engine (1x1) */}
         <BentoItem>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 border border-emerald-500/20">
-            <Shield className="text-emerald-500" size="20px" />
+            <FileText className="text-emerald-500" size="20px" />
           </div>
           <h2 className="text-xl font-bold">Secure PDF Engine</h2>
           <p className="mt-2 text-muted-foreground text-sm">
@@ -201,28 +211,73 @@ export const CyberneticBentoGrid = () => {
           </p>
         </BentoItem>
  
-        {/* AI Podcast Resume Maker */}
+        {/* 8. LinkedIn Profile Optimizer (2x1) - Replaces Podcast */}
         <BentoItem className="md:col-span-2">
-          <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center mb-4 border border-yellow-500/20">
-            <Target className="text-yellow-500" size="20px" />
+          <div className="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center mb-4 border border-blue-600/20">
+            <Linkedin className="text-blue-600" size="20px" />
           </div>
-          <h2 className="text-xl font-bold">AI Podcast Resume Maker</h2>
+          <h2 className="text-xl font-bold">LinkedIn Profile Optimizer</h2>
           <p className="mt-2 text-muted-foreground text-sm">
-            Transform dry resume pages into an engaging dual-voice conversation. Features host and candidate voices synthesized sequentially with distinct rates and pitches.
+            One-click sync analyzes your resume against LinkedIn algorithms to auto-craft SEO-optimized headlines and rewrite your experiences for scrolling.
           </p>
-          <div className="mt-4 flex gap-2 flex-wrap">
-            <span className="px-2 py-1 rounded-md bg-indigo-500/10 text-[10px] font-medium text-indigo-500 border border-indigo-500/20">
-              Host Role
-            </span>
-            <span className="px-2 py-1 rounded-md bg-purple-500/10 text-[10px] font-medium text-purple-500 border border-purple-500/20">
-              Candidate Role
-            </span>
-            <span className="px-2 py-1 rounded-md bg-emerald-500/10 text-[10px] font-medium text-emerald-500 border border-emerald-500/20">
-              Dual Voice
-            </span>
-             <span className="px-2 py-1 rounded-md bg-amber-500/10 text-[10px] font-medium text-amber-500 border border-amber-500/20">
-              Sequential Player
-            </span>
+        </BentoItem>
+
+        {/* 9. A/B Testing Engine (4x1) - Spans full width at bottom */}
+        <BentoItem 
+          className="md:col-span-4"
+          innerClassName="flex-col md:flex-row items-center justify-between gap-6"
+        >
+          <div className="flex-1">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center mb-4 border border-amber-500/20">
+              <SplitSquareHorizontal className="text-amber-500" size="20px" />
+            </div>
+            <h2 className="text-2xl font-bold">A/B Testing Engine</h2>
+            <p className="mt-2 text-muted-foreground text-sm max-w-2xl">
+              Run simultaneous job applications using two variations of your resume. We automatically track which variant yields more interview callbacks and suggest data-driven optimizations.
+            </p>
+          </div>
+          <div className="w-full md:w-2/5 flex gap-4 relative">
+            {/* Variant A Card */}
+            <div className="flex-1 p-5 rounded-2xl border border-muted-foreground/15 bg-muted/5 text-center relative group/card transition-all duration-300 hover:border-amber-500/30 hover:bg-amber-500/5 flex flex-col justify-between min-h-[125px]">
+              <div>
+                <span className="text-[10px] tracking-wider font-extrabold text-muted-foreground uppercase">Variant A</span>
+                <div className="text-3xl font-black mt-1 text-foreground">12%</div>
+              </div>
+              <div className="space-y-1.5 mt-2">
+                <div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+                  <div className="w-[12%] h-full bg-amber-500 rounded-full" />
+                </div>
+                <div className="flex justify-between items-center text-[9px] text-muted-foreground">
+                  <span>Callback Rate</span>
+                  <span>Low CTR</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Variant B Card (Winner) */}
+            <div className="flex-1 p-5 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-indigo-500/5 text-center relative group/card transition-all duration-300 hover:border-emerald-500/50 hover:shadow-[0_0_25px_rgba(16,185,129,0.15)] flex flex-col justify-between min-h-[125px]">
+              {/* Pulsing Winner Badge */}
+              <div className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full bg-emerald-500 text-background text-[9px] font-black tracking-wider uppercase flex items-center gap-1 shadow-lg shadow-emerald-500/20">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                </span>
+                Winner
+              </div>
+              <div>
+                <span className="text-[10px] tracking-wider font-extrabold text-emerald-400 uppercase">Variant B</span>
+                <div className="text-3xl font-black mt-1 text-emerald-400">28%</div>
+              </div>
+              <div className="space-y-1.5 mt-2">
+                <div className="h-1.5 w-full bg-emerald-950/50 rounded-full overflow-hidden">
+                  <div className="w-[28%] h-full bg-emerald-500 rounded-full" />
+                </div>
+                <div className="flex justify-between items-center text-[9px] text-emerald-400">
+                  <span>Callback Rate</span>
+                  <span className="font-bold">+133% Lift</span>
+                </div>
+              </div>
+            </div>
           </div>
         </BentoItem>
       </div>

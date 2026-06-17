@@ -418,7 +418,7 @@ const documentRoute = new Hono()
       }
     }
   )
-  .get("all", getAuthUser, async (c) => {
+  .get("/all", getAuthUser, async (c) => {
     try {
       const user = c.get("user");
       const userId = user.id;
@@ -493,7 +493,7 @@ const documentRoute = new Hono()
     }
   )
   .get(
-    "public/slug/:slug",
+    "/public/slug/:slug",
     zValidator(
       "param",
       z.object({
@@ -550,7 +550,7 @@ const documentRoute = new Hono()
     }
   )
   .get(
-    "public/doc/:documentId",
+    "/public/doc/:documentId",
     zValidator(
       "param",
       z.object({
