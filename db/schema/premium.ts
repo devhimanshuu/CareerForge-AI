@@ -89,7 +89,7 @@ export const automationConfigTable = pgTable(
     documentId: varchar("document_id", { length: 255 })
       .notNull()
       .references(() => documentTable.documentId, { onDelete: "cascade" }),
-    type: varchar("type", { length: 60 }).notNull(),
+    type: varchar("type", { length: 60 }).notNull(), // scraper, optimizer, networking, pipeline
     config: text("config").notNull(),
     enabled: boolean("enabled").notNull().default(true),
     lastRunAt: timestamp("last_run_at", { mode: "string" }),

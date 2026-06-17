@@ -40,6 +40,7 @@ import {
   LogOut,
   X,
   AlertTriangle,
+  Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/context/sidebar-context";
@@ -55,6 +56,7 @@ const navItems = [
   { href: "/dashboard/roadmap", label: "Roadmap", icon: Map },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/automation", label: "Agents", icon: Bot },
+  { href: "/dashboard/pipeline", label: "Job Pipeline", icon: Workflow },
 ];
 
 /* ── Editor tool features (shown when on editor route) ── */

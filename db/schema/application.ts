@@ -54,7 +54,7 @@ export const applicationPackageTable = pgTable("application_package", {
   commonAnswers: jsonb("common_answers"),
   matchScore: integer("match_score"),
   gaps: jsonb("gaps"),
-  status: varchar("status", { length: 50 }).default("drafted"),
+  status: varchar("status", { length: 50 }).default("scraped"), // pipeline stages: scraped, tailored, reviewed, applied, follow_up
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
 });

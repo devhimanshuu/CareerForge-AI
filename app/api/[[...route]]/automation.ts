@@ -303,6 +303,53 @@ Recruiter targets must be job-title/search strategies, not invented people.`,
     },
   )
   .post(
+    "/pipeline",
+    zValidator(
+      "json",
+      z.object({
+        documentId: z.string().min(1),
+        query: z.string().min(1),
+        location: z.string().optional(),
+        source: z.string().default("indeed"),
+        cadence: z.enum(["daily", "weekly"]).default("daily"),
+      }),
+    ),
+    getAuthUser,
+    async (c) => {
+      const user = c.get("user");
+      const input = c.req.valid("json");
+
+      const nextRunAt = new Date();
+      if (input.cadence === "daily") nextRunAt.setDate(nextRunAt.getDate() + 1);
+      else nextRunAt.setDate(nextRunAt.getDate() + 7);
+
+      await db
+        .insert(automationConfigTable)
+        .values({
+          userId: user.id,
+          documentId: input.documentId,
+          type: "pipeline",
+          config: JSON.stringify(input),
+          nextRunAt: nextRunAt.toISOString(),
+        })
+        .onConflictDoUpdate({
+          target: [
+            automationConfigTable.userId,
+            automationConfigTable.documentId,
+            automationConfigTable.type,
+          ],
+          set: {
+            config: JSON.stringify(input),
+            enabled: true,
+            nextRunAt: nextRunAt.toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        });
+
+      return c.json({ success: true, config: input, nextRunAt: nextRunAt.toISOString() });
+    },
+  )
+  .post(
     "/networking-generate",
     zValidator(
       "json",
@@ -567,7 +614,7 @@ Recruiter targets must be job-title/search strategies, not invented people.`,
   .patch(
     "/application-packages/:id",
     zValidator("param", z.object({ id: z.coerce.number().int().positive() })),
-    zValidator("json", z.object({ status: z.enum(["drafted", "reviewed", "applied", "rejected"]) })),
+    zValidator("json", z.object({ status: z.enum(["scraped", "tailored", "reviewed", "applied", "follow_up", "rejected"]) })),
     getAuthUser,
     async (c) => {
       const user = c.get("user");

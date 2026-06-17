@@ -50,6 +50,171 @@ export async function GET(request: Request) {
     try {
       const config = JSON.parse(automation.config);
 
+      if (automation.type === "pipeline") {
+        let stats = { scraped: 0, tailored: 0, applied: 0, followedUp: 0 };
+        
+        // Phase 1: Scrape
+        const scraper = new JobScraper();
+        const jobs = await scraper.scrapeJobs({
+          source: config.source || "indeed",
+          query: config.query,
+          location: config.location,
+          maxPages: Math.min(config.maxPages || 1, 2),
+        });
+
+        for (const job of jobs.slice(0, 5)) {
+          const existing = await db.query.applicationPackageTable.findFirst({
+            where: and(
+              eq(applicationPackageTable.userId, automation.userId),
+              eq(applicationPackageTable.company, job.company),
+              eq(applicationPackageTable.jobTitle, job.title)
+            )
+          });
+          if (!existing) {
+            await db.insert(applicationPackageTable).values({
+              userId: automation.userId,
+              jobTitle: job.title,
+              company: job.company,
+              jobUrl: job.url,
+              jobDescription: job.description,
+              status: "scraped",
+            });
+            stats.scraped++;
+          }
+        }
+
+        // Phase 2: Tailor
+        const toTailor = await db.query.applicationPackageTable.findMany({
+          where: and(
+            eq(applicationPackageTable.userId, automation.userId),
+            eq(applicationPackageTable.status, "scraped")
+          ),
+          limit: 3
+        });
+        
+        if (toTailor.length > 0) {
+          const resume = await db.query.documentTable.findFirst({
+            where: and(
+              eq(documentTable.documentId, automation.documentId),
+              eq(documentTable.userId, automation.userId),
+            ),
+            with: { personalInfo: true, experiences: true, educations: true, skills: true },
+          });
+
+          if (resume) {
+            for (const pkg of toTailor) {
+              try {
+                const packageData = await generateApplicationPackage(
+                  resume,
+                  pkg.jobDescription || "",
+                  pkg.jobTitle || "",
+                  pkg.company || "",
+                );
+                await db.update(applicationPackageTable).set({
+                  tailoredSummary: packageData.tailoredSummary,
+                  tailoredBullets: packageData.tailoredBulletPoints,
+                  coverLetter: packageData.coverLetter,
+                  commonAnswers: packageData.commonAnswers,
+                  matchScore: packageData.matchScore,
+                  gaps: packageData.gaps,
+                  status: "tailored",
+                  updatedAt: new Date().toISOString(),
+                }).where(eq(applicationPackageTable.id, pkg.id));
+                stats.tailored++;
+              } catch (e: any) {
+                console.error(`[Pipeline] Tailor failed:`, e.message);
+              }
+            }
+          }
+        }
+
+        // Phase 3: Apply
+        const toApply = await db.query.applicationPackageTable.findMany({
+          where: and(
+            eq(applicationPackageTable.userId, automation.userId),
+            eq(applicationPackageTable.status, "reviewed")
+          ),
+          limit: 5
+        });
+
+        for (const pkg of toApply) {
+          await db.insert(applicationTable).values({
+            userId: automation.userId,
+            documentId: automation.documentId,
+            jobTitle: pkg.jobTitle || "Unknown Role",
+            company: pkg.company || "Unknown Company",
+            status: "applied",
+            notes: "Auto-applied via Set & Forget Pipeline."
+          });
+          await db.update(applicationPackageTable).set({
+            status: "applied",
+            updatedAt: new Date().toISOString(),
+          }).where(eq(applicationPackageTable.id, pkg.id));
+          stats.applied++;
+        }
+
+        // Phase 4: Follow-up
+        const toFollowUp = await db.query.applicationPackageTable.findMany({
+          where: and(
+            eq(applicationPackageTable.userId, automation.userId),
+            eq(applicationPackageTable.status, "applied")
+          ),
+          limit: 3
+        });
+
+        if (toFollowUp.length > 0) {
+          const resume = await db.query.documentTable.findFirst({
+            where: and(
+              eq(documentTable.documentId, automation.documentId),
+              eq(documentTable.userId, automation.userId),
+            ),
+            with: { personalInfo: true, experiences: true, educations: true, skills: true },
+          });
+
+          for (const pkg of toFollowUp) {
+            try {
+              const outreach = await generateStageBasedOutreach({
+                company: pkg.company || "",
+                role: pkg.jobTitle || "",
+                stage: "applied",
+                resumeContext: resume ? JSON.stringify(resume) : undefined,
+              });
+
+              await db.insert(agentInsightTable).values({
+                userId: automation.userId,
+                documentId: automation.documentId,
+                type: "networking",
+                title: `${pkg.company} — Follow-up outreach`,
+                summary: `Pipeline auto-generated follow-up for ${pkg.jobTitle} at ${pkg.company}.`,
+                payload: JSON.stringify({ ...outreach, scheduled: true, packageId: pkg.id }),
+              });
+              
+              await db.update(applicationPackageTable).set({
+                status: "follow_up",
+                updatedAt: new Date().toISOString(),
+              }).where(eq(applicationPackageTable.id, pkg.id));
+              stats.followedUp++;
+            } catch (e: any) {
+              console.error(`[Pipeline] Follow-up failed:`, e.message);
+            }
+          }
+        }
+
+        const nextRunAt = new Date();
+        if (config.cadence === "monthly") nextRunAt.setMonth(nextRunAt.getMonth() + 1);
+        else if (config.cadence === "daily") nextRunAt.setDate(nextRunAt.getDate() + 1);
+        else nextRunAt.setDate(nextRunAt.getDate() + (config.intervalDays || 7));
+        
+        await db.update(automationConfigTable).set({
+          lastRunAt: new Date().toISOString(),
+          nextRunAt: nextRunAt.toISOString(),
+          updatedAt: new Date().toISOString(),
+        }).where(eq(automationConfigTable.id, automation.id));
+        
+        results.push({ id: automation.id, status: "completed", stats });
+        continue;
+      }
+
       if (automation.type === "scraper") {
         const scraper = new JobScraper();
         const jobs = await scraper.scrapeJobs({
