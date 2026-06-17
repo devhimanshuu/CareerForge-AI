@@ -204,7 +204,7 @@ export default function ABTestingDashboard() {
                       ) : comparison.docB.callbackRate > comparison.docA.callbackRate ? (
                         <>Version B <span className="text-emerald-500">dominates</span> with {comparison.docB.callbackRate - comparison.docA.callbackRate}% more interview callbacks.</>
                       ) : (
-                        <>It's a <span className="text-amber-500">dead heat</span>. Both versions convert equally well.</>
+                        <>It&apos;s a <span className="text-amber-500">dead heat</span>. Both versions convert equally well.</>
                       )}
                     </h2>
                     <p className="text-sm font-medium text-muted-foreground">

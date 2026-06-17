@@ -218,7 +218,7 @@ export default function AdvisorDashboard() {
                 <h3 className="font-black text-lg tracking-tight">Network Radar</h3>
               </div>
               <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-                We've identified a strategic networking opportunity to accelerate your applications.
+                We&apos;ve identified a strategic networking opportunity to accelerate your applications.
               </p>
             </div>
             

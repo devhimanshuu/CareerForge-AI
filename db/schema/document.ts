@@ -56,8 +56,9 @@ export const documentTable = pgTable("document", {
     lineHeight: "1.5"
   })),
 
-
-  
+  // Portfolio
+  customDomain: varchar("custom_domain", { length: 255 }),
+  analyticsId: varchar("analytics_id", { length: 255 }),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
 });
@@ -91,11 +92,9 @@ export const createDocumentTableSchema = createInsertSchema(documentTable, {
   responses: true,
   settings: true,
   template: true,
+  customDomain: true,
+  analyticsId: true,
 });
-
-
-
-
 
 export const updateCombinedSchema = z.object({
   title: createDocumentTableSchema.shape.title.optional(),
@@ -110,6 +109,8 @@ export const updateCombinedSchema = z.object({
   branchName: createDocumentTableSchema.shape.branchName.optional(),
   responses: createDocumentTableSchema.shape.responses.optional(),
   settings: z.string().optional(),
+  customDomain: createDocumentTableSchema.shape.customDomain.optional(),
+  analyticsId: createDocumentTableSchema.shape.analyticsId.optional(),
 
   personalInfo: personalInfoTableSchema.optional(),
 

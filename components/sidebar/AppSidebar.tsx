@@ -42,6 +42,7 @@ import {
   AlertTriangle,
   Workflow,
   SplitSquareHorizontal,
+  Linkedin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/context/sidebar-context";
@@ -57,6 +58,9 @@ const navItems = [
   { href: "/dashboard/roadmap", label: "Roadmap", icon: Map },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/advisor", label: "Career Advisor", icon: Compass },
+  { href: "/dashboard/linkedin-optimizer", label: "LinkedIn Optimizer", icon: Linkedin },
+  { href: "/dashboard/salary-simulator", label: "Salary Simulator", icon: DollarSign },
+  { href: "/dashboard/portfolio-settings", label: "Portfolio Sites", icon: Globe },
   { href: "/dashboard/ab-testing", label: "A/B Testing", icon: SplitSquareHorizontal },
   { href: "/dashboard/automation", label: "Agents", icon: Bot },
   { href: "/dashboard/pipeline", label: "Job Pipeline", icon: Workflow },
@@ -247,54 +251,10 @@ const AppSidebar = () => {
 
   return (
     <>
-      {/* Mobile hamburger */}
-      <AnimatePresence>
-        {!mobileOpen && (
-          <motion.button
-            key="mobile-hamburger"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            onClick={() => setMobileOpen(true)}
-            className="fixed top-3 left-3 z-[80] lg:hidden w-10 h-10 rounded-xl bg-background/80 backdrop-blur-md border border-border/50 shadow-lg flex items-center justify-center"
-          >
-            <Image
-              src="/CareerForge_ai_final.png"
-              alt="CareerForge AI"
-              width={28}
-              height={28}
-              className="rounded-md"
-            />
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Mobile backdrop */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[65] bg-black/40 backdrop-blur-sm lg:hidden"
-            onClick={() => setMobileOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar — fixed overlay on mobile, normal flex child on desktop */}
+      {/* Sidebar — hidden on mobile, normal flex child on desktop */}
       <aside
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
         className={cn(
-          "bg-background border-r border-border/50 flex flex-col shrink-0 z-[70]",
-          isMobile
-            ? cn(
-                "fixed top-0 left-0 bottom-0 transition-[width,transform] duration-300 [transitionTimingFunction:cubic-bezier(0.4,0,0.2,1)]",
-                mobileOpen ? "translate-x-0" : "-translate-x-full"
-              )
-            : "relative transition-[width] duration-300 [transitionTimingFunction:cubic-bezier(0.4,0,0.2,1)]",
+          "bg-background border-r border-border/50 hidden lg:flex flex-col shrink-0 z-[70] relative transition-[width] duration-300 [transitionTimingFunction:cubic-bezier(0.4,0,0.2,1)]",
           collapsed ? "w-[68px]" : "w-[240px]"
         )}
       >
