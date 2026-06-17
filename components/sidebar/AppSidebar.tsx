@@ -41,6 +41,7 @@ import {
   X,
   AlertTriangle,
   Workflow,
+  SplitSquareHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/context/sidebar-context";
@@ -55,6 +56,8 @@ const navItems = [
   { href: "/dashboard/market", label: "Market Data", icon: Globe },
   { href: "/dashboard/roadmap", label: "Roadmap", icon: Map },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/dashboard/advisor", label: "Career Advisor", icon: Compass },
+  { href: "/dashboard/ab-testing", label: "A/B Testing", icon: SplitSquareHorizontal },
   { href: "/dashboard/automation", label: "Agents", icon: Bot },
   { href: "/dashboard/pipeline", label: "Job Pipeline", icon: Workflow },
 ];
