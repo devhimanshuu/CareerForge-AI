@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       Title: ${doc.title}
       Summary: ${doc.summary || "None"}
       Skills: ${doc.skills?.map(s => s.name).join(", ") || "None"}
-      Experiences: ${doc.experiences?.map(e => `${e.role} at ${e.company}: ${e.description}`).join(" | ") || "None"}
+      Experiences: ${doc.experiences?.map(e => `${e.title} at ${e.companyName}: ${e.workSummary}`).join(" | ") || "None"}
     `;
 
     const prompt = `

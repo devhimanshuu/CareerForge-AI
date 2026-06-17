@@ -167,7 +167,7 @@ export default function LinkedinOptimizer() {
               </div>
               <h3 className="font-bold text-lg mb-2">Ready to stand out?</h3>
               <p className="text-sm text-muted-foreground max-w-md">
-                Select a resume and click optimize. We'll generate a high-converting headline, an engaging about section, and punchy experience descriptions.
+                Select a resume and click optimize. We&apos;ll generate a high-converting headline, an engaging about section, and punchy experience descriptions.
               </p>
             </div>
           )}

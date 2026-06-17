@@ -44,8 +44,8 @@ export async function POST(request: Request) {
     `;
 
     // Reconstruct the message history for LangChain
-    const messages = [new SystemMessage(systemPrompt)];
-    
+    const messages: any[] = [new SystemMessage(systemPrompt)];
+
     if (history && Array.isArray(history)) {
       for (const msg of history) {
         if (msg.role === "user") {
@@ -60,10 +60,10 @@ export async function POST(request: Request) {
     messages.push(new HumanMessage(message));
 
     const response = await chatModel.invoke(messages);
-    
-    return NextResponse.json({ 
-      success: true, 
-      reply: typeof response.content === "string" ? response.content : JSON.stringify(response.content) 
+
+    return NextResponse.json({
+      success: true,
+      reply: typeof response.content === "string" ? response.content : JSON.stringify(response.content)
     });
 
   } catch (error: any) {

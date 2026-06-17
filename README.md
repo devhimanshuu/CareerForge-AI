@@ -115,6 +115,37 @@ A fully integrated, drag-and-drop Kanban board for job applications.
 - **FAQ Accordion**: Expandable sections with smooth height transitions.
 - **Agentic AI Section**: Six-card grid showcasing each AI agent with tech badges, hover glow effects, and gradient icon containers.
 - **Legal Pages**: Privacy Policy, Terms of Service, and Cookie Policy — authentic SaaS-grade content covering GDPR, CCPA, AI disclaimers, and detailed cookie tables.
+---
+
+### 11. 🚀 A/B Testing Engine *(NEW)*
+
+- **Split Testing**: Run simultaneous job applications using two variations of your resume.
+- **Analytics Sync**: Automatically tracks which variant yields more interview callbacks.
+- **Winner Declaration**: Statistically determines the best-performing resume format and tone for your target roles.
+
+---
+
+### 12. 💼 LinkedIn Profile Optimizer *(NEW)*
+
+- **One-Click Sync**: Analyzes your parsed resume data against LinkedIn algorithms.
+- **Headline & About Generation**: Auto-crafts SEO-optimized headlines and summary sections that attract recruiters.
+- **Experience Rewriting**: Formats your job history specifically for LinkedIn's reading patterns.
+
+---
+
+### 13. 💰 AI Salary Negotiation Simulator *(NEW)*
+
+- **Interactive Roleplay**: Chat interface simulating an aggressive but fair tech recruiter negotiating compensation.
+- **Real-Time Coaching**: Overlays give you live feedback ("Good answer — now try anchoring higher" or "Make sure to mention competing offers").
+- **Market Data Injection**: Uses realistic salary bands and company financials to create highly authentic negotiation scenarios.
+
+---
+
+### 14. 🌍 Personal Portfolio Website Generator *(NEW)*
+
+- **Auto-Generated Sites**: Turn your resume data into a stunning, multi-page portfolio website instantly.
+- **Custom Domains & SEO**: Support for vanity URLs, custom top-level domains, and automatically generated SEO meta tags.
+- **Global Themes & Analytics**: Toggle between premium visual themes and plug in your Google Analytics ID to track visitor traffic.
 
 ---
 
@@ -165,11 +196,11 @@ A fully integrated, drag-and-drop Kanban board for job applications.
 | **Drizzle Kit** | Schema generation and migration tooling |
 
 ### Backend & API
-| Technology | Purpose |
-|-----------|---------|
-| **Hono** | Lightweight, ultrafast web framework for Next.js API routes with full RPC type safety (`lib/hono-rpc.ts`) |
-| **Next.js API Routes** | Serverless API endpoints under `app/api/` |
-| **Vercel** | Hosting, edge network deployment, DDoS protection, WAF rules, automatic SSL |
+| Technology             | Purpose                                                                                                   |
+| ------------------------| -----------------------------------------------------------------------------------------------------------|
+| **Hono**               | Lightweight, ultrafast web framework for Next.js API routes with full RPC type safety (`lib/hono-rpc.ts`) |
+| **Next.js API Routes** | Serverless API endpoints under `app/api/`                                                                 |
+| **Vercel**             | Hosting, edge network deployment, DDoS protection, WAF rules, automatic SSL                               |
 
 ### Real-Time Communication
 | Technology | Purpose |

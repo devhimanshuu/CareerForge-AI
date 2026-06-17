@@ -15,6 +15,14 @@ import {
   Briefcase,
   Clock,
   Search,
+  Globe,
+  DollarSign,
+  Linkedin,
+  SplitSquareHorizontal,
+  Compass,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRightCircle,
 } from "lucide-react";
 import { motion, Variants } from "framer-motion";
 import Link from "next/link";
@@ -31,7 +39,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { CheckCircle2, AlertTriangle, ArrowRightCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -144,7 +151,6 @@ const Page = () => {
 
   const [currentTime, setCurrentTime] = React.useState(() => new Date());
 
-  // Update clock every minute so greeting stays fresh during long sessions
   React.useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 60_000);
     return () => clearInterval(interval);
@@ -159,6 +165,10 @@ const Page = () => {
     return { greeting: "Good night", emoji: "🌙" };
   }, [currentTime]);
 
+  const successRate = apps.length > 0
+    ? Math.round((apps.filter((a) => ["interviewing", "offer"].includes(a.status)).length / apps.length) * 100)
+    : 0;
+
   return (
     <div className="h-full overflow-y-auto">
       <motion.div
@@ -167,280 +177,321 @@ const Page = () => {
         animate="visible"
         className="max-w-[1400px] mx-auto px-6 py-8 space-y-8"
       >
-        {/* ── Welcome Header ── */}
-        <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
+        {/* ── Welcome Header & Global Actions ── */}
+        <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="relative">
+            <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent blur-2xl -z-10 rounded-full" />
             <p className="text-sm text-muted-foreground font-medium mb-1">{greeting}, {user?.firstName || "there"} {emoji}</p>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground">
-              Your Workspace
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/70">
+              Command Center
             </h1>
-            <p className="text-sm text-muted-foreground mt-1 font-medium">
-              Manage resumes, track applications, and leverage AI tools.
+            <p className="text-sm text-muted-foreground mt-2 font-medium max-w-xl">
+              Your AI-powered career OS. Optimize resumes, simulate negotiations, and launch stunning portfolios from one unified hub.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <ResumeImport />
             <TrashListBox />
           </div>
         </motion.div>
 
-        {/* ── Insights Banner ── */}
-        {newInsights > 0 && (
-          <motion.div variants={itemVariants}>
-            <Link
-              href="/dashboard/automation"
-              className="flex items-center justify-between gap-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 transition-all hover:bg-amber-500/10 hover:border-amber-500/30"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500 text-white">
-                  <Bot size={16} />
+        {/* ── Bento Grid Layer 1: Core AI & Metrics ── */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          
+          {/* AI Coach Panel (Span 7) */}
+          <motion.div variants={itemVariants} className="md:col-span-12 lg:col-span-7 flex flex-col">
+            <div className="flex-1 rounded-3xl border border-border/50 bg-card/40 backdrop-blur-xl p-6 shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 transition-transform group-hover:scale-110" />
+              
+              <div className="flex items-center justify-between mb-6 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                    <Sparkles size={18} className="text-indigo-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">AI Career Coach</h3>
+                    <p className="text-xs text-muted-foreground">Real-time market alignment</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-bold">{newInsights} new agent insight{newInsights !== 1 ? "s" : ""} ready</p>
-                  <p className="text-xs text-muted-foreground">Review optimizer and networking recommendations</p>
-                </div>
-              </div>
-              <ArrowRight size={16} className="text-amber-600 shrink-0" />
-            </Link>
-          </motion.div>
-        )}
-
-        {/* ── Stats Row ── */}
-        <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard
-            icon={<FileText size={18} />}
-            label="Resumes"
-            value={isLoading ? "—" : resumeCount.toString()}
-            accent="indigo"
-          />
-          <StatsCard
-            icon={<TrendingUp size={18} />}
-            label="Published"
-            value={isLoading ? "—" : publicCount.toString()}
-            accent="emerald"
-          />
-          <StatsCard
-            icon={<Briefcase size={18} />}
-            label="Applications"
-            value={isAppsLoading ? "—" : apps.length.toString()}
-            accent="amber"
-          />
-          <StatsCard
-            icon={<Zap size={18} />}
-            label="Success Rate"
-            value={
-              apps.length > 0
-                ? `${Math.round((apps.filter((a) => ["interviewing", "offer"].includes(a.status)).length / apps.length) * 100)}%`
-                : "0%"
-            }
-            accent="violet"
-          />
-        </motion.div>
-
-        {/* ── AI Coach + Recent Applications ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* AI Career Coach */}
-          <motion.div variants={itemVariants} className="lg:col-span-1">
-            <CardHeader icon={<Sparkles size={13} className="text-indigo-500" />} title="AI Career Coach" />
-            <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4">
-              {resumes.length > 0 && (
-                <Select value={selectedResumeId || undefined} onValueChange={(val) => setSelectedResumeId(val)}>
-                  <SelectTrigger className="w-full h-9 text-xs rounded-xl">
-                    <SelectValue placeholder="Select resume..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl max-h-[160px] overflow-y-auto">
-                    {resumes.map((r: any) => (
-                      <SelectItem key={r.documentId} value={r.documentId} className="text-xs rounded-lg">
-                        {r.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              <div className="bg-muted/30 rounded-xl p-3 font-mono text-xs text-muted-foreground leading-relaxed min-h-[72px]">
-                <span className="text-indigo-500 font-bold mr-1">&gt;</span>
-                {isCoachLoading ? (
-                  <span className="text-indigo-400 animate-pulse">Analyzing...</span>
-                ) : (
-                  coachData?.consoleMessage || "Write a resume to see AI insights."
+                
+                {resumes.length > 0 && (
+                  <Select value={selectedResumeId || undefined} onValueChange={(val) => setSelectedResumeId(val)}>
+                    <SelectTrigger className="w-[180px] h-9 text-xs rounded-xl bg-background/50 backdrop-blur-md border-border/50">
+                      <SelectValue placeholder="Select resume..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {resumes.map((r: any) => (
+                        <SelectItem key={r.documentId} value={r.documentId} className="text-xs rounded-lg">
+                          {r.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
+              </div>
+
+              <div className="bg-background/40 border border-border/40 rounded-2xl p-4 font-mono text-xs text-muted-foreground leading-relaxed min-h-[80px] mb-6 relative z-10 flex items-start shadow-inner">
+                <span className="text-indigo-500 font-bold mr-2 mt-0.5">&gt;</span>
+                {isCoachLoading ? (
+                  <span className="text-indigo-400 animate-pulse">Analyzing market data and indexing your profile...</span>
+                ) : (
+                  <span className="text-foreground/80">{coachData?.consoleMessage || "Create your first resume to activate AI insights."}</span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 relative z-10">
+                <MiniStat value={resumeCount.toString()} label="Resumes" icon={<FileText size={14}/>} />
+                <MiniStat value={publicCount.toString()} label="Published" icon={<TrendingUp size={14}/>} />
+                <MiniStat value={apps.length.toString()} label="Applications" icon={<Briefcase size={14}/>} />
+                <MiniStat value={`${successRate}%`} label="Success Rate" icon={<Zap size={14}/>} />
               </div>
 
               <Button
                 onClick={() => setIsModalOpen(true)}
                 disabled={isCoachLoading || !coachData}
-                className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl gap-1.5"
-                size="sm"
+                className="w-full mt-6 h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl gap-2 shadow-md shadow-indigo-500/20 transition-all hover:shadow-indigo-500/40 relative z-10"
               >
-                <Sparkles size={13} />
-                Full AI Review
+                <Bot size={16} />
+                Launch Full Diagnostics
               </Button>
             </div>
           </motion.div>
 
-          {/* Recent Applications */}
-          <motion.div variants={itemVariants} className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-3">
-              <CardHeader icon={<Clock size={13} className="text-blue-500" />} title="Recent Applications" />
+          {/* The Forge: Quick Tools Grid (Span 5) */}
+          <motion.div variants={itemVariants} className="md:col-span-12 lg:col-span-5 flex flex-col gap-4">
+            <div className="flex items-center gap-2 mb-1 px-1">
+              <Zap size={16} className="text-amber-500" />
+              <h3 className="text-sm font-bold text-foreground">The Forge</h3>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 flex-1">
+              <ToolCard 
+                href="/dashboard/linkedin-optimizer" 
+                icon={<Linkedin size={20} />} 
+                title="LinkedIn SEO" 
+                color="text-blue-500" 
+                bg="bg-blue-500/10" 
+                border="group-hover:border-blue-500/50"
+              />
+              <ToolCard 
+                href="/dashboard/salary-simulator" 
+                icon={<DollarSign size={20} />} 
+                title="Negotiation" 
+                color="text-emerald-500" 
+                bg="bg-emerald-500/10" 
+                border="group-hover:border-emerald-500/50"
+              />
+              <ToolCard 
+                href="/dashboard/portfolio-settings" 
+                icon={<Globe size={20} />} 
+                title="Portfolios" 
+                color="text-purple-500" 
+                bg="bg-purple-500/10" 
+                border="group-hover:border-purple-500/50"
+              />
+              <ToolCard 
+                href="/dashboard/ab-testing" 
+                icon={<SplitSquareHorizontal size={20} />} 
+                title="A/B Tests" 
+                color="text-amber-500" 
+                bg="bg-amber-500/10" 
+                border="group-hover:border-amber-500/50"
+              />
+            </div>
+
+            {newInsights > 0 && (
+              <Link
+                href="/dashboard/automation"
+                className="mt-2 flex items-center justify-between rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 transition-all hover:bg-amber-500/20"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500 text-white shadow-sm">
+                    <Bot size={14} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-amber-700 dark:text-amber-400">{newInsights} Insights Ready</p>
+                  </div>
+                </div>
+                <ArrowRight size={14} className="text-amber-600" />
+              </Link>
+            )}
+          </motion.div>
+
+        </div>
+
+        {/* ── Bento Grid Layer 2: Pipelines & Documents ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          
+          {/* Documents (Span 8) */}
+          <motion.div variants={itemVariants} className="xl:col-span-8 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-1">
+              <div className="flex items-center gap-3">
+                <FileText size={18} className="text-muted-foreground" />
+                <h2 className="text-base font-bold text-foreground">Your Documents</h2>
+                <span className="text-[10px] font-bold text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-full">{resumeCount}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                  <Input
+                    placeholder="Search documents..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8 h-9 w-48 text-xs rounded-xl bg-background/50 border-border/60 focus-visible:ring-1 focus-visible:ring-indigo-500"
+                  />
+                </div>
+                <div className="flex rounded-lg bg-background/50 p-0.5 border border-border/60">
+                  {(["all", "public", "private"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setFilterStatus(tab)}
+                      className={cn(
+                        "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                        filterStatus === tab ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <AddResume />
+              <ResumeList searchQuery={searchQuery} filterStatus={filterStatus} />
+            </div>
+          </motion.div>
+
+          {/* Active Pipeline (Span 4) */}
+          <motion.div variants={itemVariants} className="xl:col-span-4 flex flex-col h-full">
+            <div className="flex items-center justify-between p-1 mb-3">
+              <div className="flex items-center gap-2">
+                <Clock size={16} className="text-muted-foreground" />
+                <h3 className="text-base font-bold text-foreground">Active Pipeline</h3>
+              </div>
               <Link href="/dashboard/applications" className="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 uppercase tracking-wider transition-colors">
-                View All →
+                View All
               </Link>
             </div>
-            <div className="rounded-2xl border border-border/60 bg-card divide-y divide-border/40">
+
+            <div className="flex-1 rounded-3xl border border-border/50 bg-card/40 backdrop-blur-md p-2 flex flex-col">
               {isAppsLoading ? (
-                <div className="p-6 space-y-3">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-12 rounded-xl bg-muted/30 animate-pulse" />
+                <div className="p-4 space-y-3">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="h-14 rounded-2xl bg-muted/40 animate-pulse" />
                   ))}
                 </div>
               ) : apps.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Briefcase size={24} className="mx-auto mb-2 text-muted-foreground/40" />
-                  <p className="text-sm font-medium text-muted-foreground">No applications yet</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">Start tracking jobs to see them here</p>
+                <div className="flex-1 p-8 flex flex-col items-center justify-center text-center">
+                  <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+                    <Briefcase size={20} className="text-muted-foreground/50" />
+                  </div>
+                  <p className="text-sm font-bold text-foreground">No active applications</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">Start tracking jobs on the Kanban board to see them here.</p>
+                  <Button asChild variant="outline" size="sm" className="mt-4 rounded-xl text-xs h-8">
+                    <Link href="/dashboard/applications">Open Tracker</Link>
+                  </Button>
                 </div>
               ) : (
-                apps.slice(0, 5).map((app: any) => (
-                  <div key={app.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/30 transition-colors">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
-                      <Briefcase size={15} className="text-indigo-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold truncate">{app.jobTitle}</p>
-                      <p className="text-[10px] text-muted-foreground">{app.company} • {new Date(app.updatedAt).toLocaleDateString()}</p>
-                    </div>
-                    <span className={cn(
-                      "px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0",
-                      app.status === "applied" ? "bg-blue-500/10 text-blue-600" :
-                      app.status === "interviewing" ? "bg-amber-500/10 text-amber-600" :
-                      app.status === "offer" ? "bg-emerald-500/10 text-emerald-600" :
-                      "bg-muted text-muted-foreground"
-                    )}>
-                      {app.status}
-                    </span>
-                  </div>
-                ))
+                <div className="space-y-1.5 p-1 flex-1 overflow-y-auto custom-scrollbar max-h-[400px]">
+                  {apps.slice(0, 6).map((app: any) => (
+                    <Link href={`/dashboard/applications`} key={app.id}>
+                      <div className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50 group">
+                        <div className="w-10 h-10 rounded-xl bg-background border border-border/50 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                          <Briefcase size={16} className="text-foreground/70" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold truncate group-hover:text-indigo-500 transition-colors">{app.jobTitle}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{app.company}</p>
+                        </div>
+                        <span className={cn(
+                          "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 border",
+                          app.status === "applied" ? "bg-blue-500/10 text-blue-600 border-blue-500/20" :
+                          app.status === "interviewing" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
+                          app.status === "offer" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                          "bg-muted/50 text-muted-foreground border-transparent"
+                        )}>
+                          {app.status}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               )}
             </div>
           </motion.div>
+
         </div>
-
-        {/* ── Quick Actions ── */}
-        <motion.div variants={itemVariants}>
-          <CardHeader icon={<Zap size={13} className="text-amber-500" />} title="Quick Actions" />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <QuickActionCard href="/dashboard/analytics" icon={<BarChart3 size={18} />} title="Analytics" description="Portfolio traffic and engagement metrics" />
-            <QuickActionCard href="/dashboard/applications" icon={<Briefcase size={18} />} title="Job Tracker" description="Manage your application pipeline" />
-            <QuickActionCard href="/dashboard/automation" icon={<Bot size={18} />} title="Agent Hub" description="AI optimizers and networking tools" />
-          </div>
-        </motion.div>
-
-        {/* ── Resume Grid ── */}
-        <motion.div variants={itemVariants} className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-black text-foreground">Documents</h2>
-              <span className="text-[10px] font-bold text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-full">{resumeCount}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
-                <Input
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 h-9 w-48 text-xs rounded-xl bg-muted/30 border-border/50"
-                />
-              </div>
-              <div className="flex rounded-lg bg-muted/40 p-0.5 border border-border/50">
-                {(["all", "public", "private"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setFilterStatus(tab)}
-                    className={cn(
-                      "px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
-                      filterStatus === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <AddResume />
-            <ResumeList searchQuery={searchQuery} filterStatus={filterStatus} />
-          </div>
-        </motion.div>
       </motion.div>
 
       {/* AI Career Coach Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-indigo-500/20 p-6 custom-scrollbar">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-indigo-500/20 p-8 custom-scrollbar bg-background/95 backdrop-blur-2xl">
           <DialogHeader className="space-y-2">
-            <DialogTitle className="text-xl font-black flex items-center gap-2">
-              <Sparkles className="text-indigo-500" size={18} />
-              AI Career Coach
+            <DialogTitle className="text-2xl font-black flex items-center gap-2">
+              <Sparkles className="text-indigo-500" size={22} />
+              AI Career Diagnostic
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              Personalized analysis of your resume and pipeline.
+              Deep alignment analysis of your resume against real-time market data.
             </DialogDescription>
           </DialogHeader>
 
           {coachData ? (
-            <div className="space-y-5 mt-4">
+            <div className="space-y-6 mt-6">
               {/* Score */}
-              <div className="flex items-center gap-5 p-4 rounded-2xl bg-muted/40 border border-border/50">
-                <div className="relative size-20 shrink-0">
-                  <svg className="w-full h-full -rotate-90">
-                    <circle cx="40" cy="40" r="34" className="stroke-muted/30" strokeWidth="5" fill="transparent" />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-6 p-6 rounded-3xl bg-muted/30 border border-border/50">
+                <div className="relative size-24 shrink-0 mx-auto sm:mx-0">
+                  <svg className="w-full h-full -rotate-90 drop-shadow-md">
+                    <circle cx="48" cy="48" r="42" className="stroke-muted/30" strokeWidth="8" fill="transparent" />
                     <motion.circle
-                      cx="40" cy="40" r="34"
+                      cx="48" cy="48" r="42"
                       className="stroke-indigo-500"
-                      strokeWidth="5"
+                      strokeWidth="8"
+                      strokeLinecap="round"
                       fill="transparent"
-                      strokeDasharray="214"
-                      initial={{ strokeDashoffset: 214 }}
-                      animate={{ strokeDashoffset: 214 - (214 * coachData.marketScore) / 100 }}
-                      transition={{ duration: 1.2, ease: "easeOut" }}
+                      strokeDasharray="264"
+                      initial={{ strokeDashoffset: 264 }}
+                      animate={{ strokeDashoffset: 264 - (264 * coachData.marketScore) / 100 }}
+                      transition={{ duration: 1.5, ease: "easeOut", type: "spring" }}
                     />
                   </svg>
-                  <span className="absolute inset-0 flex items-center justify-center text-lg font-black">{coachData.marketScore}%</span>
+                  <span className="absolute inset-0 flex items-center justify-center text-2xl font-black">{coachData.marketScore}%</span>
                 </div>
-                <div className="space-y-1">
-                  <h4 className="text-base font-bold flex items-center gap-2">
-                    Market Score
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-500/10 text-emerald-600">{coachData.marketStatus}</span>
+                <div className="space-y-2 text-center sm:text-left">
+                  <h4 className="text-lg font-bold flex items-center justify-center sm:justify-start gap-2">
+                    Market Competitiveness
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                      {coachData.marketStatus}
+                    </span>
                   </h4>
-                  <p className="text-xs text-muted-foreground">{coachData.marketSalaryInsights}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{coachData.marketSalaryInsights}</p>
                 </div>
               </div>
 
               {/* Strengths & Gaps */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 space-y-2">
-                  <h5 className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
-                    <CheckCircle2 size={12} /> Strengths
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 space-y-3">
+                  <h5 className="text-xs font-black uppercase tracking-widest text-emerald-600 flex items-center gap-2">
+                    <CheckCircle2 size={14} /> Core Strengths
                   </h5>
-                  <ul className="space-y-1.5">
+                  <ul className="space-y-2">
                     {coachData.strengths?.map((s: string, i: number) => (
-                      <li key={i} className="text-xs text-muted-foreground flex gap-2">
-                        <span className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5 shrink-0" />{s}
+                      <li key={i} className="text-sm text-foreground/80 flex gap-2.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />{s}
                       </li>
                     ))}
                   </ul>
                 </div>
-                <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10 space-y-2">
-                  <h5 className="text-[10px] font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
-                    <AlertTriangle size={12} /> Gaps
+                <div className="p-5 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-3">
+                  <h5 className="text-xs font-black uppercase tracking-widest text-amber-600 flex items-center gap-2">
+                    <AlertTriangle size={14} /> Critical Gaps
                   </h5>
-                  <ul className="space-y-1.5">
+                  <ul className="space-y-2">
                     {coachData.gaps?.map((g: string, i: number) => (
-                      <li key={i} className="text-xs text-muted-foreground flex gap-2">
-                        <span className="w-1 h-1 rounded-full bg-amber-500 mt-1.5 shrink-0" />{g}
+                      <li key={i} className="text-sm text-foreground/80 flex gap-2.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />{g}
                       </li>
                     ))}
                   </ul>
@@ -448,22 +499,23 @@ const Page = () => {
               </div>
 
               {/* Recommendations */}
-              <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 space-y-2">
-                <h5 className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-1.5">
-                  <ArrowRightCircle size={12} /> Action Items
+              <div className="p-6 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 space-y-3">
+                <h5 className="text-xs font-black uppercase tracking-widest text-indigo-600 flex items-center gap-2">
+                  <ArrowRightCircle size={14} /> Immediate Action Items
                 </h5>
-                <ul className="space-y-1.5">
+                <ul className="space-y-2.5">
                   {coachData.recommendations?.map((r: string, i: number) => (
-                    <li key={i} className="text-xs text-muted-foreground flex gap-2">
-                      <span className="w-1 h-1 rounded-full bg-indigo-500 mt-1.5 shrink-0" />{r}
+                    <li key={i} className="text-sm text-foreground/90 flex gap-3 bg-background/50 p-3 rounded-xl border border-border/50">
+                      <span className="w-6 h-6 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0 text-xs font-bold">{i+1}</span>
+                      <span className="pt-0.5">{r}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
           ) : (
-            <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">
-              No data available yet.
+            <div className="h-40 flex items-center justify-center text-sm text-muted-foreground animate-pulse">
+              Generating your personalized career diagnostic...
             </div>
           )}
         </DialogContent>
@@ -472,54 +524,28 @@ const Page = () => {
   );
 };
 
-/* ── Card Header ── */
-function CardHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+/* ── Tool Card ── */
+function ToolCard({ href, icon, title, color, bg, border }: { href: string; icon: React.ReactNode; title: string; color: string; bg: string, border: string }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      {icon}
-      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</h3>
-    </div>
-  );
-}
-
-/* ── Stats Card ── */
-const accentMap: Record<string, { bg: string; text: string; dot: string }> = {
-  indigo: { bg: "bg-indigo-500/10", text: "text-indigo-500", dot: "bg-indigo-500" },
-  emerald: { bg: "bg-emerald-500/10", text: "text-emerald-500", dot: "bg-emerald-500" },
-  amber: { bg: "bg-amber-500/10", text: "text-amber-500", dot: "bg-amber-500" },
-  violet: { bg: "bg-violet-500/10", text: "text-violet-500", dot: "bg-violet-500" },
-};
-
-function StatsCard({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent: "indigo" | "emerald" | "amber" | "violet" }) {
-  const c = accentMap[accent] || accentMap.indigo;
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card p-4 hover:border-border transition-colors">
-      <div className="flex items-center gap-3 mb-3">
-        <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", c.bg, c.text)}>
+    <Link href={href} className="group">
+      <div className={cn("h-full rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm p-4 flex flex-col items-center justify-center gap-3 transition-all duration-300 hover:bg-card/80 hover:shadow-lg hover:-translate-y-1", border)}>
+        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3", bg, color)}>
           {icon}
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+        <h4 className="text-xs font-bold text-foreground text-center">{title}</h4>
       </div>
-      <p className="text-2xl font-black tracking-tight">{value}</p>
-    </div>
+    </Link>
   );
 }
 
-/* ── Quick Action Card ── */
-function QuickActionCard({ href, icon, title, description }: { href: string; icon: React.ReactNode; title: string; description: string }) {
+/* ── Mini Stat ── */
+function MiniStat({ value, label, icon }: { value: string; label: string; icon: React.ReactNode }) {
   return (
-    <Link href={href}>
-      <div className="group rounded-2xl border border-border/60 bg-card p-4 hover:border-indigo-500/30 transition-all duration-200 cursor-pointer h-full">
-        <div className="flex items-center justify-between mb-3">
-          <div className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center text-muted-foreground group-hover:bg-indigo-500/10 group-hover:text-indigo-500 transition-colors">
-            {icon}
-          </div>
-          <ArrowRight size={14} className="text-muted-foreground/30 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all" />
-        </div>
-        <h4 className="text-sm font-bold mb-0.5">{title}</h4>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-    </Link>
+    <div className="bg-background/50 border border-border/50 rounded-xl p-3 flex flex-col items-center justify-center gap-1 hover:bg-muted/50 transition-colors">
+      <div className="text-muted-foreground">{icon}</div>
+      <p className="text-lg font-black text-foreground leading-none mt-1">{value}</p>
+      <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+    </div>
   );
 }
 
