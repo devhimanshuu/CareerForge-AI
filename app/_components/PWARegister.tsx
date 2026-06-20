@@ -2,8 +2,9 @@
 
 import { useEffect } from "react";
 
-// Registers the service worker and flushes any queued offline edits whenever
-// the browser comes back online.
+// Registers the service worker, flushes any queued offline edits whenever
+// the browser comes back online, and replays edits through the page's fetch
+// so cookies (Clerk session) are attached correctly.
 const PWARegister = () => {
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -16,7 +17,7 @@ const PWARegister = () => {
           reg.active.postMessage({ type: "flush-edits" });
         }
       } catch {
-        // swallow — PWA is progressive enhancement
+        // PWA is progressive enhancement; never block the app.
       }
     };
     register();
@@ -25,7 +26,34 @@ const PWARegister = () => {
       navigator.serviceWorker.controller?.postMessage({ type: "flush-edits" });
     };
     window.addEventListener("online", onOnline);
-    return () => window.removeEventListener("online", onOnline);
+
+    // SW asks the page to replay an edit (so cookies travel with the request).
+    const onMessage = async (event: MessageEvent) => {
+      const msg = event.data || {};
+      if (msg.type !== "replay-edit" || !msg.payload) return;
+      try {
+        const res = await fetch(msg.payload.url, {
+          method: msg.payload.method || "POST",
+          headers: msg.payload.headers || { "Content-Type": "application/json" },
+          body: msg.payload.body ? JSON.stringify(msg.payload.body) : undefined,
+          credentials: "same-origin",
+        });
+        if (res.ok) {
+          navigator.serviceWorker.controller?.postMessage({
+            type: "ack-edit",
+            cacheKey: msg.cacheKey,
+          });
+        }
+      } catch {
+        // SW will retry on the next online tick.
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      navigator.serviceWorker.removeEventListener("message", onMessage);
+    };
   }, []);
 
   return null;

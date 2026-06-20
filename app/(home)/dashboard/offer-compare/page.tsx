@@ -41,8 +41,16 @@ type Recommendation = {
   riskFlags: string[];
 };
 
+// crypto.randomUUID is missing on Safari < 15.4 — fall back to a random string.
+const safeUUID = (): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 const emptyOffer = (): Offer => ({
-  id: crypto.randomUUID(),
+  id: safeUUID(),
   company: "",
   role: "",
   baseSalary: 0,

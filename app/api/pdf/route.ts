@@ -1,4 +1,3 @@
-import puppeteer from 'puppeteer';
 import { NextResponse } from 'next/server';
 import { getAuth } from "@clerk/nextjs/server";
 import { and, eq, or } from "drizzle-orm";
@@ -33,6 +32,9 @@ export async function POST(request: Request) {
     const pdfSecret = process.env.CLERK_SECRET_KEY || "default_secret";
     const url = `${baseUrl}/preview/${documentId}/resume?print=true&pdfSecret=${encodeURIComponent(pdfSecret)}`;
 
+    // Lazy import so puppeteer's Chromium binary isn't bundled into routes
+    // that never call it (keeps Vercel cold-start size down).
+    const puppeteer = (await import("puppeteer")).default;
     const browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
