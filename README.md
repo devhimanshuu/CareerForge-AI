@@ -149,6 +149,64 @@ A fully integrated, drag-and-drop Kanban board for job applications.
 
 ---
 
+### 15. 🌿 Resume Version Control (Git-for-Resumes) *(NEW)*
+
+- **Branch Tree Visualizer**: See your "main" resume alongside every targeted branch (e.g. "Frontend Role", "Senior Dev") as a horizontal chip graph from the editor's `More → Version History` menu.
+- **Timeline Slider**: Scrub through branches chronologically to watch your resume evolve.
+- **Per-Bullet Diff**: Compare any branch against `main` *or* the previous branch — added bullets render in green, removed bullets struck through in red, each labeled with the branch context (e.g. *"added 3 days ago for the Google application"*).
+- **Backed by** `GET /api/document/branches/:documentId` ([source](app/api/[[...route]]/document.ts)) which returns the full lineage with section content for diffing.
+
+---
+
+### 16. 📱 PWA / Offline-First Mobile Editor *(NEW)*
+
+- **Installable PWA**: `public/manifest.json` with home-screen shortcuts (New Resume, Applications), maskable icons, and a standalone display mode.
+- **Service Worker** (`public/sw.js`): Cache-first for static assets, network-first with offline-shell fallback for navigation, plus a `queue-edit` channel that buffers writes when offline and replays them on `online`.
+- **Touch-Optimized Mobile Quick Add**: 14px+ tap targets in a bottom-sheet FAB to append Experience / Education / Skill entries from a phone, with an inline "Offline" indicator and queued-write status toast.
+- **Auto Service-Worker Registration**: `app/_components/PWARegister.tsx` registers and flushes the queue whenever the device comes back online.
+
+---
+
+### 17. 🏢 Company Culture Fit Analyzer *(NEW)*
+
+- **AI-Synthesized Report**: Enter a company name → AI synthesizes Glassdoor sentiment, LinkedIn signals, engineering blog posts, and recent news into a balanced Culture Fit Report.
+- **Five-Dimension Values Alignment**: Engineering culture, work-life balance, career growth, compensation, and leadership trust — each scored 1-5 with an evidence note and color-coded bars.
+- **Pros / Cons with Source Tags**: Each signal is tagged by its source (Glassdoor, LinkedIn, News, Blog) so you can sanity-check the analysis.
+- **Headline Insight**: One-liner like *"This company has a strong engineering culture but below-average work-life balance scores."*
+- **Confidence Band**: The model self-reports `low`/`medium`/`high` confidence so obscure companies don't get over-asserted scores.
+- Endpoint: `POST /api/ai/culture-fit` — structured Zod output via LangChain `withStructuredOutput`.
+
+---
+
+### 18. ⚖️ Job Offer Comparison Tool *(NEW)*
+
+- **Side-by-Side Cards**: Start with 2 offers, add up to 5. Each card captures base / sign-on / bonus % / equity / vest years / benefits / commute / notes.
+- **Year-1 Total Comp Calculator**: `base + sign-on + (base × bonus%) + (equity / vestYears) + benefits − (commute × 12)`. Highest-TC offer auto-highlighted with a green badge.
+- **AI-Powered Recommendation**: `POST /api/ai/offer-recommendation` analyzes all offers against your stated priorities and returns the recommended offer, plain-English reasoning, trade-off bullets, and a *"verify before accepting"* risk-flag list.
+- **Crown Badge**: The recommended offer card gets an indigo ring and "AI Pick" crown — picks based on priorities, **not raw TC**.
+
+---
+
+### 19. 👥 Real-Time Collaboration Polish *(NEW)*
+
+- **Live "Editing" Banner**: Floating top-of-editor pill showing *"Alice editing Experience"* with a ping pulse keyed to the user's color, broadcast via Liveblocks `activeSection` presence.
+- **Follow-Cursor Mode**: Click any avatar in the presence indicator to enter Follow mode — your viewport smoothly scrolls to keep that user's cursor in view, marked with an eye badge on the followed avatar.
+- **Typing Indicator in Comments**: `<TypingPresence />` broadcasts `typingThreadId`; remote `<TypingIndicator />` renders animated dots and *"Alice is typing…"* inside the relevant thread.
+- **Heartbeat Activity Pulse**: `lastActivityAt` keeps the ping animation active only when collaborators are *actually* moving.
+- Implemented in [`CollabSectionSync.tsx`](components/collaboration/CollabSectionSync.tsx), [`RemoteEditingBanner.tsx`](components/collaboration/RemoteEditingBanner.tsx), [`TypingPresence.tsx`](components/collaboration/TypingPresence.tsx), and extended `PresenceIndicator.tsx`.
+
+---
+
+### 20. 📊 Advanced Product Analytics Dashboard *(NEW)*
+
+- **Feature Engagement Leaderboard**: Ranks features by event count with gradient-bar visualization. Sidebar nav clicks auto-instrumented via `useTrackUsage`.
+- **A/B Test Funnels**: Grouped by `funnel → variant` with auto-detected winner (highest `conversion / exposure` rate) and per-variant conversion bars.
+- **Pro Conversion Funnel**: Ordered `view_pricing → click_upgrade → complete_payment` steps with per-step drop-off % so you can see exactly where users fall off.
+- **Time Range + Scope Toggles**: 7d / 30d / 90d × Me / All users.
+- **Tech**: New `usage_event` table (indexed on userId/featureId/funnel/createdAt), `sendBeacon`-based client tracker so events survive navigation, two API endpoints (`/api/usage/track`, `/api/usage/summary`).
+
+---
+
 ## 🏗️ Architecture & Tech Stack
 
 ### Frontend
@@ -400,6 +458,7 @@ A fully integrated, drag-and-drop Kanban board for job applications.
    ```bash
    npm run db:push
    ```
+   > ⚠️ The newest `usage_event` table (powering the Advanced Analytics dashboard) is not yet in `drizzle/`. Run `db:push` to sync it before opening `/dashboard/usage-metrics`.
 
 5. **Run Development Server**
    ```bash

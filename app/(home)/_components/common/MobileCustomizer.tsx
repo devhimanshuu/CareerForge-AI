@@ -38,6 +38,9 @@ import {
   Monitor,
   LogOut,
   AlertTriangle,
+  Building2,
+  Scale,
+  Activity,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -201,6 +204,24 @@ const MobileCustomizer = () => {
                     icon={<Workflow size={16} />}
                     label="Job Pipeline"
                     active={pathname === "/dashboard/pipeline" || pathname?.startsWith("/dashboard/pipeline")}
+                  />
+                  <MobileNavItem
+                    href="/dashboard/culture-fit"
+                    icon={<Building2 size={16} />}
+                    label="Culture Fit"
+                    active={pathname === "/dashboard/culture-fit" || pathname?.startsWith("/dashboard/culture-fit")}
+                  />
+                  <MobileNavItem
+                    href="/dashboard/offer-compare"
+                    icon={<Scale size={16} />}
+                    label="Offer Compare"
+                    active={pathname === "/dashboard/offer-compare" || pathname?.startsWith("/dashboard/offer-compare")}
+                  />
+                  <MobileNavItem
+                    href="/dashboard/usage-metrics"
+                    icon={<Activity size={16} />}
+                    label="Usage Metrics"
+                    active={pathname === "/dashboard/usage-metrics" || pathname?.startsWith("/dashboard/usage-metrics")}
                   />
                 </div>
               </div>
