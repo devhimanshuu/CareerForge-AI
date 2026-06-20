@@ -46,6 +46,7 @@ import {
   Building2,
   Scale,
   Activity,
+  Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/context/sidebar-context";
@@ -71,6 +72,7 @@ const navItems = [
   { href: "/dashboard/culture-fit", label: "Culture Fit", icon: Building2 },
   { href: "/dashboard/offer-compare", label: "Offer Compare", icon: Scale },
   { href: "/dashboard/usage-metrics", label: "Usage Metrics", icon: Activity },
+  { href: "/dashboard/pricing", label: "Pricing", icon: Crown },
 ];
 
 /* ── Editor tool features (shown when on editor route) ── */
@@ -218,6 +220,7 @@ const AppSidebar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showFeaturePanel, setShowFeaturePanel] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   /* ── Touch swipe to close ── */
   const touchStartX = useRef(0);
@@ -227,6 +230,7 @@ const AppSidebar = () => {
   const isEditorPage = pathname?.includes("/document/") && pathname?.includes("/edit");
 
   useEffect(() => {
+    setIsMounted(true);
     const check = () => setIsMobile(window.innerWidth < 1024);
     check();
     window.addEventListener("resize", check);
@@ -438,7 +442,7 @@ const AppSidebar = () => {
                 }}
               />
               <AnimatePresence>
-                {!collapsed && isLoaded && user && (
+                {!collapsed && isMounted && isLoaded && user && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}

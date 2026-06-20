@@ -26,14 +26,25 @@ export function PresenceIndicator() {
   const self = useSelf();
   const [followingId, setFollowingId] = useState<number | string | null>(null);
 
-  // When following a user, smoothly scroll the page to keep their cursor in view.
+  // When following a user, throttle scroll updates so we only react to the
+  // followed user's cursor moving — and at most ~5x/sec. Avoids jitter when
+  // other collaborators also move.
+  const followedCursor = followingId != null
+    ? others.find((o) => o.id === followingId)?.presence?.cursor
+    : null;
+  const followedY = followedCursor?.y ?? null;
+  const lastScrollAt = React.useRef(0);
+
   useEffect(() => {
-    if (followingId == null) return;
-    const target = others.find((o) => o.id === followingId);
-    const cursor = target?.presence?.cursor;
-    if (!cursor) return;
-    window.scrollTo({ top: window.scrollY + (cursor.y - window.innerHeight / 2), behavior: "smooth" });
-  }, [others, followingId]);
+    if (followedY == null) return;
+    const now = Date.now();
+    if (now - lastScrollAt.current < 200) return;
+    lastScrollAt.current = now;
+    window.scrollTo({
+      top: window.scrollY + (followedY - window.innerHeight / 2),
+      behavior: "smooth",
+    });
+  }, [followedY]);
 
   // Combine self + others for the full presence list
   const allUsers = [self, ...others].filter(Boolean);

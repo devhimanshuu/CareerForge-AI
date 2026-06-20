@@ -1,9 +1,14 @@
 /**
  * Central LangChain model configuration.
  *
- * Provides a primary ChatModel (NVIDIA Kimi K2.6) with automatic fallback
- * to Groq (Llama 3.3 70B). All AI features in the app should import from
- * here instead of constructing their own clients.
+ * Provides a primary ChatModel (NVIDIA NIM-hosted Moonshot Kimi K2) with
+ * automatic fallback to Groq (Llama 3.3 70B). All AI features in the app
+ * should import from here instead of constructing their own clients.
+ *
+ * The NVIDIA model id can be overridden via NVIDIA_KIMI_MODEL — the default
+ * `moonshotai/kimi-k2-instruct` is the verified ID currently hosted on
+ * https://build.nvidia.com (the previous `moonshotai/kimi-k2.6` ID did not
+ * exist and silently fell back to Groq).
  */
 
 import { ChatGroq } from "@langchain/groq";
@@ -18,13 +23,14 @@ export const groqModel = new ChatGroq({
 });
 
 // ── NVIDIA NIM via OpenAI-compatible endpoint (primary) ──────────────────────
+const NVIDIA_MODEL = process.env.NVIDIA_KIMI_MODEL || "moonshotai/kimi-k2-instruct";
 const nvidiaPrimary = new ChatOpenAI({
   apiKey: process.env.NVIDIA_KIMI_KEY || "dummy",
   openAIApiKey: process.env.NVIDIA_KIMI_KEY || "dummy",
   configuration: {
     baseURL: "https://integrate.api.nvidia.com/v1",
   },
-  modelName: "moonshotai/kimi-k2.6",
+  modelName: NVIDIA_MODEL,
   temperature: 0.4,
   maxTokens: 4096,
 });

@@ -37,13 +37,25 @@ export function Cursors({ containerRef }: { containerRef?: React.RefObject<HTMLD
       updateMyPresence({ cursor: null });
     };
 
-    const target = containerRef?.current || window;
-    target.addEventListener("mousemove", handleMouseMove as EventListener);
-    target.addEventListener("mouseleave", handleMouseLeave);
+    // window doesn't fire 'mouseleave' reliably across browsers — listen on
+    // the container if one is provided, otherwise document.documentElement.
+    const moveTarget: EventTarget = containerRef?.current || window;
+    const leaveTarget: EventTarget =
+      containerRef?.current || document.documentElement;
+
+    moveTarget.addEventListener("mousemove", handleMouseMove as EventListener);
+    leaveTarget.addEventListener("mouseleave", handleMouseLeave);
+
+    // Hide my cursor when the tab loses focus so it doesn't ghost.
+    const handleVisibility = () => {
+      if (document.hidden) handleMouseLeave();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      target.removeEventListener("mousemove", handleMouseMove as EventListener);
-      target.removeEventListener("mouseleave", handleMouseLeave);
+      moveTarget.removeEventListener("mousemove", handleMouseMove as EventListener);
+      leaveTarget.removeEventListener("mouseleave", handleMouseLeave);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [updateMyPresence, containerRef]);
 

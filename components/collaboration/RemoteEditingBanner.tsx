@@ -32,8 +32,11 @@ export function RemoteEditingBanner() {
 
   if (editing.length === 0) return null;
 
+  // Sit below the navbar (top-4 area) and offset left of the Connecting toast
+  // which lives at top-4 right-4. Using a left-biased translate so we never
+  // overlap the right-side connection-status indicator.
   return (
-    <div className="pointer-events-none fixed top-16 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-1.5">
+    <div className="pointer-events-none fixed top-16 left-[max(1rem,calc(50%-12rem))] z-40 flex flex-col items-start gap-1.5">
       <AnimatePresence>
         {editing.map((e) => (
           <motion.div

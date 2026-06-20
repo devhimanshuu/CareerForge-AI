@@ -8,9 +8,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { WifiOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Check if Liveblocks is configured (has env key on server)
-// Client-side we detect from public env or attempt connection
-const IS_LIVEBLOCKS_CONFIGURED = process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY !== undefined;
+// Whether Liveblocks is reachable. We use a runtime probe (HEAD /api/liveblocks-auth)
+// rather than a NEXT_PUBLIC env var because the production setup authenticates
+// via a server-side LIVEBLOCKS_SECRET_KEY — there is no public key to inspect.
+// Detection lives in useState so SSR is always "true" (optimistic) and the
+// banner only shows after a real failed probe.
+const IS_LIVEBLOCKS_CONFIGURED = true;
 
 type ConnectionState = "connecting" | "connected" | "disconnected" | "error";
 
@@ -21,10 +24,32 @@ export function CollaborationProvider({
   roomId: string;
   children: React.ReactNode;
 }) {
-  const [connectionState, setConnectionState] =
-    useState<ConnectionState>(IS_LIVEBLOCKS_CONFIGURED ? "connecting" : "error");
-  const [hasError, setHasError] = useState(!IS_LIVEBLOCKS_CONFIGURED);
+  const [connectionState, setConnectionState] = useState<ConnectionState>("connecting");
+  const [hasError, setHasError] = useState(false);
   const { user, isLoaded } = useUser();
+
+  // Runtime probe: does /api/liveblocks-auth respond? This is the only
+  // reliable way to detect a missing LIVEBLOCKS_SECRET_KEY since it lives
+  // server-side and isn't exposed to the client bundle.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/liveblocks-auth", { method: "POST" })
+      .then((r) => {
+        if (cancelled) return;
+        if (!r.ok && r.status !== 401) {
+          setHasError(true);
+          setConnectionState("error");
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHasError(true);
+        setConnectionState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Reconnection logic
   const handleReconnect = useCallback(() => {
@@ -33,13 +58,10 @@ export function CollaborationProvider({
     // RoomProvider will automatically attempt reconnection
   }, []);
 
-  // Derive connection state from user loading
+  // Derive connection state from user loading. The runtime probe above
+  // already flagged hasError if the auth endpoint is dead.
   useEffect(() => {
-    if (!IS_LIVEBLOCKS_CONFIGURED) {
-      setHasError(true);
-      setConnectionState("error");
-      return;
-    }
+    if (hasError) return;
     if (!isLoaded) {
       setConnectionState("connecting");
       return;
@@ -49,16 +71,8 @@ export function CollaborationProvider({
       setConnectionState("error");
       return;
     }
-    if (!IS_LIVEBLOCKS_CONFIGURED) {
-      setHasError(true);
-      setConnectionState("error");
-      return;
-    }
-    // If Liveblocks auth endpoint returns error, we catch it here
-    // For now, assume connected once user is loaded
     setConnectionState("connected");
-    setHasError(false);
-  }, [isLoaded, user]);
+  }, [isLoaded, user, hasError]);
 
   // If the auth endpoint fails, RoomProvider will throw.
   // We catch that and show fallback.

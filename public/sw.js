@@ -35,6 +35,13 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   const isStatic = /\.(?:js|css|png|jpg|jpeg|svg|ico|woff2?|ttf)$/.test(url.pathname);
+  // Auth-gated dashboard / API responses must never be cached — they leak
+  // user data across sessions and stay stale after logout.
+  const isPrivate =
+    url.pathname.startsWith("/dashboard") ||
+    url.pathname.startsWith("/api") ||
+    url.pathname.startsWith("/sign-in") ||
+    url.pathname.startsWith("/sign-up");
 
   if (isStatic) {
     event.respondWith(
@@ -54,15 +61,27 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(req)
       .then((res) => {
-        if (res && res.status === 200 && req.headers.get("accept")?.includes("text/html")) {
+        if (
+          !isPrivate &&
+          res &&
+          res.status === 200 &&
+          req.headers.get("accept")?.includes("text/html")
+        ) {
           const copy = res.clone();
           caches.open(CACHE_VERSION).then((c) => c.put(req, copy)).catch(() => {});
         }
         return res;
       })
-      .catch(() =>
-        caches.match(req).then((cached) => cached || caches.match("/dashboard"))
-      )
+      .catch(() => {
+        if (isPrivate) {
+          // Offline fallback for private routes: a tiny shell, not a stale page.
+          return new Response(
+            "<!doctype html><meta charset=utf-8><title>Offline</title><body style='font-family:system-ui;padding:2rem;text-align:center'><h1>You're offline</h1><p>Your edits are queued and will sync when you reconnect.</p></body>",
+            { headers: { "Content-Type": "text/html" } }
+          );
+        }
+        return caches.match(req).then((cached) => cached || caches.match("/"));
+      })
   );
 });
 
@@ -92,22 +111,46 @@ self.addEventListener("message", (event) => {
 async function flushQueuedEdits() {
   const cache = await caches.open(EDIT_QUEUE_CACHE);
   const keys = await cache.keys();
+  // Tell the page to replay through fetch() — fetch from a page context
+  // automatically attaches cookies (incl. Clerk session), which a raw SW
+  // fetch does not on all browsers. The SW just curates the queue.
+  const allClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   for (const key of keys) {
     const res = await cache.match(key);
     if (!res) continue;
     const payload = await res.json();
+
+    if (allClients.length > 0) {
+      allClients[0].postMessage({ type: "replay-edit", payload, cacheKey: key.url });
+      // The page is responsible for ack'ing via { type: "ack-edit", cacheKey }.
+      continue;
+    }
+
+    // No open window — fall back to SW fetch with credentials: 'include'.
     try {
-      await fetch(payload.url, {
+      const response = await fetch(payload.url, {
         method: payload.method || "POST",
         headers: payload.headers || { "content-type": "application/json" },
         body: payload.body ? JSON.stringify(payload.body) : undefined,
+        credentials: "include",
       });
-      await cache.delete(key);
+      if (response.ok) await cache.delete(key);
     } catch {
       // leave queued for the next flush
     }
   }
 }
+
+// Page acks the SW after it has successfully replayed an edit; we then drop
+// the queue entry. Lets us bypass cookie issues by using the page fetcher.
+self.addEventListener("message", (event) => {
+  const msg = event.data || {};
+  if (msg.type === "ack-edit" && msg.cacheKey) {
+    event.waitUntil(
+      caches.open(EDIT_QUEUE_CACHE).then((cache) => cache.delete(msg.cacheKey))
+    );
+  }
+});
 
 self.addEventListener("push", function (event) {
   const data = event.data ? event.data.json() : {};

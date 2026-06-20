@@ -1,4 +1,7 @@
-import puppeteer, { Browser, Page } from "puppeteer";
+// Use type-only imports so puppeteer's heavy runtime isn't pulled in until
+// scrapeJobs() actually runs. The dynamic import inside launchBrowser() keeps
+// Vercel cold-start bundles small for routes that never scrape.
+import type { Browser, Page } from "puppeteer";
 
 export interface ScrapedJob {
   title: string;
@@ -67,6 +70,7 @@ export class JobScraper {
     const viewport = VIEWPORTS[Math.floor(Math.random() * VIEWPORTS.length)];
     const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
+    const puppeteer = (await import("puppeteer")).default;
     this.browser = await puppeteer.launch({
       headless: true,
       args: [
