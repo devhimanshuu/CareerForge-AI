@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq, ne, notInArray } from "drizzle-orm";
+import { and, desc, eq, ne, notInArray, or } from "drizzle-orm";
 import { z } from "zod";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import {
@@ -723,6 +723,90 @@ const documentRoute = new Hono()
       } catch (error) {
         console.error("Branch Error:", error);
         return c.json({ error: "Failed to branch document" }, 500);
+      }
+    }
+  )
+  .get(
+    "/branches/:documentId",
+    zValidator("param", z.object({ documentId: z.string() })),
+    getAuthUser,
+    async (c) => {
+      try {
+        const user = c.get("user");
+        const userId = user.id;
+        const { documentId } = c.req.valid("param");
+
+        const current = await db.query.documentTable.findFirst({
+          where: and(
+            eq(documentTable.userId, userId),
+            eq(documentTable.documentId, documentId)
+          ),
+        });
+
+        if (!current) {
+          return c.json({ success: false, error: "Document not found" }, 404);
+        }
+
+        // The "root" document is either this doc (if no parent) or its parent.
+        const rootId = current.parentId || current.documentId;
+
+        // Lineage = root document + all docs that branched from it.
+        const lineage = await db
+          .select()
+          .from(documentTable)
+          .where(
+            and(
+              eq(documentTable.userId, userId),
+              or(
+                eq(documentTable.documentId, rootId),
+                eq(documentTable.parentId, rootId)
+              )
+            )
+          )
+          .orderBy(documentTable.createdAt);
+
+        // Pull section content for each branch so the UI can diff bullets.
+        const branches = await Promise.all(
+          lineage.map(async (doc) => {
+            const detail = await db.query.documentTable.findFirst({
+              where: eq(documentTable.documentId, doc.documentId),
+              with: {
+                personalInfo: true,
+                experiences: true,
+                educations: true,
+                skills: true,
+              },
+            });
+            return {
+              documentId: doc.documentId,
+              title: doc.title,
+              branchName: doc.branchName,
+              parentId: doc.parentId,
+              summary: doc.summary,
+              themeColor: doc.themeColor,
+              createdAt: doc.createdAt,
+              updatedAt: doc.updatedAt,
+              isRoot: doc.documentId === rootId,
+              isCurrent: doc.documentId === current.documentId,
+              experiences: (detail?.experiences || []).map((e) => ({
+                id: e.id,
+                title: e.title,
+                companyName: e.companyName,
+                workSummary: e.workSummary,
+              })),
+              skills: (detail?.skills || []).map((s) => ({
+                id: s.id,
+                name: s.name,
+                rating: s.rating,
+              })),
+            };
+          })
+        );
+
+        return c.json({ success: true, data: { rootId, branches } });
+      } catch (error) {
+        console.error("Branches Error:", error);
+        return c.json({ success: false, error: "Failed to fetch branches" }, 500);
       }
     }
   )

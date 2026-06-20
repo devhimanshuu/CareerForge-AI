@@ -5,6 +5,7 @@ import ResumeForm from "./ResumeForm";
 import ResumePreview from "./ResumePreview";
 import { cn } from "@/lib/utils";
 import ResumeDoctor from "./common/ResumeDoctor";
+import MobileQuickAdd from "./common/MobileQuickAdd";
 import { useResumeContext } from "@/context/resume-info-provider";
 import {
   ResizableHandle,
@@ -453,6 +454,9 @@ const EditResume = () => {
 
       {/* AI Resume Doctor */}
       <ResumeDoctor />
+
+      {/* Mobile touch-optimized quick add */}
+      <MobileQuickAdd />
 
       {/* Share for Collaboration Modal */}
       <AnimatePresence>

@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import QueryProvider from "@/context/query-provider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
+import PWARegister from "./_components/PWARegister";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -43,6 +44,19 @@ export const metadata: Metadata = {
     shortcut: "/CareerForge_ai_final.png",
     apple: "/CareerForge_ai_final.png",
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "CareerForge AI",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport = {
+  themeColor: "#4F46E5",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
 };
 
 export default function RootLayout({
@@ -88,6 +102,7 @@ export default function RootLayout({
             >
               {children}
               <Toaster />
+              <PWARegister />
             </ThemeProvider>
           </QueryProvider>
         </body>

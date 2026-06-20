@@ -10,9 +10,10 @@ import {
 import { useResumeContext } from "@/context/resume-info-provider";
 import useUpdateDocument from "@/features/document/use-update-document";
 import { toast } from "@/hooks/use-toast";
-import { GitBranch, Loader, MoreHorizontal, Redo, Trash2 } from "lucide-react";
+import { GitBranch, History, Loader, MoreHorizontal, Redo, Trash2 } from "lucide-react";
 import { StatusType } from "@/types/resume.type";
 import ResumeBranchDialog from "./ResumeBranchDialog";
+import ResumeVersionControl from "./ResumeVersionControl";
 
 
 const MoreOption = () => {
@@ -98,6 +99,16 @@ const MoreOption = () => {
               Branch Version
             </DropdownMenuItem>
           </ResumeBranchDialog>
+
+          <ResumeVersionControl documentId={resumeInfo?.documentId || ""}>
+            <DropdownMenuItem
+              onSelect={(e) => e.preventDefault()}
+              className="gap-2 cursor-pointer"
+            >
+              <History size="15px" />
+              Version History
+            </DropdownMenuItem>
+          </ResumeVersionControl>
         </DropdownMenuContent>
 
       </DropdownMenu>
