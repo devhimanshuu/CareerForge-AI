@@ -43,6 +43,8 @@ import {
   Workflow,
   SplitSquareHorizontal,
   Linkedin,
+  Building2,
+  Scale,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/context/sidebar-context";
@@ -64,6 +66,8 @@ const navItems = [
   { href: "/dashboard/ab-testing", label: "A/B Testing", icon: SplitSquareHorizontal },
   { href: "/dashboard/automation", label: "Agents", icon: Bot },
   { href: "/dashboard/pipeline", label: "Job Pipeline", icon: Workflow },
+  { href: "/dashboard/culture-fit", label: "Culture Fit", icon: Building2 },
+  { href: "/dashboard/offer-compare", label: "Offer Compare", icon: Scale },
 ];
 
 /* ── Editor tool features (shown when on editor route) ── */

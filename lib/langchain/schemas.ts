@@ -293,3 +293,43 @@ export const ResumeDoctorResponseSchema = z.object({
 });
 
 export type ResumeDoctorResponse = z.infer<typeof ResumeDoctorResponseSchema>;
+
+// ── Company Culture Fit Analyzer ─────────────────────────────────────────────
+export const CultureSignalSchema = z.object({
+  label: z.string().describe("Short signal description"),
+  source: z.enum(["glassdoor", "linkedin", "news", "blog", "general"]).describe("Where this signal would come from"),
+});
+
+export const ValuesAlignmentSchema = z.object({
+  dimension: z.enum([
+    "engineering_culture",
+    "work_life_balance",
+    "career_growth",
+    "compensation",
+    "leadership_trust",
+  ]),
+  score: z.number().min(1).max(5).describe("Alignment score 1-5"),
+  note: z.string().describe("One-line evidence summary"),
+});
+
+export const CultureFitResponseSchema = z.object({
+  company: z.string(),
+  overallScore: z.number().min(0).max(100).describe("Overall fit 0-100"),
+  confidence: z.enum(["low", "medium", "high"]).describe("How confident the analysis is"),
+  headline: z.string().describe("One-line punchy insight"),
+  pros: z.array(CultureSignalSchema).min(1).max(6),
+  cons: z.array(CultureSignalSchema).min(1).max(6),
+  valuesAlignment: z.array(ValuesAlignmentSchema).length(5),
+});
+
+export type CultureFitResponse = z.infer<typeof CultureFitResponseSchema>;
+
+// ── Job Offer Comparison ─────────────────────────────────────────────────────
+export const OfferRecommendationSchema = z.object({
+  recommendedOfferId: z.string().describe("The id of the recommended offer"),
+  reasoning: z.string().describe("Why this offer wins for this candidate"),
+  tradeoffs: z.array(z.string()).min(1).max(6),
+  riskFlags: z.array(z.string()).max(6),
+});
+
+export type OfferRecommendation = z.infer<typeof OfferRecommendationSchema>;

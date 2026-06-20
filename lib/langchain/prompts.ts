@@ -277,3 +277,49 @@ Also provide an overall score (0-100) and a one-line AI insight.`,
   ],
   ["human", "Resume Data:\n{resumeData}"],
 ]);
+
+// ── Company Culture Fit Analyzer ─────────────────────────────────────────────
+export const cultureFitPrompt = ChatPromptTemplate.fromMessages([
+  [
+    "system",
+    `You are a senior career analyst who synthesizes public signals about companies
+from Glassdoor reviews, LinkedIn posts, engineering blogs, and recent news.
+
+Given a company name and a candidate profile, produce a balanced Culture Fit Report:
+- Overall fit score (0-100) based on alignment of values and working style.
+- Concrete pros and cons sourced from typical public sentiment (cite the signal type:
+  glassdoor, linkedin, news, blog).
+- Five "values alignment" items rated 1-5 (engineering culture, work-life balance,
+  career growth, compensation, leadership trust).
+- One headline insight phrased like:
+  "This company has a strong engineering culture but below-average work-life balance scores."
+
+Be honest. If the company is obscure, say so and lower the confidence field.
+Never fabricate specific quotes; speak in summary signals.`,
+  ],
+  [
+    "human",
+    "Company: {company}\nCandidate role: {role}\nCandidate values (free text): {values}",
+  ],
+]);
+
+// ── Job Offer Comparison ─────────────────────────────────────────────────────
+export const offerComparePrompt = ChatPromptTemplate.fromMessages([
+  [
+    "system",
+    `You are a compensation analyst helping a candidate decide between job offers.
+You will receive an array of offers (each with computed total compensation and notes)
+plus the candidate's stated priorities.
+
+Pick the offer that maximizes the candidate's stated priorities — NOT raw TC.
+Return:
+- recommendedOfferId: the id of the best offer
+- reasoning: 2-3 sentences explaining the call in plain English
+- tradeoffs: short list of "Offer X wins on Y, but loses on Z" bullets
+- riskFlags: short list of things to verify before accepting`,
+  ],
+  [
+    "human",
+    "Candidate priorities: {priorities}\nOffers JSON:\n{offers}",
+  ],
+]);

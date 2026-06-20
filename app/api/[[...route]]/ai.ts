@@ -28,6 +28,10 @@ import {
   CareerRoadmapResponseSchema,
   marketDataPrompt,
   MarketDataResponseSchema,
+  cultureFitPrompt,
+  CultureFitResponseSchema,
+  offerComparePrompt,
+  OfferRecommendationSchema,
 } from "@/lib/langchain";
 import { db } from "@/db";
 import { documentTable } from "@/db/schema/document";
@@ -685,6 +689,43 @@ You must output a structured JSON response matching the schema details.`,
     } catch (error: any) {
       console.error("Career Coach API Error:", error);
       return c.json({ error: error.message }, 500);
+    }
+  })
+  .post("/culture-fit", getAuthUser, async (c) => {
+    try {
+      const { company, role, values } = await c.req.json();
+      if (!company || typeof company !== "string") {
+        return c.json({ error: "Company name is required" }, 400);
+      }
+      const model = chatModel.withStructuredOutput(CultureFitResponseSchema);
+      const chain = cultureFitPrompt.pipe(model);
+      const response = await chain.invoke({
+        company: company.trim(),
+        role: (role || "").toString().trim() || "Not specified",
+        values: (values || "").toString().trim() || "Not specified",
+      });
+      return c.json(response as any);
+    } catch (error: any) {
+      console.error("Culture Fit API Error:", error);
+      return c.json({ error: error.message || "Failed to analyze culture fit" }, 500);
+    }
+  })
+  .post("/offer-recommendation", getAuthUser, async (c) => {
+    try {
+      const { offers, priorities } = await c.req.json();
+      if (!Array.isArray(offers) || offers.length < 2) {
+        return c.json({ error: "At least two offers are required" }, 400);
+      }
+      const model = chatModel.withStructuredOutput(OfferRecommendationSchema);
+      const chain = offerComparePrompt.pipe(model);
+      const response = await chain.invoke({
+        priorities: (priorities || "balanced").toString().trim(),
+        offers: JSON.stringify(offers),
+      });
+      return c.json(response as any);
+    } catch (error: any) {
+      console.error("Offer Recommendation API Error:", error);
+      return c.json({ error: error.message || "Failed to compare offers" }, 500);
     }
   });
 
