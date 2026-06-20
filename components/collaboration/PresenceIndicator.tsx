@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useOthers, useSelf } from "@/lib/liveblocks";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Eye } from "lucide-react";
 
 // Section labels for display
 const SECTION_LABELS: Record<string, string> = {
@@ -23,6 +24,16 @@ const SECTION_LABELS: Record<string, string> = {
 export function PresenceIndicator() {
   const others = useOthers();
   const self = useSelf();
+  const [followingId, setFollowingId] = useState<number | string | null>(null);
+
+  // When following a user, smoothly scroll the page to keep their cursor in view.
+  useEffect(() => {
+    if (followingId == null) return;
+    const target = others.find((o) => o.id === followingId);
+    const cursor = target?.presence?.cursor;
+    if (!cursor) return;
+    window.scrollTo({ top: window.scrollY + (cursor.y - window.innerHeight / 2), behavior: "smooth" });
+  }, [others, followingId]);
 
   // Combine self + others for the full presence list
   const allUsers = [self, ...others].filter(Boolean);
@@ -76,18 +87,32 @@ export function PresenceIndicator() {
                 className="relative group"
                 style={{ zIndex: visibleUsers.length - i }}
               >
-                <Avatar
-                  className="w-6 h-6 shadow-sm cursor-pointer hover:ring-2 transition-all"
-                  style={{ boxShadow: `0 0 0 2px ${color}` }}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFollowingId((cur) => (cur === o.id ? null : o.id ?? null))
+                  }
+                  title={followingId === o.id ? "Stop following" : `Follow ${name}`}
+                  className="relative"
                 >
-                  {avatar && <AvatarImage src={avatar} alt={name} />}
-                  <AvatarFallback
-                    className="text-[9px] font-bold"
-                    style={{ backgroundColor: color, color: "#fff" }}
+                  <Avatar
+                    className="w-6 h-6 shadow-sm cursor-pointer hover:ring-2 transition-all"
+                    style={{ boxShadow: `0 0 0 2px ${color}` }}
                   >
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
+                    {avatar && <AvatarImage src={avatar} alt={name} />}
+                    <AvatarFallback
+                      className="text-[9px] font-bold"
+                      style={{ backgroundColor: color, color: "#fff" }}
+                    >
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  {followingId === o.id && (
+                    <span className="absolute -bottom-1 -right-1 rounded-full bg-indigo-600 text-white p-0.5 shadow">
+                      <Eye size={8} />
+                    </span>
+                  )}
+                </button>
 
                 {/* Tooltip */}
                 <div

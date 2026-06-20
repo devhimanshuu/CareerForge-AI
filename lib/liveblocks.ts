@@ -12,6 +12,10 @@ type Presence = {
   userName: string;
   userColor: string;
   userAvatar?: string;
+  // Polish: indicates which thread (if any) the user is currently composing in.
+  typingThreadId?: string | null;
+  // Heartbeat for activity ring — last time the user touched the editor.
+  lastActivityAt?: number;
 };
 
 // Storage type — synced structured data for inline comments/threads

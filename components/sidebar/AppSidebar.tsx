@@ -45,11 +45,13 @@ import {
   Linkedin,
   Building2,
   Scale,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/context/sidebar-context";
 import Image from "next/image";
 import FeaturePanel from "@/app/(home)/_components/common/FeaturePanel";
+import { useTrackUsage } from "@/hooks/use-track-usage";
 
 /* ── Navigation items ── */
 const navItems = [
@@ -68,6 +70,7 @@ const navItems = [
   { href: "/dashboard/pipeline", label: "Job Pipeline", icon: Workflow },
   { href: "/dashboard/culture-fit", label: "Culture Fit", icon: Building2 },
   { href: "/dashboard/offer-compare", label: "Offer Compare", icon: Scale },
+  { href: "/dashboard/usage-metrics", label: "Usage Metrics", icon: Activity },
 ];
 
 /* ── Editor tool features (shown when on editor route) ── */
@@ -116,9 +119,16 @@ function NavItem({
   collapsed: boolean;
 }) {
   const Icon = item.icon;
+  const { track } = useTrackUsage();
   const content = (
     <Link
       href={item.href}
+      onClick={() =>
+        track({
+          featureId: `nav:${item.href.replace("/dashboard", "") || "/"}`,
+          action: "navigate",
+        })
+      }
       className={cn(
         "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 group relative",
         isActive

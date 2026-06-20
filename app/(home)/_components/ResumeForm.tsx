@@ -15,6 +15,10 @@ import EducationForm from "./forms/EducationForm";
 import SkillsForm from "./forms/SkillsForm";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "next/navigation";
+import { CollabSectionSync } from "@/components/collaboration/CollabSectionSync";
+
+const SECTION_KEYS = ["personalInfo", "summary", "experience", "education", "skills"] as const;
 
 const steps = [
   { id: 1, label: "Personal Info", estimatedTime: "2 min" },
@@ -85,9 +89,13 @@ const ResumeForm = () => {
   }, [completedSteps]);
 
   const currentStep = steps[activeFormIndex - 1];
+  const searchParams = useSearchParams();
+  const isCollab = searchParams?.get("collab") === "true";
+  const activeSectionKey = SECTION_KEYS[activeFormIndex - 1] || null;
 
   return (
     <div className="w-full flex flex-col h-full bg-background relative">
+      {isCollab && <CollabSectionSync sectionId={activeSectionKey} />}
       {/* ── Keyboard Shortcuts Overlay ── */}
       <AnimatePresence>
         {showShortcuts && (

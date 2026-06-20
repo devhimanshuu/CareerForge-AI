@@ -15,6 +15,7 @@ import {
 import { CollaborationProvider, IS_LIVEBLOCKS_CONFIGURED } from "@/components/collaboration/CollaborationProvider";
 import { PresenceIndicator } from "@/components/collaboration/PresenceIndicator";
 import { Cursors } from "@/components/collaboration/Cursors";
+import { RemoteEditingBanner } from "@/components/collaboration/RemoteEditingBanner";
 import { useParams, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -546,6 +547,7 @@ const EditResume = () => {
   if (isCollabMode) {
     return (
       <CollaborationProvider roomId={roomId}>
+        {IS_LIVEBLOCKS_CONFIGURED && <RemoteEditingBanner />}
         {editorContent}
       </CollaborationProvider>
     );

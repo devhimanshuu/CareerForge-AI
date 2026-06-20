@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getRandomColor, PRESENCE_COLORS } from "./CollaborationProvider";
+import { TypingPresence, TypingIndicator } from "./TypingPresence";
 
 // Thread comment type (matches DB schema)
 type ThreadCommentData = {
@@ -35,6 +36,10 @@ type InlineCommentsProps = {
   documentId: string;
   sectionId: string;
   children: React.ReactNode;
+  // When true, broadcast typing presence via Liveblocks and show
+  // "Alice is typing…" indicators in reply boxes. Requires the
+  // component to be rendered inside a RoomProvider.
+  liveTyping?: boolean;
 };
 
 /**
@@ -48,6 +53,7 @@ export function InlineComments({
   documentId,
   sectionId,
   children,
+  liveTyping = false,
 }: InlineCommentsProps) {
   const { user, isLoaded } = useUser();
   const [threads, setThreads] = useState<ThreadCommentData[]>([]);
@@ -445,7 +451,14 @@ export function InlineComments({
                   )}
 
                   {/* Reply input */}
+                  {liveTyping && <TypingIndicator threadId={thread.id} />}
                   <div className="pl-8 flex gap-1">
+                    {liveTyping && (
+                      <TypingPresence
+                        threadId={thread.id}
+                        active={Boolean((replyTexts[thread.id] || "").length)}
+                      />
+                    )}
                     <input
                       value={replyTexts[thread.id] || ""}
                       onChange={(e) =>
