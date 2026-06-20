@@ -20,8 +20,10 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useTrackUsage } from "@/hooks/use-track-usage";
 
 export default function ABTestingDashboard() {
+  const { track } = useTrackUsage();
   const [allDocs, setAllDocs] = useState<any[]>([]);
   const [docA, setDocA] = useState<string>("");
   const [docB, setDocB] = useState<string>("");
@@ -61,6 +63,17 @@ export default function ABTestingDashboard() {
         if (res.ok) {
           const json = await res.json();
           setComparison(json.comparison);
+
+          // Exposure event — both variants got "shown" to the user side-by-side.
+          track({ funnel: "resume_ab", variant: "A", action: "exposure", featureId: `ab:${docA}` });
+          track({ funnel: "resume_ab", variant: "B", action: "exposure", featureId: `ab:${docB}` });
+
+          // Conversion event for whichever side has the higher callback rate.
+          const c = json.comparison;
+          if (c?.docA && c?.docB) {
+            const winner = c.docA.callbackRate >= c.docB.callbackRate ? "A" : "B";
+            track({ funnel: "resume_ab", variant: winner, action: "conversion", featureId: `ab:winner` });
+          }
         }
       } catch (err) {
         console.error(err);
@@ -69,7 +82,7 @@ export default function ABTestingDashboard() {
       }
     };
     fetchComparison();
-  }, [docA, docB]);
+  }, [docA, docB, track]);
 
   if (loading) {
     return (

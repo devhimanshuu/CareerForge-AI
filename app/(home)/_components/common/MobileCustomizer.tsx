@@ -57,9 +57,18 @@ const MobileCustomizer = () => {
   const { signOut } = useClerk();
   const { user, isLoaded } = useUser();
   const [showSignOutConfirm, setShowSignOutConfirm] = React.useState(false);
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Only show certain tools if we are on an edit page
   const isEditPage = pathname.includes("/edit");
+
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <>

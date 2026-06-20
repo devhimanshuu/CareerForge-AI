@@ -15,8 +15,9 @@ import EducationForm from "./forms/EducationForm";
 import SkillsForm from "./forms/SkillsForm";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useParams } from "next/navigation";
 import { CollabSectionSync } from "@/components/collaboration/CollabSectionSync";
+import { InlineComments } from "@/components/collaboration/InlineComments";
 
 const SECTION_KEYS = ["personalInfo", "summary", "experience", "education", "skills"] as const;
 
@@ -90,8 +91,26 @@ const ResumeForm = () => {
 
   const currentStep = steps[activeFormIndex - 1];
   const searchParams = useSearchParams();
+  const params = useParams();
+  const documentId = (params?.documentId as string) || "";
   const isCollab = searchParams?.get("collab") === "true";
   const activeSectionKey = SECTION_KEYS[activeFormIndex - 1] || null;
+
+  // Wrap the active form section so users can highlight text and post threaded
+  // comments. liveTyping=true broadcasts presence to remote collaborators when
+  // we're in a real-time room.
+  const wrapWithComments = (node: React.ReactNode) =>
+    documentId && activeSectionKey ? (
+      <InlineComments
+        documentId={documentId}
+        sectionId={activeSectionKey}
+        liveTyping={isCollab}
+      >
+        {node}
+      </InlineComments>
+    ) : (
+      node
+    );
 
   return (
     <div className="w-full flex flex-col h-full bg-background relative">
@@ -253,11 +272,11 @@ const ResumeForm = () => {
               exit={{ opacity: 0, x: -20, filter: "blur(4px)" }}
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
-              {activeFormIndex === 1 && <PersonalInfoForm handleNext={handleNext} />}
-              {activeFormIndex === 2 && <SummaryForm handleNext={handleNext} />}
-              {activeFormIndex === 3 && <ExperienceForm handleNext={handleNext} />}
-              {activeFormIndex === 4 && <EducationForm handleNext={handleNext} />}
-              {activeFormIndex === 5 && <SkillsForm />}
+              {activeFormIndex === 1 && wrapWithComments(<PersonalInfoForm handleNext={handleNext} />)}
+              {activeFormIndex === 2 && wrapWithComments(<SummaryForm handleNext={handleNext} />)}
+              {activeFormIndex === 3 && wrapWithComments(<ExperienceForm handleNext={handleNext} />)}
+              {activeFormIndex === 4 && wrapWithComments(<EducationForm handleNext={handleNext} />)}
+              {activeFormIndex === 5 && wrapWithComments(<SkillsForm />)}
             </motion.div>
           </AnimatePresence>
         </div>

@@ -19,7 +19,7 @@ A fleet of six specialized AI agents working in concert to automate your entire 
 
 | Agent | Powered By | Description |
 |-------|-----------|-------------|
-| **ATS Resume Optimizer** | LangChain + NVIDIA Kimi K2.6 + Groq Llama 3.3 70B | Analyzes job descriptions against your resume. Generates tailored bullet points, identifies keyword gaps, and boosts ATS match scores with structured Zod schema output. |
+| **ATS Resume Optimizer** | LangChain + NVIDIA-hosted Moonshot Kimi K2 + Groq Llama 3.3 70B | Analyzes job descriptions against your resume. Generates tailored bullet points, identifies keyword gaps, and boosts ATS match scores with structured Zod schema output. |
 | **Auto-Apply Agent** | LangChain + Groq | One-click application package generation. Produces tailored cover letters, STAR-method interview answers, and rewrites every bullet point to match JD keywords. |
 | **Job Scraper Agent** | Puppeteer (Headless Chromium) | Bypasses WAF protections across LinkedIn, Indeed, and Glassdoor. Rotates user-agents and viewports to extract clean job details including hidden salary ranges. |
 | **Networking Agent** | LangChain + Groq | Generates contextual follow-ups, thank-you notes, recruiter connection requests, and negotiation scripts tailored to your application stage (applied/interviewing/offer/rejected). |
@@ -53,7 +53,7 @@ A collection of futuristic career-optimization tools located inside the editor w
 
 ### 4. 🧠 Advanced AI Generation & Autocomplete
 
-- **NVIDIA NIM & Groq Integrations**: Generates professional summaries, educational highlights, and experience bullet points using high-velocity LLM APIs. Primary model: NVIDIA Kimi K2.6 with automatic fallback to Groq Llama 3.3 70B.
+- **NVIDIA NIM & Groq Integrations**: Generates professional summaries, educational highlights, and experience bullet points using high-velocity LLM APIs. Primary model: NVIDIA-hosted Moonshot Kimi K2 with automatic fallback to Groq Llama 3.3 70B.
 - **LangChain Orchestration**: Centralized model configuration (`lib/langchain/config.ts`) with structured output support via Zod schemas, automatic fallback chains, and temperature calibration at 0.4 for consistent, professional results.
 - **Tailored Tone & Keywords**: Injects relevant key phrases specific to the selected industry or job role.
 - **ATS Optimization**: Scores your bullet points against top Applicant Tracking Systems (ATS) algorithms.
@@ -366,7 +366,7 @@ A fully integrated, drag-and-drop Kanban board for job applications.
 │   ├── utils.ts                # Tailwind class merge utility (cn)
 │   ├── webrtc-interview.ts     # WebRTC interview session manager
 │   └── langchain/              # LangChain AI configuration
-│       ├── config.ts           # Central model (NVIDIA Kimi K2.6 + Groq fallback)
+│       ├── config.ts           # Central model (NVIDIA-hosted Moonshot Kimi K2 + Groq fallback)
 │       ├── index.ts
 │       ├── prompts.ts          # AI prompt templates
 │       ├── resume-extractor.ts # Resume data extraction chain

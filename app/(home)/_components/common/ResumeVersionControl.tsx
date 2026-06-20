@@ -35,38 +35,89 @@ type Branch = {
   skills: { id: number; name: string | null; rating: number }[];
 };
 
-// Normalize a bullet list out of a workSummary string (one per line, trimmed).
-const toBullets = (s: string | null | undefined) =>
-  (s || "")
-    .split(/\r?\n|•|·|- /)
-    .map((b) => b.trim())
-    .filter(Boolean);
+// Normalize a string into comparable bullets:
+// strip HTML, collapse whitespace, split on newlines / bullet glyphs / <li>.
+const toBullets = (s: string | null | undefined) => {
+  if (!s) return [] as string[];
+  const stripped = s
+    .replace(/<\/(p|div|li|br)>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "");
+  return stripped
+    .split(/\r?\n|•|·|^\s*-\s+/m)
+    .map((b) => b.replace(/\s+/g, " ").trim())
+    .filter((b) => b.length > 0);
+};
 
-// Build a per-bullet diff between the baseline and target branches.
+// Token-overlap similarity in [0, 1]. Used to spot "modified" bullets.
+const similarity = (a: string, b: string) => {
+  if (!a || !b) return 0;
+  const tokensA = new Set(a.toLowerCase().split(/\s+/).filter(Boolean));
+  const tokensB = new Set(b.toLowerCase().split(/\s+/).filter(Boolean));
+  if (tokensA.size === 0 || tokensB.size === 0) return 0;
+  let overlap = 0;
+  tokensA.forEach((t) => tokensB.has(t) && overlap++);
+  return overlap / Math.max(tokensA.size, tokensB.size);
+};
+
+type DiffBullet = { bullet: string; role: string };
+type DiffModified = { from: string; to: string; role: string };
+
+// Build a per-bullet diff: detects added, removed, and *modified* bullets
+// (a removed/added pair with high token overlap is collapsed into a modification).
 const diffBranches = (base: Branch | undefined, target: Branch) => {
-  const baseBullets = new Set<string>();
-  base?.experiences.forEach((e) => toBullets(e.workSummary).forEach((b) => baseBullets.add(b)));
-  const targetBullets = new Set<string>();
-  target.experiences.forEach((e) => toBullets(e.workSummary).forEach((b) => targetBullets.add(b)));
-
-  const added: { bullet: string; role: string }[] = [];
-  const removed: { bullet: string; role: string }[] = [];
-
-  target.experiences.forEach((e) => {
-    toBullets(e.workSummary).forEach((b) => {
-      if (!baseBullets.has(b)) {
-        added.push({ bullet: b, role: `${e.title || "Role"} @ ${e.companyName || "—"}` });
-      }
-    });
-  });
+  const baseList: DiffBullet[] = [];
   base?.experiences.forEach((e) => {
-    toBullets(e.workSummary).forEach((b) => {
-      if (!targetBullets.has(b)) {
-        removed.push({ bullet: b, role: `${e.title || "Role"} @ ${e.companyName || "—"}` });
+    const role = `${e.title || "Role"} @ ${e.companyName || "—"}`;
+    toBullets(e.workSummary).forEach((b) => baseList.push({ bullet: b, role }));
+  });
+  const targetList: DiffBullet[] = [];
+  target.experiences.forEach((e) => {
+    const role = `${e.title || "Role"} @ ${e.companyName || "—"}`;
+    toBullets(e.workSummary).forEach((b) => targetList.push({ bullet: b, role }));
+  });
+
+  const baseSet = new Set(baseList.map((b) => b.bullet));
+  const targetSet = new Set(targetList.map((b) => b.bullet));
+
+  const candidatesAdded = targetList.filter((b) => !baseSet.has(b.bullet));
+  const candidatesRemoved = baseList.filter((b) => !targetSet.has(b.bullet));
+
+  const added: DiffBullet[] = [];
+  const removed: DiffBullet[] = [];
+  const modified: DiffModified[] = [];
+  const consumedRemoved = new Set<number>();
+
+  candidatesAdded.forEach((a) => {
+    let bestIdx = -1;
+    let bestScore = 0;
+    candidatesRemoved.forEach((r, idx) => {
+      if (consumedRemoved.has(idx)) return;
+      if (r.role !== a.role) return;
+      const score = similarity(a.bullet, r.bullet);
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = idx;
       }
     });
+    if (bestIdx >= 0 && bestScore >= 0.5) {
+      consumedRemoved.add(bestIdx);
+      modified.push({
+        from: candidatesRemoved[bestIdx].bullet,
+        to: a.bullet,
+        role: a.role,
+      });
+    } else {
+      added.push(a);
+    }
   });
-  return { added, removed };
+
+  candidatesRemoved.forEach((r, idx) => {
+    if (!consumedRemoved.has(idx)) removed.push(r);
+  });
+
+  return { added, removed, modified };
 };
 
 const ResumeVersionControl = ({ documentId, children }: PropType) => {
@@ -87,12 +138,17 @@ const ResumeVersionControl = ({ documentId, children }: PropType) => {
   const baseline = compareWithRoot ? root : sorted[Math.max(sliderIdx - 1, 0)];
   const diff = selected ? diffBranches(baseline?.documentId === selected.documentId ? undefined : baseline, selected) : null;
 
-  // Reset slider to current branch whenever data arrives.
+  // Reset slider to "current" branch whenever the lineage changes.
+  // We key off branch ids (stable) instead of the raw `data` object identity
+  // so we don't fire on harmless re-renders.
+  const branchSignature = sorted
+    .map((b) => `${b.documentId}:${b.isCurrent ? 1 : 0}`)
+    .join("|");
   React.useEffect(() => {
     if (!sorted.length) return;
     const currentIdx = sorted.findIndex((b) => b.isCurrent);
     setSliderIdx(currentIdx >= 0 ? currentIdx : sorted.length - 1);
-  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [branchSignature, sorted]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -181,6 +237,24 @@ const ResumeVersionControl = ({ documentId, children }: PropType) => {
                 </Button>
               </div>
             </div>
+
+            {/* Modified bullets row (always above add/remove) */}
+            {selected && diff && diff.modified.length > 0 && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-2">
+                  ✎ Modified ({diff.modified.length})
+                </div>
+                <ul className="space-y-3">
+                  {diff.modified.map((m, i) => (
+                    <li key={i} className="text-xs space-y-1">
+                      <div className="text-rose-600/80 line-through">{m.from}</div>
+                      <div className="text-emerald-700 dark:text-emerald-300">{m.to}</div>
+                      <div className="text-[10px] text-muted-foreground">{m.role}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Diff view */}
             {selected && diff && (
