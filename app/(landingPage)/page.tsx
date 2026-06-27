@@ -468,7 +468,7 @@ export default function Home() {
         <div className="absolute top-[10%] left-[10%] w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] z-0 animate-pulse pointer-events-none" />
         <div className="absolute bottom-[20%] right-[10%] w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] z-0 pointer-events-none" />
 
-        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center justify-center px-4 sm:px-5 pb-16 pt-24 sm:pt-20 sm:pb-20 text-center mt-8">
+        <div className="relative z-10 mx-auto flex w-full flex-col items-center justify-center px-4 sm:px-5 pb-16 pt-24 sm:pt-20 sm:pb-20 text-center mt-8">
           <div className="animate-fade-up mb-8">
             <div className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium shadow-sm glass border border-indigo-500/20">
               <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
@@ -566,7 +566,7 @@ export default function Home() {
 
       {/* ===== Features Section ===== */}
       <section id="features" className="relative py-32 px-5 bg-gradient-to-b from-background via-indigo-500/[0.02] to-background">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full mx-auto">
           <CyberneticBentoGrid />
         </div>
       </section>
@@ -616,7 +616,7 @@ export default function Home() {
           />
         ))}
 
-        <div className="max-w-7xl mx-auto relative z-10">
+        <div className="w-full mx-auto relative z-10">
           {/* ── Section Header ── */}
           <div className="text-center mb-16 sm:mb-20 md:mb-24">
             <motion.div
@@ -881,7 +881,7 @@ export default function Home() {
 
       {/* ===== Interactive Feature Showcase ===== */}
       <section className="relative py-16 sm:py-20 px-4 sm:px-5 bg-background">
-        <div className="max-w-6xl mx-auto">
+        <div className="w-full mx-auto">
           <div className="text-center mb-12 sm:mb-16">
             <div className="inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium border border-border mb-4 glass">
               <Bot size="14px" className="text-indigo-500" />
@@ -1131,7 +1131,7 @@ export default function Home() {
 
       {/* ===== How It Works Section ===== */}
       <section id="how-it-works" className="relative py-32 px-5 bg-gradient-to-b from-background via-purple-500/[0.02] to-background">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full mx-auto">
           <div className="text-center mb-20">
             <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-purple-500/20 bg-purple-500/5 mb-6">
               <Target size={14} className="text-purple-500" />
@@ -1201,7 +1201,7 @@ export default function Home() {
 
       {/* ===== Testimonials Section ===== */}
       <section className="relative py-32 px-5 bg-gradient-to-b from-background via-emerald-500/[0.02] to-background">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full mx-auto">
           <div className="text-center mb-20">
             <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-emerald-500/20 bg-emerald-500/5 mb-6">
               <Star size={14} className="text-emerald-500 fill-emerald-500" />
@@ -1223,7 +1223,7 @@ export default function Home() {
 
       {/* ===== Pricing Section ===== */}
       <section id="pricing" className="relative py-32 px-5 bg-gradient-to-b from-background via-rose-500/[0.02] to-background">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full mx-auto">
           <div className="text-center mb-20">
             <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-rose-500/20 bg-rose-500/5 mb-6">
               <Star size={14} className="text-rose-500 fill-rose-500" />
@@ -1253,7 +1253,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch w-full mx-auto">
             {[
               {
                 name: "Starter",
@@ -1340,7 +1340,7 @@ export default function Home() {
       {/* ===== FAQ Section ===== */}
       <section id="faq" className="relative py-28 px-5 bg-background border-t border-border/40">
         <div className="absolute bottom-[10%] right-[10%] w-[350px] h-[350px] bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
-        <div className="max-w-4xl mx-auto">
+        <div className="w-full mx-auto">
           <div className="text-center mb-20">
             <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border border-border mb-4 glass">
               <HelpCircle size="14px" className="text-indigo-500" />
@@ -1385,14 +1385,14 @@ export default function Home() {
 
       {/* ===== CTA Section ===== */}
       <section className="relative py-32 px-5">
-        <div className="max-w-5xl mx-auto">
+        <div className="w-full mx-auto">
           <div className="relative p-12 md:p-24 rounded-[3rem] bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 overflow-hidden shadow-2xl">
             <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
             <div className="absolute bottom-0 left-0 w-72 h-72 bg-white/5 rounded-full blur-2xl" />
             <FallingPattern className="absolute inset-0 opacity-20" color="rgba(255,255,255,0.5)" backgroundColor="transparent" />
             <div className="relative z-10 text-center">
               <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight mb-6 leading-tight">
-                Ready to transform<br />your career?
+                Ready to transform your career?
               </h2>
               <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-10 leading-relaxed">
                 Join thousands of professionals who have already accelerated their careers with AI-powered tools. Start building your future today.
@@ -1416,13 +1416,13 @@ export default function Home() {
       {/* ===== Footer ===== */}
       <footer className="relative border-t border-border/50 bg-card/30 pt-20 pb-10 px-5 overflow-hidden flex flex-col items-center">
         {/* Big Background Text */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none w-full flex justify-center z-0 overflow-hidden">
-          <span className="text-[13vw] font-black tracking-tighter uppercase whitespace-nowrap select-none bg-gradient-to-b from-indigo-500/25 to-indigo-600/10 bg-clip-text text-transparent">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none w-full h-full flex items-center justify-center z-0 overflow-hidden">
+          <span className="text-[10vw] md:text-[13vw] font-black tracking-tighter uppercase whitespace-nowrap select-none bg-gradient-to-b from-indigo-500/25 to-indigo-600/10 bg-clip-text text-transparent [writing-mode:vertical-rl] md:[writing-mode:horizontal-tb] [text-orientation:upright] md:[text-orientation:mixed] scale-x-[1.4] md:scale-x-100">
             CAREERFORGE
           </span>
         </div>
 
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16 relative z-10 w-full">
+        <div className="w-full mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16 relative z-10">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-6 group">
               <div className="relative">
@@ -1469,7 +1469,7 @@ export default function Home() {
             </ul>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4 relative z-10 w-full">
+        <div className="w-full mx-auto pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
           <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} CareerForge AI. All rights reserved.</p>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="/privacy" className="hover:text-indigo-500 transition-colors">Privacy Policy</Link>
