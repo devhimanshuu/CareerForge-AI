@@ -21,7 +21,7 @@ const audioRoute = new Hono()
       const voices = await listInterviewVoices(role);
       return c.json({ success: true, role, voices });
     } catch (error: any) {
-      return c.json({ success: false, message: error.message || "Failed to load voices" }, 500);
+      return c.json({ success: false, message: "Failed to load voices" }, 500);
     }
   })
   .post("/synthesize", getAuthUser, async (c) => {
@@ -52,7 +52,7 @@ const audioRoute = new Hono()
         },
       });
     } catch (error: any) {
-      return c.json({ success: false, message: error.message || "Failed to synthesize speech" }, 500);
+      return c.json({ success: false, message: "Failed to synthesize speech" }, 500);
     }
   })
   /**
@@ -85,7 +85,7 @@ const audioRoute = new Hono()
         },
       });
     } catch (error: any) {
-      return c.json({ success: false, message: error.message || "Failed to synthesize dialogue" }, 500);
+      return c.json({ success: false, message: "Failed to synthesize dialogue" }, 500);
     }
   })
   .post("/transcribe", getAuthUser, async (c) => {
@@ -138,7 +138,7 @@ const audioRoute = new Hono()
       return c.json({ success: true, provider: "groq", text: data.text });
     } catch (error: any) {
       console.error("Transcription Error:", error);
-      return c.json({ success: false, message: error.message || "Failed to transcribe audio" }, 500);
+      return c.json({ success: false, message: "Failed to transcribe audio" }, 500);
     }
   })
   /**
@@ -248,7 +248,7 @@ const audioRoute = new Hono()
       });
     } catch (error: any) {
       return c.json(
-        { success: false, message: error.message || "Failed to generate podcast" },
+        { success: false, message: "Failed to generate podcast" },
         500,
       );
     }
@@ -388,7 +388,7 @@ const audioRoute = new Hono()
       } catch (error: any) {
         await stream.writeSSE({
           event: "error",
-          data: JSON.stringify({ message: error.message || "Failed to generate podcast" }),
+          data: JSON.stringify({ message: "Failed to generate podcast" }),
         });
       }
     });

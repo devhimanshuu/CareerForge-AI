@@ -63,7 +63,7 @@ const extractRoute = new Hono()
       return c.json({ success: true, data: extractedData });
     } catch (error: any) {
       console.error("Extraction Error:", error);
-      return c.json({ success: false, message: error.message || "Failed to extract resume data" }, 500);
+      return c.json({ success: false, message: "Failed to extract resume data" }, 500);
     }
   });
 

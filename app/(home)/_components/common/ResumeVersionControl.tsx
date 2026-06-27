@@ -124,11 +124,12 @@ const ResumeVersionControl = ({ documentId, children }: PropType) => {
   const [open, setOpen] = useState(false);
   const { data, isLoading } = useGetBranches(documentId, open);
 
-  const branches = (data?.branches as Branch[] | undefined) || [];
-  const sorted = useMemo(
-    () => [...branches].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
-    [branches]
-  );
+  const sorted = useMemo(() => {
+    const branches = (data?.branches as Branch[] | undefined) || [];
+    return [...branches].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [data?.branches]);
 
   const [sliderIdx, setSliderIdx] = useState<number>(0);
   const [compareWithRoot, setCompareWithRoot] = useState(true);

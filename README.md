@@ -21,7 +21,7 @@ A fleet of six specialized AI agents working in concert to automate your entire 
 |-------|-----------|-------------|
 | **ATS Resume Optimizer** | LangChain + NVIDIA-hosted Moonshot Kimi K2 + Groq Llama 3.3 70B | Analyzes job descriptions against your resume. Generates tailored bullet points, identifies keyword gaps, and boosts ATS match scores with structured Zod schema output. |
 | **Auto-Apply Agent** | LangChain + Groq | One-click application package generation. Produces tailored cover letters, STAR-method interview answers, and rewrites every bullet point to match JD keywords. |
-| **Job Scraper Agent** | Puppeteer (Headless Chromium) | Bypasses WAF protections across LinkedIn, Indeed, and Glassdoor. Rotates user-agents and viewports to extract clean job details including hidden salary ranges. |
+| **Job Scraper Agent** | Puppeteer (Headless Chromium) | Scrapes LinkedIn and Indeed (Glassdoor planned). Rotates user-agents and viewports to extract clean job details including hidden salary ranges. |
 | **Networking Agent** | LangChain + Groq | Generates contextual follow-ups, thank-you notes, recruiter connection requests, and negotiation scripts tailored to your application stage (applied/interviewing/offer/rejected). |
 | **Interview Coach Agent** | WebRTC + ElevenLabs + AudioContext API | Live WebRTC interview simulator with HD camera, real-time speech detection via AnalyserNode, and ElevenLabs voice-synthesized recruiter questions. |
 | **Web Research Agent** | Tavily Search API | Researches companies, industry trends, and salary benchmarks in real-time. Enriches your application context with up-to-date market intelligence. |
@@ -241,7 +241,7 @@ A fully integrated, drag-and-drop Kanban board for job applications.
 ### Web Scraping
 | Technology | Purpose |
 |-----------|---------|
-| **Puppeteer** | Headless Chromium for job scraping across LinkedIn, Indeed, and Glassdoor |
+| **Puppeteer** | Headless Chromium for job scraping across LinkedIn and Indeed |
 | **User-Agent Rotation** | Four rotating browser UAs (Chrome 122-124, Firefox 125) |
 | **Viewport Rotation** | Four viewport dimensions (1920x1080, 1366x768, 1440x900, 1536x864) |
 | **WAF Bypass** | Custom browser headers and network delay strategies to emulate authentic requests |
@@ -271,9 +271,7 @@ A fully integrated, drag-and-drop Kanban board for job applications.
 ### Analytics & Monitoring
 | Technology | Purpose |
 |-----------|---------|
-| **PostHog** | Product analytics — feature adoption, session recordings, interaction patterns (pseudonymized) |
-| **Vercel Analytics** | Performance monitoring — Core Web Vitals, page load times, API latency |
-| **Custom Analytics** (`lib/analytics.ts`) | Visitor hashing with SHA-256 (`ip:userAgent:salt`), geo lookup, device detection, referrer tracking |
+| **Custom Analytics** (`lib/analytics.ts`) | Visitor hashing with SHA-256 (`ip:userAgent:salt`), geo lookup, device detection, referrer tracking. Custom `usage_event` table powers the in-app Analytics dashboard. |
 
 ### Styling & Design System
 | Feature | Details |
@@ -458,7 +456,6 @@ A fully integrated, drag-and-drop Kanban board for job applications.
    ```bash
    npm run db:push
    ```
-   > ⚠️ The newest `usage_event` table (powering the Advanced Analytics dashboard) is not yet in `drizzle/`. Run `db:push` to sync it before opening `/dashboard/usage-metrics`.
 
 5. **Run Development Server**
    ```bash

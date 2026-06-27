@@ -1,7 +1,7 @@
 // Use type-only imports so puppeteer's heavy runtime isn't pulled in until
 // scrapeJobs() actually runs. The dynamic import inside launchBrowser() keeps
 // Vercel cold-start bundles small for routes that never scrape.
-import type { Browser, Page } from "puppeteer";
+import type { Browser, Page } from "puppeteer-core";
 
 export interface ScrapedJob {
   title: string;
@@ -58,6 +58,9 @@ export class JobScraper {
         const job = await this.scrapeCustomUrl(config.query);
         return job ? [job] : [];
       }
+      if (normalizedSource === "glassdoor") {
+        throw new Error("Glassdoor scraping is not implemented yet. Use 'indeed' or 'linkedin'.");
+      }
       throw new Error(`Unsupported source: ${config.source}`);
     } finally {
       await this.closeBrowser();
@@ -70,17 +73,40 @@ export class JobScraper {
     const viewport = VIEWPORTS[Math.floor(Math.random() * VIEWPORTS.length)];
     const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
-    const puppeteer = (await import("puppeteer")).default;
+    const puppeteer = (await import("puppeteer-core")).default;
+    const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+    let executablePath: string | undefined;
+    let args = [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--disable-gpu",
+      "--window-size=1920,1080",
+    ];
+
+    if (isServerless) {
+      const chromium = (await import("@sparticuz/chromium")).default;
+      executablePath = await chromium.executablePath();
+      args = [...chromium.args, ...args];
+    } else {
+      // Local dev: use system-installed Chrome / explicit path from env
+      executablePath =
+        process.env.PUPPETEER_EXECUTABLE_PATH ||
+        process.env.CHROME_PATH ||
+        undefined;
+      if (!executablePath) {
+        throw new Error(
+          "Set PUPPETEER_EXECUTABLE_PATH or CHROME_PATH to your local Chrome binary, or run on Vercel/Lambda for bundled chromium."
+        );
+      }
+    }
+
     this.browser = await puppeteer.launch({
       headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-        "--window-size=1920,1080",
-      ],
+      executablePath,
+      args,
     });
 
     const pages = await this.browser.pages();

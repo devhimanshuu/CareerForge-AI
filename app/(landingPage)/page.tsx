@@ -1414,8 +1414,15 @@ export default function Home() {
       </section>
 
       {/* ===== Footer ===== */}
-      <footer className="border-t border-border/50 bg-card/30 pt-20 pb-10 px-5">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16">
+      <footer className="relative border-t border-border/50 bg-card/30 pt-20 pb-10 px-5 overflow-hidden flex flex-col items-center">
+        {/* Big Background Text */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none w-full flex justify-center z-0 overflow-hidden">
+          <span className="text-[13vw] font-black tracking-tighter uppercase whitespace-nowrap select-none bg-gradient-to-b from-indigo-500/25 to-indigo-600/10 bg-clip-text text-transparent">
+            CAREERFORGE
+          </span>
+        </div>
+
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16 relative z-10 w-full">
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-6 group">
               <div className="relative">
@@ -1462,7 +1469,7 @@ export default function Home() {
             </ul>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4 relative z-10 w-full">
           <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} CareerForge AI. All rights reserved.</p>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="/privacy" className="hover:text-indigo-500 transition-colors">Privacy Policy</Link>

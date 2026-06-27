@@ -34,10 +34,27 @@ export async function POST(request: Request) {
 
     // Lazy import so puppeteer's Chromium binary isn't bundled into routes
     // that never call it (keeps Vercel cold-start size down).
-    const puppeteer = (await import("puppeteer")).default;
+    const puppeteer = (await import("puppeteer-core")).default;
+    const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+    let executablePath: string | undefined;
+    let launchArgs = ['--no-sandbox', '--disable-setuid-sandbox'];
+    if (isServerless) {
+      const chromium = (await import("@sparticuz/chromium")).default;
+      executablePath = await chromium.executablePath();
+      launchArgs = [...chromium.args, ...launchArgs];
+    } else {
+      executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_PATH;
+      if (!executablePath) {
+        return NextResponse.json(
+          { error: "Set PUPPETEER_EXECUTABLE_PATH or CHROME_PATH for local PDF generation" },
+          { status: 500 }
+        );
+      }
+    }
     const browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath,
+      args: launchArgs,
     });
 
     const page = await browser.newPage();
