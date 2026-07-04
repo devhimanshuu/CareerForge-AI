@@ -50,6 +50,7 @@ import {
   PremiumPanel,
   PremiumStatCard,
 } from "@/components/ui/premium-page";
+import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import { toast } from "@/hooks/use-toast";
 import useGetDocuments from "@/features/document/use-get-document";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1409,6 +1410,7 @@ const InterviewLab = () => {
 
   return (
     <PremiumPage>
+      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Practice Studio"
         title="Interview Lab"

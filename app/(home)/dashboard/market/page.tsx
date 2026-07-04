@@ -5,6 +5,7 @@ import { Globe, TrendingUp, DollarSign, Briefcase, MapPin, ArrowUpRight, BarChar
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { PremiumPage, PremiumPageHeader, PremiumPanel, PremiumStatCard } from "@/components/ui/premium-page";
+import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import useGetDocuments from "@/features/document/use-get-document";
 import { toast } from "@/hooks/use-toast";
 
@@ -108,8 +109,8 @@ const MarketData = () => {
     return <MapPin size={18} />;
   };
 
-  return (
-    <PremiumPage>
+  return (      <PremiumPage>
+      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Market Intelligence"
         title="Career Market Data"

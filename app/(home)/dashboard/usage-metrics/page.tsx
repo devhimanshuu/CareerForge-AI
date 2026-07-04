@@ -283,7 +283,7 @@ export default function UsageMetricsPage() {
                   Pro conversion funnel
                 </h3>
               </div>
-              {data.proConversion[0]?.users === 0 ? (
+              {!data.proConversion.length || data.proConversion[0].users === 0 ? (
                 <p className="text-xs text-muted-foreground">
                   No pricing-page exposure tracked yet. Track with{" "}
                   <code>{`{ funnel: 'pro', action: 'view_pricing' }`}</code>.

@@ -3,7 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { applicationTable, coverLetterTable, documentTable } from "@/db/schema";
+import { applicationTable, documentTable } from "@/db/schema";
 import { getAuthUser } from "@/lib/clerk";
 import { AIChatSession } from "@/lib/groq-model";
 
