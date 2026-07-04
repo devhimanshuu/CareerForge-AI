@@ -15,6 +15,7 @@ import {
   AlertTriangle 
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "@/hooks/use-toast";
 
 export default function LinkedinOptimizer() {
   const [docs, setDocs] = useState<any[]>([]);
@@ -58,9 +59,13 @@ export default function LinkedinOptimizer() {
       if (res.ok) {
         const json = await res.json();
         setResult(json.data);
+      } else {
+        const json = await res.json();
+        throw new Error(json.error || `Optimization failed (${res.status})`);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast({ title: "Optimization Failed", description: e.message || "Could not optimize LinkedIn profile. Please try again.", variant: "destructive" });
     } finally {
       setOptimizing(false);
     }

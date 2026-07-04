@@ -30,6 +30,9 @@ import {
   Clock,
   X,
   ExternalLink,
+  Trash2,
+  AlertTriangle,
+  Keyboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -86,6 +89,7 @@ const InterviewLab = () => {
   const [recentJobs, setRecentJobs] = useState<Array<{ url: string; title: string; company: string; timestamp: number }>>([]);
   const [showRecentJobs, setShowRecentJobs] = useState(false);
   const recentJobsRef = useRef<HTMLDivElement>(null);
+  const shortcutsRef = useRef<HTMLDivElement>(null);
   const [selectedResumeInfo, setSelectedResumeInfo] = useState<any>(null);
   const [interviewConfig, setInterviewConfig] = useState({
     interviewType: "mixed",
@@ -125,6 +129,15 @@ const InterviewLab = () => {
   const [voiceConfig, setVoiceConfig] = useState<VoiceStudioConfig>(defaultVoiceStudioConfig);
   const recruiterAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  // ─── Interview History State ────────────────────────────────────
+  const [pastSessions, setPastSessions] = useState<any[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<any>(null);
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
   // ─── Live Mode State ────────────────────────────────────────────
   const [isLiveSession, setIsLiveSession] = useState(false);
   const [liveMediaStream, setLiveMediaStream] = useState<MediaStream | null>(null);
@@ -132,6 +145,7 @@ const InterviewLab = () => {
   const [isLiveMuted, setIsLiveMuted] = useState(false);
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
   const [isLiveListening, setIsLiveListening] = useState(false);
+  const [isProcessingAnswer, setIsProcessingAnswer] = useState(false);
   const [liveUserAudioLevel, setLiveUserAudioLevel] = useState(0);
   const [liveAIAudioLevel, setLiveAIAudioLevel] = useState(0);
   const [videoPanelState, setVideoPanelState] = useState<"idle" | "active" | "speaking">("idle");
@@ -145,12 +159,21 @@ const InterviewLab = () => {
   const isAISpeakingRef = useRef(false);
   const isCleaningUpRef = useRef(false);
   const sendLiveToAIRef = useRef<((msgs: Message[]) => Promise<void>) | null>(null);
+  const messagesRef = useRef<Message[]>([]);
   const targetRoleRef = useRef(targetRole);
   const selectedResumeInfoRef = useRef(selectedResumeInfo);
   const jobDescriptionRef = useRef(jobDescription);
   const interviewConfigRef = useRef(interviewConfig);
 
+  // Refs for keyboard shortcut handlers to avoid stale closures
+  const handleEndSessionRef = useRef<(() => void) | null>(null);
+  const handleTurnBasedEndSessionRef = useRef<(() => void) | null>(null);
+  const handleSubmitAnswerRef = useRef<(() => void) | null>(null);
+  const handleResetRef = useRef<(() => void) | null>(null);
+  const sessionLogsRef = useRef<HTMLDivElement>(null);
+
   // Keep refs in sync with latest state
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { targetRoleRef.current = targetRole; }, [targetRole]);
   useEffect(() => { selectedResumeInfoRef.current = selectedResumeInfo; }, [selectedResumeInfo]);
   useEffect(() => { jobDescriptionRef.current = jobDescription; }, [jobDescription]);
@@ -168,6 +191,25 @@ const InterviewLab = () => {
     }
   }, []);
 
+  // Fetch past interview sessions on mount
+  useEffect(() => {
+    const fetchSessions = async () => {
+      setIsLoadingSessions(true);
+      try {
+        const res = await fetch("/api/ai/interview-sessions");
+        const data = await res.json();
+        if (data.success) {
+          setPastSessions(data.sessions || []);
+        }
+      } catch {
+        // Ignore errors silently
+      } finally {
+        setIsLoadingSessions(false);
+      }
+    };
+    fetchSessions();
+  }, []);
+
   // Close recent jobs dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -178,6 +220,38 @@ const InterviewLab = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // ─── Update scroll indicators visibility ────────────────
+  useEffect(() => {
+    const container = sessionLogsRef.current;
+    if (!container) return;
+    const update = () => {
+      setCanScrollUp(container.scrollTop > 4);
+      setCanScrollDown(container.scrollTop < container.scrollHeight - container.clientHeight - 4);
+    };
+    update();
+    container.addEventListener("scroll", update, { passive: true });
+    return () => container.removeEventListener("scroll", update);
+  }, []);
+
+  // Close shortcuts panel when clicking outside or pressing Escape
+  useEffect(() => {
+    if (!showShortcuts) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (shortcutsRef.current && !shortcutsRef.current.contains(event.target as Node)) {
+        setShowShortcuts(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowShortcuts(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [showShortcuts]);
 
   const voiceState = loading
     ? "thinking"
@@ -404,9 +478,8 @@ const InterviewLab = () => {
             setLiveAIAudioLevel(0);
             setVideoPanelState("active");
             isAISpeakingRef.current = false;
-            // Reset silence detector after AI finishes speaking
             silenceDetectorRef.current?.reset();
-            // Restart recording for next user answer
+            setIsLiveListening(true);
             restartRecordingForNextAnswer();
           }
         };
@@ -416,6 +489,7 @@ const InterviewLab = () => {
             setVideoPanelState("active");
             isAISpeakingRef.current = false;
             silenceDetectorRef.current?.reset();
+            setIsLiveListening(true);
             restartRecordingForNextAnswer();
           }
         };
@@ -433,6 +507,7 @@ const InterviewLab = () => {
             setVideoPanelState("active");
             isAISpeakingRef.current = false;
             silenceDetectorRef.current?.reset();
+            setIsLiveListening(true);
             restartRecordingForNextAnswer();
           }
         };
@@ -442,6 +517,7 @@ const InterviewLab = () => {
             setVideoPanelState("active");
             isAISpeakingRef.current = false;
             silenceDetectorRef.current?.reset();
+            setIsLiveListening(true);
             restartRecordingForNextAnswer();
           }
         };
@@ -465,6 +541,7 @@ const InterviewLab = () => {
     if (!manager) return;
 
     isProcessingAnswerRef.current = true;
+    setIsProcessingAnswer(true);
     silenceDetectorRef.current?.reset();
     hasSpokenRef.current = false;
     setIsLiveListening(false);
@@ -498,6 +575,8 @@ const InterviewLab = () => {
       if (!answerText) {
         // No answer captured — restart recording and wait for user
         isProcessingAnswerRef.current = false;
+        setIsProcessingAnswer(false);
+        setIsLiveListening(true);
         restartRecordingForNextAnswer();
         return;
       }
@@ -511,19 +590,140 @@ const InterviewLab = () => {
       };
       setTranscriptEntries((prev) => [...prev, userEntry]);
 
-      // Update messages for AI context and send to AI
+      // Update messages for AI context
       const userMsg: Message = { role: "user", content: answerText };
-      setMessages((prev) => {
-        const updated = [...prev, userMsg];
-        sendLiveToAIRef.current?.(updated);
-        return updated;
-      });
+      const updatedMessages = [...messagesRef.current, userMsg];
+      setMessages(updatedMessages);
+      sendLiveToAIRef.current?.(updatedMessages);
     } catch (err) {
       console.error("Error in handleLiveAnswerComplete:", err);
       isProcessingAnswerRef.current = false;
+      setIsProcessingAnswer(false);
+      setIsLiveListening(true);
       restartRecordingForNextAnswer();
     }
   }, [restartRecordingForNextAnswer]);
+
+  // ─── Save completed session to database ────────────────────────
+  const saveSessionToDb = useCallback(async (evalData: any, msgs: Message[]) => {
+    try {
+      const turns: { questionText: string; answerText?: string }[] = [];
+      for (let i = 0; i < msgs.length; i++) {
+        if (msgs[i].role === "assistant") {
+          const nextUser = msgs[i + 1];
+          turns.push({
+            questionText: msgs[i].content,
+            answerText: nextUser?.role === "user" ? nextUser.content : undefined,
+          });
+        }
+      }
+
+      await fetch("/api/ai/interview-sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: selectedResumeId || null,
+          targetRole,
+          jobDescription,
+          interviewType: interviewConfig.interviewType,
+          difficulty: interviewConfig.difficulty,
+          deliveryScore: evalData.deliveryScore,
+          contentScore: evalData.contentScore,
+          totalScore: Math.round((evalData.deliveryScore + evalData.contentScore) / 2),
+          evaluationData: {
+            findings: evalData.findings || [],
+            actionItems: evalData.actionItems || [],
+            summary: evalData.summary || "",
+          },
+          turns,
+        }),
+      });
+      // Refresh the history list
+      const res = await fetch("/api/ai/interview-sessions");
+      const data = await res.json();
+      if (data.success) setPastSessions(data.sessions || []);
+    } catch {
+      // Non-critical: don't show error to user
+    }
+  }, [selectedResumeId, targetRole, jobDescription, interviewConfig]);
+
+  // ─── Live Mode: End Session handler ─────────────────────────
+  const handleEndSession = useCallback(async () => {
+    if (loading) return;
+
+    // Stop recording
+    const manager = sessionManagerRef.current;
+    if (manager) {
+      try { manager.stopRecording(); } catch {}
+    }
+    silenceDetectorRef.current?.reset();
+    hasSpokenRef.current = false;
+    setIsLiveListening(false);
+    setVideoPanelState("idle");
+
+    if (messagesRef.current.length === 0) {
+      cleanupLiveSession();
+      setStep("setup");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const endMessages = [
+        ...messagesRef.current,
+        { role: "user" as const, content: "[END_SESSION] Please provide your final evaluation and scorecard now." },
+      ];
+
+      const res = await fetch("/api/ai/interview-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resumeData: selectedResumeInfoRef.current || {},
+          jobDescription: jobDescriptionRef.current,
+          targetRole: targetRoleRef.current,
+          messages: endMessages,
+          config: interviewConfigRef.current,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to get evaluation");
+      const data = await res.json();
+
+      if (data.type === "evaluation") {
+        setEvaluation(data);
+        setMessages(endMessages);
+        setStep("feedback");
+        saveSessionToDb(data, endMessages);
+        cleanupLiveSession();
+        toast({
+          title: "Session Completed!",
+          description: "Your interview is complete. View your scorecard below.",
+        });
+      } else if (data.type === "question") {
+        toast({
+          title: "Session Ending",
+          description: "The AI provided a follow-up. Please answer it or try ending again.",
+        });
+        const restoredMessages = [...endMessages, { role: "assistant" as const, content: data.text || "" }];
+        setMessages(restoredMessages);
+        messagesRef.current = restoredMessages;
+      } else {
+        cleanupLiveSession();
+        throw new Error(`Unexpected end-session response: ${JSON.stringify(data).slice(0, 200)}`);
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Session Error",
+        description: e.message || "Failed to end session.",
+        variant: "destructive",
+      });
+      cleanupLiveSession();
+      setStep("setup");
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, cleanupLiveSession, saveSessionToDb]);
 
   // ─── Live Mode: Manual "Done Speaking" handler ─────────────────
   const handleDoneSpeaking = useCallback(() => {
@@ -577,11 +777,14 @@ const InterviewLab = () => {
         } else if (data.type === "evaluation") {
           setEvaluation(data);
           setStep("feedback");
+          saveSessionToDb(data, currentMessages);
           cleanupLiveSession();
           toast({
             title: "Session Completed!",
             description: "Your interview is complete. View your scorecard below.",
           });
+        } else {
+          throw new Error(`Unexpected AI response type: ${JSON.stringify(data).slice(0, 200)}`);
         }
       } catch (e: any) {
         console.error(e);
@@ -593,9 +796,10 @@ const InterviewLab = () => {
       } finally {
         setLoading(false);
         isProcessingAnswerRef.current = false;
+        setIsProcessingAnswer(false);
       }
     },
-    [speakLiveResponse, cleanupLiveSession],
+    [speakLiveResponse, cleanupLiveSession, saveSessionToDb],
   );
 
   // Keep the ref in sync with the latest sendLiveToAI
@@ -638,6 +842,7 @@ const InterviewLab = () => {
 
       // Start continuous audio recording (batch transcription on silence/done)
       manager.startRecording();
+      setIsLiveListening(true);
 
       // Get the first question from AI
       const res = await fetch("/api/ai/interview-session", {
@@ -670,6 +875,9 @@ const InterviewLab = () => {
 
         // Speak the first question
         setTimeout(() => speakLiveResponse(data.text), 500);
+      } else {
+        cleanupLiveSession();
+        throw new Error(`Unexpected API response: ${JSON.stringify(data).slice(0, 200)}`);
       }
     } catch (e: any) {
       console.error(e);
@@ -728,6 +936,8 @@ const InterviewLab = () => {
         setCurrentQuestion(data.text);
         setMessages([{ role: "assistant", content: data.text }]);
         setStep("interviewing");
+      } else {
+        throw new Error(`Unexpected API response: ${JSON.stringify(data).slice(0, 200)}`);
       }
     } catch (e: any) {
       console.error(e);
@@ -780,10 +990,13 @@ const InterviewLab = () => {
       } else if (data.type === "evaluation") {
         setEvaluation(data);
         setStep("feedback");
+        saveSessionToDb(data, updatedMessages);
         toast({
           title: "Session Completed!",
           description: "Your interview is complete. View your scorecard below.",
         });
+      } else {
+        throw new Error(`Unexpected AI response: ${JSON.stringify(data).slice(0, 200)}`);
       }
     } catch (e: any) {
       console.error(e);
@@ -872,6 +1085,130 @@ const InterviewLab = () => {
 
   // Helper to count questions asked
   const questionIndex = messages.filter((m) => m.role === "assistant").length;
+
+  // ─── Turn-based: End Session handler ────────────────────────
+  const handleTurnBasedEndSession = async () => {
+    if (loading) return;
+    if (messages.length === 0) {
+      setStep("setup");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const endMessages = [
+        ...messages,
+        { role: "user" as const, content: "[END_SESSION] Please provide your final evaluation and scorecard now." },
+      ];
+
+      const res = await fetch("/api/ai/interview-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resumeData: selectedResumeInfo || {},
+          jobDescription,
+          targetRole,
+          messages: endMessages,
+          config: interviewConfig,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to get evaluation");
+      const data = await res.json();
+
+      if (data.type === "evaluation") {
+        setEvaluation(data);
+        setMessages(endMessages);
+        setStep("feedback");
+        saveSessionToDb(data, endMessages);
+        toast({
+          title: "Session Completed!",
+          description: "Your interview is complete. View your scorecard below.",
+        });
+      } else if (data.type === "question") {
+        toast({
+          title: "Session Ending",
+          description: "The AI provided a follow-up. Please answer it or try ending again.",
+        });
+        setMessages([...endMessages, { role: "assistant" as const, content: data.text || "" }]);
+      } else {
+        throw new Error(`Unexpected end-session response: ${JSON.stringify(data).slice(0, 200)}`);
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Session Error",
+        description: e.message || "Failed to end session.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Keyboard Shortcuts ───────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (sessionToDelete) return;
+
+      const isMod = e.metaKey || e.ctrlKey;
+
+      // Escape → Close shortcuts panel or reset to setup
+      if (e.key === "Escape") {
+        if (showShortcuts) {
+          setShowShortcuts(false);
+          return;
+        }
+        if (step !== "setup") {
+          e.preventDefault();
+          handleResetRef.current?.();
+          return;
+        }
+      }
+
+      // Arrow Up/Down → Scroll session logs panel
+      if ((e.key === "ArrowUp" || e.key === "ArrowDown") && step === "interviewing" && !isMod) {
+        const target = e.target as HTMLElement;
+        // Don't intercept if user is in an input/textarea
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+        const container = sessionLogsRef.current;
+        if (container) {
+          e.preventDefault();
+          const scrollAmount = 60;
+          container.scrollBy({ top: e.key === "ArrowDown" ? scrollAmount : -scrollAmount, behavior: "smooth" });
+        }
+        return;
+      }
+
+      // Only active during the interviewing step for remaining shortcuts
+      if (step !== "interviewing") return;
+
+      // Cmd/Ctrl+Enter → End session (both modes)
+      if (isMod && e.key === "Enter") {
+        e.preventDefault();
+        if (interviewMode === "live") {
+          handleEndSessionRef.current?.();
+        } else {
+          handleTurnBasedEndSessionRef.current?.();
+        }
+        return;
+      }
+
+      // Enter (without Shift) → Submit answer (turn-based only)
+      // Shift+Enter is allowed for newlines in the textarea
+      if (e.key === "Enter" && !isMod && !e.shiftKey && interviewMode === "turn-based") {
+        const target = e.target as HTMLElement;
+        const isAnswerTextarea = target.tagName === "TEXTAREA" && target.closest(".space-y-3");
+        if (!isAnswerTextarea) return;
+
+        e.preventDefault();
+        handleSubmitAnswerRef.current?.();
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [step, interviewMode, sessionToDelete, showShortcuts]);
 
   // Handle step reset
   const handleReset = () => {
@@ -987,6 +1324,89 @@ const InterviewLab = () => {
     localStorage.removeItem("careerforge_recent_jobs");
   };
 
+  // ─── Delete a past session ──────────────────────────────────
+  const handleDeleteSession = async (sessionId: string) => {
+    setIsDeletingSession(true);
+    try {
+      const res = await fetch("/api/ai/interview-sessions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPastSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        toast({
+          title: "Session Deleted",
+          description: "The interview session has been removed.",
+        });
+      } else {
+        throw new Error(data.error || "Failed to delete session");
+      }
+    } catch (e: any) {
+      toast({
+        title: "Delete Failed",
+        description: e.message || "Could not delete the session.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingSession(false);
+      setSessionToDelete(null);
+    }
+  };
+
+  // ─── Load a past session into the feedback view ────────────────
+  const handleLoadPastSession = (session: any) => {
+    // Reconstruct messages from turns
+    const reconstructedMessages: Message[] = [];
+    if (session.turns && session.turns.length > 0) {
+      for (const turn of session.turns) {
+        reconstructedMessages.push({ role: "assistant", content: turn.questionText });
+        if (turn.answerText) {
+          reconstructedMessages.push({ role: "user", content: turn.answerText });
+        }
+      }
+    }
+
+    // Reconstruct evaluation from DB fields + stored evaluationData
+    let evalData;
+    try {
+      const stored = session.evaluationData ? JSON.parse(session.evaluationData) : null;
+      evalData = {
+        type: "evaluation",
+        deliveryScore: session.deliveryScore ?? 0,
+        contentScore: session.contentScore ?? 0,
+        findings: stored?.findings || ["Session completed. Detailed findings were not saved for this session."],
+        actionItems: stored?.actionItems || ["Practice more mock interviews to generate detailed action items."],
+        summary: stored?.summary || `${session.targetRole} interview (${session.interviewType}, ${session.difficulty}). Delivered ${session.deliveryScore ?? 0}% on delivery and ${session.contentScore ?? 0}% on content across ${session.turns?.length ?? 0} turns.`,
+      };
+    } catch {
+      evalData = {
+        type: "evaluation",
+        deliveryScore: session.deliveryScore ?? 0,
+        contentScore: session.contentScore ?? 0,
+        findings: ["Session completed."],
+        actionItems: ["Practice more mock interviews."],
+        summary: `${session.targetRole} interview completed on ${new Date(session.createdAt).toLocaleDateString()}.`,
+      };
+    }
+
+    setEvaluation(evalData);
+    setMessages(reconstructedMessages);
+    setStep("feedback");
+
+    toast({
+      title: "Session Loaded",
+      description: `Viewing ${session.targetRole} interview from ${new Date(session.createdAt).toLocaleDateString()}.`,
+    });
+  };
+
+  // ─── Sync keyboard shortcut refs ─────────────────────────
+  handleEndSessionRef.current = handleEndSession;
+  handleTurnBasedEndSessionRef.current = handleTurnBasedEndSession;
+  handleSubmitAnswerRef.current = handleSubmitAnswer;
+  handleResetRef.current = handleReset;
+
   return (
     <PremiumPage>
       <PremiumPageHeader
@@ -996,14 +1416,62 @@ const InterviewLab = () => {
         icon={<Mic size={13} />}
         action={
           step !== "setup" && (
-            <Button
-              onClick={handleReset}
-              variant="outline"
-              className="gap-2 border-indigo-500/30 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
-            >
-              <RefreshCw size={16} />
-              Reset Lab
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className="relative" ref={shortcutsRef}>
+                <Button
+                  onClick={() => setShowShortcuts(!showShortcuts)}
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 border-indigo-500/30 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
+                  title="Keyboard Shortcuts"
+                >
+                  <Keyboard size={16} />
+                </Button>
+                <AnimatePresence>
+                  {showShortcuts && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 z-50 w-64 sm:w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-border/50 bg-background shadow-xl p-4 space-y-3"
+                    >
+                      <p className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        <Keyboard size={12} />
+                        Keyboard Shortcuts
+                      </p>
+                      <div className="space-y-2">
+                        {[
+                          { keys: "Enter", label: "Submit answer", mode: "Turn-based" },
+                          { keys: "Shift + Enter", label: "New line in answer", mode: "Turn-based" },
+                          { keys: "⌘ / Ctrl + Enter", label: "End session", mode: "Both modes" },
+                          { keys: "↑ ↓", label: "Scroll session logs", mode: "Interview" },
+                          { keys: "Escape", label: "Reset to setup", mode: "Any step" },
+                        ].map((s) => (
+                          <div key={s.keys} className="flex items-center justify-between gap-3">
+                            <span className="text-[11px] text-muted-foreground font-medium">{s.label}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] text-muted-foreground/50 font-medium">{s.mode}</span>
+                              <kbd className="text-[10px] font-mono bg-muted/60 border border-border/50 px-1.5 py-0.5 rounded text-foreground/80 whitespace-nowrap">
+                                {s.keys}
+                              </kbd>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              <Button
+                onClick={handleReset}
+                variant="outline"
+                className="gap-2 border-indigo-500/30 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
+              >
+                <RefreshCw size={16} />
+                Reset Lab
+              </Button>
+            </div>
           )
         }
       />
@@ -1466,6 +1934,85 @@ const InterviewLab = () => {
                 </PremiumPanel>
               </div>
             </div>
+
+            {/* Interview History Section */}
+            {pastSessions.length > 0 && (
+              <div className="mt-6">
+                <PremiumPanel className="p-5 md:p-6 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-slate-500 to-gray-500" />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-slate-500/10 flex items-center justify-center">
+                        <Clock size={14} className="text-slate-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">Past Sessions</p>
+                        <p className="text-[10px] text-muted-foreground">{pastSessions.length} completed interviews</p>
+                      </div>
+                    </div>
+                    {isLoadingSessions && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {pastSessions.slice(0, 6).map((session: any) => (
+                      <div
+                        key={session.id}
+                        className="p-4 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <p className="text-xs font-bold text-foreground truncate max-w-[70%]">
+                            {session.targetRole}
+                          </p>
+                          <span className={cn(
+                            "text-[9px] font-bold px-2 py-0.5 rounded-full",
+                            session.status === "completed"
+                              ? "bg-emerald-500/10 text-emerald-600"
+                              : "bg-amber-500/10 text-amber-600"
+                          )}>
+                            {session.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">Delivery:</span>
+                            <span className="text-[10px] font-bold text-indigo-500">{session.deliveryScore ?? "--"}%</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">Content:</span>
+                            <span className="text-[10px] font-bold text-emerald-500">{session.contentScore ?? "--"}%</span>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          {session.interviewType} · {session.difficulty} · {new Date(session.createdAt).toLocaleDateString()}
+                        </p>
+                        {session.turns && session.turns.length > 0 && (
+                          <p className="text-[10px] text-muted-foreground/60 mt-1">
+                            {session.turns.length} turns completed
+                          </p>
+                        )}
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => handleLoadPastSession(session)}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 transition-colors text-[10px] font-bold"
+                          >
+                            <ExternalLink size={10} />
+                            View Full Report
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSessionToDelete(session)}
+                            className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                            title="Delete session"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </PremiumPanel>
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -1577,7 +2124,7 @@ const InterviewLab = () => {
                   <div className="space-y-3 flex-1">
                     <div className="relative">
                       <Textarea
-                        placeholder="Type your structured STAR answer here, or click 'Record Audio' to respond verbally..."
+                        placeholder="Type your structured STAR answer here (Shift+Enter for newline, Enter to submit)..."
                         value={userAnswer}
                         onChange={(e) => setUserAnswer(e.target.value)}
                         disabled={loading || transcribing}
@@ -1616,6 +2163,7 @@ const InterviewLab = () => {
                         onClick={handleSubmitAnswer}
                         disabled={loading || transcribing || !userAnswer.trim()}
                         className="sm:flex-1 h-11 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold gap-2 text-sm shadow-lg shadow-indigo-500/15"
+                        title="Submit answer (Enter)"
                       >
                         {loading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -1625,6 +2173,17 @@ const InterviewLab = () => {
                             <ChevronRight size={16} />
                           </>
                         )}
+                      </Button>
+                      <Button
+                        onClick={handleTurnBasedEndSession}
+                        disabled={loading || messages.length === 0}
+                        variant="outline"
+                        className="sm:flex-1 h-11 rounded-xl gap-2 border-red-500/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 font-bold text-sm"
+                        title="End session (⌘+Enter / Ctrl+Enter)"
+                      >
+                        <StopCircle size={16} />
+                        End Session
+                        <kbd className="hidden sm:inline text-[8px] font-mono bg-red-500/10 px-1.5 py-0.5 rounded ml-1">⌘↵</kbd>
                       </Button>
                     </div>
                   </div>
@@ -1641,7 +2200,21 @@ const InterviewLab = () => {
                     {messages.filter(m => m.role === "assistant").length} Q&apos;s
                   </span>
                 </h3>
-                <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
+                <div className="relative flex-1 min-h-0">
+                  {/* Scroll fade overlays */}
+                  <div
+                    className={cn(
+                      "pointer-events-none absolute top-0 left-0 right-0 h-6 z-10 bg-gradient-to-b from-background to-transparent transition-opacity duration-200",
+                      canScrollUp ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div
+                    className={cn(
+                      "pointer-events-none absolute bottom-0 left-0 right-0 h-6 z-10 bg-gradient-to-t from-background to-transparent transition-opacity duration-200",
+                      canScrollDown ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div ref={sessionLogsRef} className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin max-h-[580px]">
                   {messages.map((m, idx) => (
                     <motion.div
                       key={idx}
@@ -1662,6 +2235,7 @@ const InterviewLab = () => {
                     </motion.div>
                   ))}
                 </div>
+              </div>
               </PremiumPanel>
             </div>
           </motion.div>
@@ -1749,12 +2323,24 @@ const InterviewLab = () => {
                     <div className="flex items-center gap-2">
                       <Button
                         onClick={handleDoneSpeaking}
-                        disabled={loading || isProcessingAnswerRef.current}
+                        disabled={loading || isProcessingAnswer}
                         size="sm"
                         className="h-8 rounded-lg px-3 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-bold shadow-md shadow-violet-500/20"
                       >
                         <CheckCircle2 size={12} />
                         Done Speaking
+                      </Button>
+                      <Button
+                        onClick={handleEndSession}
+                        disabled={loading}
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-lg px-3 gap-1.5 border-red-500/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-[10px] font-bold"
+                        title="End session (⌘+Enter / Ctrl+Enter)"
+                      >
+                        <StopCircle size={12} />
+                        End Session
+                        <kbd className="hidden sm:inline text-[8px] font-mono bg-red-500/10 px-1 py-0.5 rounded ml-1">⌘↵</kbd>
                       </Button>
                       <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20">
                         <span className="text-[10px] font-bold text-emerald-400">Live</span>
@@ -1909,6 +2495,71 @@ const InterviewLab = () => {
                 </div>
               </PremiumPanel>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── DELETE CONFIRMATION DIALOG ────────────────────────── */}
+      <AnimatePresence>
+        {sessionToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => !isDeletingSession && setSessionToDelete(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-md rounded-2xl border border-border/50 bg-background shadow-xl p-6 space-y-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+                  <AlertTriangle size={20} className="text-destructive" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">Delete Interview Session</h3>
+                  <p className="text-xs text-muted-foreground">This action cannot be undone.</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to delete the <span className="font-bold text-foreground">{sessionToDelete.targetRole}</span> interview session from {new Date(sessionToDelete.createdAt).toLocaleDateString()}?
+              </p>
+              <div className="flex items-center gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSessionToDelete(null)}
+                  disabled={isDeletingSession}
+                  className="rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDeleteSession(sessionToDelete.id)}
+                  disabled={isDeletingSession}
+                  className="rounded-xl gap-2"
+                >
+                  {isDeletingSession ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={14} />
+                      Delete Session
+                    </>
+                  )}
+                </Button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

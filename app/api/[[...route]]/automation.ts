@@ -526,21 +526,10 @@ Recruiter targets must be job-title/search strategies, not invented people.`,
       const user = c.get("user");
       const input = c.req.valid("json") as ScrapeConfig;
       
-      // Rate limiting: max 5 scrapes per hour per user
-      const recentScrapes = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(applicationPackageTable)
-        .where(
-          and(
-            eq(applicationPackageTable.userId, user.id),
-            sql`${applicationPackageTable.createdAt} > NOW() - INTERVAL '1 hour'`
-          )
-        );
-      
-      if ((recentScrapes[0]?.count ?? 0) >= 5) {
-        return c.json({ error: "Rate limit exceeded: max 5 scrapes per hour" }, 429);
-      }
-      
+      // Rate limiting: the global `/api/automation/*` middleware (10 req/min per user)
+      // already protects this endpoint. Removed the per-scraper check here because it
+      // was counting from the `applicationPackageTable` — which tracks packages, not
+      // scrape requests — and giving false positives/negatives.
       const scraper = new JobScraper();
       const jobs = await scraper.scrapeJobs(input);
       return c.json({ success: true, jobs });

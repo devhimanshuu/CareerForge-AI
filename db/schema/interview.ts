@@ -46,6 +46,7 @@ export const interviewSessionTable = pgTable("interview_session", {
   deliveryScore: integer("delivery_score"),
   contentScore: integer("content_score"),
   starScore: integer("star_score"),
+  evaluationData: text("evaluation_data"),
   status: interviewStatusEnum("status").notNull().default("active"),
   startedAt: timestamp("started_at", { mode: "string" }).notNull().defaultNow(),
   completedAt: timestamp("completed_at", { mode: "string" }),

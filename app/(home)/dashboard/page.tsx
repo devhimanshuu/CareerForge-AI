@@ -246,6 +246,7 @@ const Page = () => {
                 <MiniStat value={`${successRate}%`} label="Success Rate" icon={<Zap size={14}/>} />
               </div>
 
+              <div className="relative group">
               <Button
                 onClick={() => setIsModalOpen(true)}
                 disabled={isCoachLoading || !coachData}
@@ -254,6 +255,13 @@ const Page = () => {
                 <Bot size={16} />
                 Launch Full Diagnostics
               </Button>
+              {!isCoachLoading && !coachData && (
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-foreground px-2.5 py-1 text-[10px] font-bold text-background opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 pointer-events-none z-50">
+                  Create a resume first to activate diagnostic insights
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-foreground" />
+                </div>
+              )}
+              </div>
             </div>
           </motion.div>
 

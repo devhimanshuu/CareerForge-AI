@@ -212,6 +212,7 @@ function FeatureItem({
 const AppSidebar = () => {
   const { collapsed, toggle } = useSidebar();
   const pathname = usePathname();
+  const [activePath, setActivePath] = useState<string>("");
   const { setTheme } = useTheme();
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
@@ -231,11 +232,12 @@ const AppSidebar = () => {
 
   useEffect(() => {
     setIsMounted(true);
+    setActivePath(pathname);
     const check = () => setIsMobile(window.innerWidth < 1024);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
-  }, []);
+  }, [pathname]);
 
   /* Close mobile sidebar on navigation */
   useEffect(() => {
@@ -321,8 +323,8 @@ const AppSidebar = () => {
           )}
           {navItems.map((item) => {
             const isActive =
-              pathname === item.href ||
-              (item.href !== "/dashboard" && pathname?.startsWith(item.href));
+              activePath === item.href ||
+              (item.href !== "/dashboard" && activePath.startsWith(item.href));
             return (
               <NavItem
                 key={item.href}

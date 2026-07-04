@@ -36,6 +36,7 @@ import {
 import { db } from "@/db";
 import { documentTable } from "@/db/schema/document";
 import { applicationTable } from "@/db/schema/application";
+import { interviewSessionTable, interviewTurnTable } from "@/db/schema/interview";
 import { and, desc, eq, ne } from "drizzle-orm";
 
 const aiRoute = new Hono()
@@ -725,6 +726,81 @@ You must output a structured JSON response matching the schema details.`,
     } catch (error: any) {
       console.error("Offer Recommendation API Error:", error);
       return c.json({ error: "Failed to compare offers" }, 500);
+    }
+  })
+  .get("/interview-sessions", getAuthUser, async (c) => {
+    try {
+      const user = c.get("user");
+      const sessions = await db.query.interviewSessionTable.findMany({
+        where: eq(interviewSessionTable.userId, user.id),
+        orderBy: [desc(interviewSessionTable.createdAt)],
+        limit: 20,
+        with: { turns: true },
+      });
+      return c.json({ success: true, sessions });
+    } catch (error: any) {
+      console.error("Interview Sessions Fetch Error:", error);
+      return c.json({ error: "Failed to fetch sessions" }, 500);
+    }
+  })
+  .delete("/interview-sessions", getAuthUser, async (c) => {
+    try {
+      const user = c.get("user");
+      const { sessionId } = await c.req.json();
+      if (!sessionId) {
+        return c.json({ error: "sessionId is required" }, 400);
+      }
+      // Delete turns first (foreign key cascade should handle this, but be explicit)
+      await db.delete(interviewTurnTable).where(eq(interviewTurnTable.sessionId, sessionId));
+      // Delete the session
+      await db.delete(interviewSessionTable).where(
+        and(
+          eq(interviewSessionTable.id, sessionId),
+          eq(interviewSessionTable.userId, user.id),
+        )
+      );
+      return c.json({ success: true });
+    } catch (error: any) {
+      console.error("Interview Session Delete Error:", error);
+      return c.json({ error: "Failed to delete session" }, 500);
+    }
+  })
+  .post("/interview-sessions", getAuthUser, async (c) => {
+    try {
+      const user = c.get("user");
+      const input = await c.req.json();
+
+      const sessionId = await db.insert(interviewSessionTable).values({
+        userId: user.id,
+        documentId: input.documentId || null,
+        targetRole: input.targetRole,
+        jobDescription: input.jobDescription || null,
+        interviewType: input.interviewType || "mixed",
+        difficulty: input.difficulty || "adaptive",
+        deliveryScore: input.deliveryScore,
+        contentScore: input.contentScore,
+        totalScore: input.totalScore,
+        evaluationData: input.evaluationData ? JSON.stringify(input.evaluationData) : null,
+        status: "completed",
+        completedAt: new Date().toISOString(),
+      }).returning({ id: interviewSessionTable.id });
+
+      if (input.turns && Array.isArray(input.turns) && input.turns.length > 0) {
+        await db.insert(interviewTurnTable).values(
+          input.turns.map((turn: any, index: number) => ({
+            sessionId: sessionId[0].id,
+            turnNumber: index + 1,
+            questionText: turn.questionText,
+            answerText: turn.answerText || null,
+            feedback: turn.feedback || null,
+          }))
+        );
+      }
+
+      return c.json({ success: true, sessionId: sessionId[0].id });
+    } catch (error: any) {
+      console.error("Interview Session Save Error:", error);
+      return c.json({ error: "Failed to save session" }, 500);
     }
   });
 

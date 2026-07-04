@@ -982,7 +982,12 @@ const CoverLetterSection = ({ app }: { app: any }) => {
           title: "Letter Generated!",
           description: "Tailored to your resume and the job.",
         });
+      } else {
+        throw new Error(json.message || "Generation failed");
       }
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Generation Failed", description: e.message || "Could not generate cover letter.", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
