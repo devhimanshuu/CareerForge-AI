@@ -40,6 +40,7 @@ const PIPELINE_STAGES: { id: PackageStatus; label: string; icon: any; color: str
   { id: "reviewed", label: "Reviewed (Ready)", icon: CheckCircle2, color: "text-emerald-500" },
   { id: "applied", label: "Applied", icon: Mail, color: "text-blue-500" },
   { id: "follow_up", label: "Follow-up", icon: RefreshCw, color: "text-violet-500" },
+  { id: "rejected", label: "Rejected", icon: X, color: "text-rose-500" },
 ];
 
 export default function PipelineDashboard() {

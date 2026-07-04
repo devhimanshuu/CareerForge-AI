@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowRight,
   Bot,
@@ -28,13 +27,19 @@ import {
   Briefcase,
   Clock,
   Mail,
-  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PremiumPage, PremiumPageHeader, PremiumPanel, PremiumStatCard } from "@/components/ui/premium-page";
 import useGetDocuments from "@/features/document/use-get-document";
 import { toast } from "@/hooks/use-toast";
+import { AgentHeading } from "./_components/AgentHeading";
+import { SelectField } from "./_components/SelectField";
+import { EmptyState } from "./_components/EmptyState";
+import { TabButton } from "./_components/TabButton";
+import { StatusBadge } from "./_components/StatusBadge";
+import { stageBadgeColor, NetworkingReviewBadge } from "./_components/NetworkingBadge";
+import { ResultPanel } from "./_components/ResultPanel";
 
 type Insight = {
   id: number;
@@ -852,300 +857,5 @@ const AutomationHub = () => {
   );
 };
 
-const AgentHeading = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
-  <div className="flex items-start gap-3">
-    <div className="rounded-lg bg-indigo-500/10 p-2 text-indigo-500">{icon}</div>
-    <div><h2 className="font-black">{title}</h2><p className="mt-1 text-xs text-muted-foreground">{description}</p></div>
-  </div>
-);
-
-const SelectField = ({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: string[] }) => (
-  <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-xs font-bold capitalize">
-    {options.map((option) => <option key={option} value={option}>{option.replaceAll("_", " ")}</option>)}
-  </select>
-);
-
-const ResultPanel = ({ title, data }: { title: string; data: any }) => {
-  if (data?.profile && data?.repositories) return <GitHubResultPanel data={data} />;
-  if (data?.matchedUser) return <LeetCodeResultPanel data={data} />;
-  if (data?.companyBrief) return <NetworkResultPanel data={data} />;
-  return (
-    <PremiumPanel className="p-6">
-      <h2 className="mb-4 flex items-center gap-2 font-black"><ExternalLink size={16} className="text-indigo-500" /> {title}</h2>
-      <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-[11px] leading-relaxed text-slate-200">{JSON.stringify(data, null, 2)}</pre>
-    </PremiumPanel>
-  );
-};
-
-const GitHubResultPanel = ({ data }: { data: any }) => (
-  <PremiumPanel className="overflow-hidden p-0">
-    {/* Hero banner */}
-    <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-6 py-8 text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.15),transparent_60%)]" />
-      <div className="relative flex items-start gap-4">
-        {data.profile?.avatarUrl && (
-          <Image src={data.profile.avatarUrl} alt="" width={64} height={64} className="h-16 w-16 rounded-2xl ring-2 ring-white/10" />
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <Github size={18} className="text-indigo-300" />
-            <p className="text-xs font-bold uppercase tracking-widest text-indigo-300">GitHub Snapshot</p>
-          </div>
-          <h2 className="mt-2 text-xl font-black">{data.profile?.name || "Developer"}</h2>
-          {data.profile?.bio && <p className="mt-1 text-sm text-slate-300 line-clamp-2">{data.profile.bio}</p>}
-          {data.profile?.url && (
-            <a href={data.profile.url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-indigo-300 hover:text-indigo-200 transition-colors">
-              {data.profile.url.replace("https://github.com/", "github.com/")} <ExternalLink size={10} />
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
-
-    {/* Stats row */}
-    <div className="grid grid-cols-3 border-b">
-      {[
-        { label: "Repos", value: data.profile?.publicRepos || 0, color: "indigo" },
-        { label: "Followers", value: data.profile?.followers || 0, color: "emerald" },
-        { label: "Recent Events", value: data.recentPublicContributions || 0, color: "amber" },
-      ].map((stat) => (
-        <div key={stat.label} className="px-4 py-4 text-center">
-          <p className="text-2xl font-black">{stat.value}</p>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p>
-        </div>
-      ))}
-    </div>
-
-    {/* Contribution grid */}
-    {data.contributionGrid?.length > 0 && (
-      <div className="border-b px-6 py-5">
-        <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Contribution Activity</p>
-        <div className="flex flex-wrap gap-[3px]">
-          {data.contributionGrid.map((day: { date: string; count: number }) => (
-            <div
-              key={day.date}
-              title={`${day.date}: ${day.count} commits`}
-              className="h-[11px] w-[11px] rounded-[2px] transition-all hover:ring-1 hover:ring-indigo-500/60"
-              style={{
-                backgroundColor: day.count === 0
-                  ? "rgba(99,102,241,0.08)"
-                  : day.count < 2
-                    ? "rgba(99,102,241,0.3)"
-                    : day.count < 4
-                      ? "rgba(99,102,241,0.55)"
-                      : "rgba(99,102,241,0.9)",
-              }}
-            />
-          ))}
-        </div>
-      </div>
-    )}
-
-    {/* Top repositories */}
-    {data.repositories?.length > 0 && (
-      <div className="px-6 py-5">
-        <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Top Repositories</p>
-        <div className="space-y-2">
-          {data.repositories.map((repo: any) => (
-            <a
-              key={repo.name}
-              href={repo.url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-between gap-4 rounded-xl border bg-background/60 p-4 transition-all hover:border-indigo-500/30 hover:bg-indigo-500/[0.03] group"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-black group-hover:text-indigo-600 transition-colors">{repo.name}</p>
-                {repo.description && <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{repo.description}</p>}
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                {repo.language && (
-                  <span className="flex items-center gap-1.5 rounded-full bg-background px-2.5 py-1 text-[10px] font-bold">
-                    <span className="h-2 w-2 rounded-full bg-indigo-500" />
-                    {repo.language}
-                  </span>
-                )}
-                <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600">
-                  ★ {repo.stars}
-                </span>
-                <span className="text-[10px] font-bold text-muted-foreground">
-                  {repo.forks} forks
-                </span>
-              </div>
-            </a>
-          ))}
-        </div>
-      </div>
-    )}
-  </PremiumPanel>
-);
-
-const LeetCodeResultPanel = ({ data }: { data: any }) => {
-  const profile = data.matchedUser?.profile;
-  const stats = data.matchedUser?.submitStatsGlobal?.acSubmissionNum || [];
-  const contest = data.userContestRanking;
-  const difficultyColors: Record<string, string> = {
-    All: "bg-slate-500",
-    Easy: "bg-emerald-500",
-    Medium: "bg-amber-500",
-    Hard: "bg-rose-500",
-  };
-
-  return (
-    <PremiumPanel className="overflow-hidden p-0">
-      {/* Hero banner */}
-      <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-amber-950 px-6 py-8 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(245,158,11,0.15),transparent_60%)]" />
-        <div className="relative">
-          <div className="flex items-center gap-2">
-            <Trophy size={18} className="text-amber-300" />
-            <p className="text-xs font-bold uppercase tracking-widest text-amber-300">LeetCode Snapshot</p>
-          </div>
-          <h2 className="mt-2 text-xl font-black">{profile?.realName || "Developer"}</h2>
-          {profile?.aboutMe && <p className="mt-1 text-sm text-slate-300 line-clamp-2">{profile.aboutMe}</p>}
-          {contest && (
-            <div className="mt-4 flex items-center gap-4">
-              <div className="rounded-xl bg-white/10 px-4 py-2">
-                <p className="text-2xl font-black text-amber-300">{Math.round(contest.rating || 0)}</p>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Contest Rating</p>
-              </div>
-              <div className="rounded-xl bg-white/10 px-4 py-2">
-                <p className="text-2xl font-black text-white">Top {contest.topPercentage || 0}%</p>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Global Ranking</p>
-              </div>
-              <div className="rounded-xl bg-white/10 px-4 py-2">
-                <p className="text-2xl font-black text-white">{contest.attendedContestsCount || 0}</p>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Contests</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Difficulty breakdown */}
-      <div className="px-6 py-5">
-        <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Problems Solved</p>
-        <div className="space-y-3">
-          {stats.map((stat: any) => {
-            const total = stats[0]?.count || 1;
-            const pct = total > 0 ? Math.round((stat.count / total) * 100) : 0;
-            return (
-              <div key={stat.difficulty} className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold">{stat.difficulty}</span>
-                  <span className="text-xs font-black">{stat.count.toLocaleString()}</span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted/50">
-                  <div
-                    className={`h-full rounded-full transition-all ${difficultyColors[stat.difficulty] || "bg-slate-400"}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </PremiumPanel>
-  );
-};
-
-const NetworkResultPanel = ({ data }: { data: any }) => (
-  <PremiumPanel className="overflow-hidden p-0">
-    <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-violet-950 px-6 py-8 text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(139,92,246,0.15),transparent_60%)]" />
-      <div className="relative">
-        <div className="flex items-center gap-2">
-          <Network size={18} className="text-violet-300" />
-          <p className="text-xs font-bold uppercase tracking-widest text-violet-300">Outreach Kit</p>
-        </div>
-        {data.companyBrief && <p className="mt-3 text-sm leading-relaxed text-slate-300">{data.companyBrief}</p>}
-      </div>
-    </div>
-    <div className="space-y-4 px-6 py-5">
-      {data.linkedinMessage && (
-        <div>
-          <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">LinkedIn Message</p>
-          <div className="rounded-xl bg-slate-950 p-4 text-[11px] leading-relaxed text-slate-200 whitespace-pre-wrap">{data.linkedinMessage}</div>
-        </div>
-      )}
-      {data.emailMessage && (
-        <div>
-          <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Email Draft</p>
-          <div className="rounded-xl bg-slate-950 p-4 text-[11px] leading-relaxed text-slate-200 whitespace-pre-wrap">{data.emailMessage}</div>
-        </div>
-      )}
-      {data.followUps?.length > 0 && (
-        <div>
-          <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Follow-up Sequence</p>
-          <div className="space-y-2">
-            {data.followUps.map((msg: string, idx: number) => (
-              <div key={idx} className="flex items-start gap-3 rounded-xl border p-3">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[10px] font-black text-violet-700">{idx + 1}</span>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">{msg}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  </PremiumPanel>
-);
-
-const EmptyState = ({ text }: { text: string }) => <p className="rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">{text}</p>;
-
-const TabButton = ({ active, onClick, icon, label, count }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; count?: number }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-colors ${
-      active ? "bg-indigo-600 text-white" : "bg-background border text-muted-foreground hover:text-foreground"
-    }`}
-  >
-    {icon}
-    {label}
-    {count !== undefined && count > 0 && (
-      <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-black ${active ? "bg-white text-indigo-600" : "bg-indigo-100 text-indigo-600"}`}>
-        {count}
-      </span>
-    )}
-  </button>
-);
-
-const StatusBadge = ({ status }: { status: string }) => {
-  const colors: Record<string, string> = {
-    drafted: "bg-slate-100 text-slate-700",
-    reviewed: "bg-amber-100 text-amber-700",
-    applied: "bg-emerald-100 text-emerald-700",
-    rejected: "bg-rose-100 text-rose-700",
-  };
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${colors[status] || "bg-slate-100 text-slate-700"}`}>
-      {status}
-    </span>
-  );
-};
-
-const stageBadgeColor = (stage?: string) => {
-  const map: Record<string, string> = {
-    applied: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-    interviewing: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-    offer: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
-    rejected: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
-  };
-  return map[stage || ""] || "bg-slate-100 text-slate-700";
-};
-
-const NetworkingReviewBadge = ({ status }: { status: string }) => {
-  const map: Record<string, string> = {
-    pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-    approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-    used: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
-  };
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${map[status] || map.pending}`}>
-      {status}
-    </span>
-  );
-};
 
 export default AutomationHub;

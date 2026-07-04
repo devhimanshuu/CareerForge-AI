@@ -15,10 +15,12 @@ import {
   Award,
 } from "lucide-react";
 import { PremiumPage, PremiumPageHeader, PremiumPanel } from "@/components/ui/premium-page";
+import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
+import { toast } from "@/hooks/use-toast";
 
 export default function AdvisorDashboard() {
   const { user } = useUser();
@@ -35,6 +37,7 @@ export default function AdvisorDashboard() {
         }
       } catch (err) {
         console.error("Failed to load advisor data:", err);
+        toast({ title: "Advisor Data Unavailable", description: "Could not load your personalized career intelligence right now.", variant: "destructive" });
       } finally {
         setLoading(false);
       }
@@ -44,18 +47,19 @@ export default function AdvisorDashboard() {
 
   if (loading) {
     return (
-      <PremiumPage>
-        <PremiumPageHeader
-          eyebrow="Daily Feed"
-          title="AI Career Advisor"
-          description="Aggregating personalized intelligence from your background agents..."
-          icon={<Compass size={13} />}
-        />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-64 rounded-3xl bg-muted/30 animate-pulse border border-border/50" />
-          ))}
-        </div>
+    <PremiumPage>
+      <ApiKeyBanner className="mb-6" />
+      <PremiumPageHeader
+        eyebrow="Daily Feed"
+        title="AI Career Advisor"
+        description="Aggregating personalized intelligence from your background agents..."
+        icon={<Compass size={13} />}
+      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-64 rounded-3xl bg-muted/30 animate-pulse border border-border/50" />
+        ))}
+      </div>
       </PremiumPage>
     );
   }
@@ -66,6 +70,7 @@ export default function AdvisorDashboard() {
 
   return (
     <PremiumPage>
+      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Daily Discover Feed"
         title="AI Career Advisor"

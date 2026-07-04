@@ -67,6 +67,8 @@ const AnalyticsDashboard = () => {
     );
   }
 
+  const hasData = data.totalViews > 0 || data.uniqueVisitors > 0 || data.viewsOverTime.some(v => v > 0) || data.branchMetrics.length > 0;
+
   // Find the winning branch (highest response/view ratio or just responses)
   const winningBranch = [...data.branchMetrics].sort(
     (a, b) => b.responses - a.responses,
@@ -74,6 +76,22 @@ const AnalyticsDashboard = () => {
 
   return (
     <PremiumPage>
+      {!hasData ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 mb-6">
+            <BarChart size={40} />
+          </div>
+          <h2 className="text-2xl font-black mb-2">No analytics data yet</h2>
+          <p className="text-muted-foreground max-w-md mx-auto mb-6">
+            Publish your portfolio and share the link to start collecting viewership metrics, geographic data, and engagement signals.
+          </p>
+          <Button asChild className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold">
+            <Link href="/dashboard/portfolio-settings">
+              <Eye size={16} className="mr-2" /> Configure Portfolio
+            </Link>
+          </Button>
+        </div>
+      ) : (
       <div className="space-y-10 pb-12">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
@@ -323,6 +341,7 @@ const AnalyticsDashboard = () => {
         </div>
       </section>
       </div>
+      )}
     </PremiumPage>
   );
 };

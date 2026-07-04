@@ -6,6 +6,7 @@ import {
   PremiumPageHeader,
   PremiumPanel,
 } from "@/components/ui/premium-page";
+import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import {
   Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 type Signal = { label: string; source: "glassdoor" | "linkedin" | "news" | "blog" | "general" };
 type Alignment = {
@@ -77,12 +79,9 @@ export default function CultureFitPage() {
   const [values, setValues] = useState("");
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
   const analyze = async () => {
     if (!company.trim()) return;
     setLoading(true);
-    setError(null);
     try {
       const res = await fetch("/api/ai/culture-fit", {
         method: "POST",
@@ -93,7 +92,7 @@ export default function CultureFitPage() {
       if (!res.ok) throw new Error(data.error || "Failed");
       setReport(data);
     } catch (e: any) {
-      setError(e.message || "Could not analyze company");
+      toast({ title: "Analysis Failed", description: e.message || "Could not analyze company", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -101,6 +100,7 @@ export default function CultureFitPage() {
 
   return (
     <PremiumPage>
+      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Culture Fit"
         title="Company Culture Fit Analyzer"
@@ -158,9 +158,7 @@ export default function CultureFitPage() {
             )}
           </Button>
         </div>
-        {error && (
-          <p className="mt-3 text-xs text-rose-500">{error}</p>
-        )}
+
       </PremiumPanel>
 
       {report && (

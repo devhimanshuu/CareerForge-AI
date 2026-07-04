@@ -24,13 +24,6 @@ import {
   Network,
   Save,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -55,44 +48,15 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import useGetDocuments from "@/features/document/use-get-document";
 import DeleteApplicationDialog from "./_components/DeleteApplicationDialog";
+import { CoverLetterSection } from "./_components/CoverLetterSection";
+import { KanbanBoard } from "./_components/KanbanBoard";
+import { STATUS_COLUMNS } from "./_components/kanbanColumns";
 import InterviewPrepAssistant from "../../_components/common/InterviewPrepAssistant";
 import SkillGapAnalyzer from "../../_components/common/SkillGapAnalyzer";
 import { PremiumPage } from "@/components/ui/premium-page";
 
 
 
-const STATUS_COLUMNS = [
-  {
-    id: "wishlist",
-    label: "Wishlist",
-    color: "bg-slate-500",
-    icon: <Clock size={14} />,
-  },
-  {
-    id: "applied",
-    label: "Applied",
-    color: "bg-blue-500",
-    icon: <CheckCircle2 size={14} />,
-  },
-  {
-    id: "interviewing",
-    label: "Interviewing",
-    color: "bg-amber-500",
-    icon: <Calendar size={14} />,
-  },
-  {
-    id: "offer",
-    label: "Offer",
-    color: "bg-emerald-500",
-    icon: <Sparkles size={14} />,
-  },
-  {
-    id: "rejected",
-    label: "Rejected",
-    color: "bg-rose-500",
-    icon: <AlertCircle size={14} />,
-  },
-];
 
 const JobTrackerPage = () => {
   const [applications, setApplications] = useState<any[]>([]);
@@ -737,107 +701,17 @@ const JobTrackerPage = () => {
       </div>
 
       {/* Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        {STATUS_COLUMNS.map((column) => (
-          <div key={column.id} className="flex flex-col gap-4 min-h-[500px]">
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-2">
-                <div className={cn("w-2 h-2 rounded-full", column.color)} />
-                <h3 className="font-bold text-sm uppercase tracking-widest">
-                  {column.label}
-                </h3>
-              </div>
-              <span className="text-[10px] font-black text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
-                {applications.filter((app) => app.status === column.id).length}
-              </span>
-            </div>
-
-            <div className="flex-1 space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3">
-              <AnimatePresence mode="popLayout">
-                {applications
-                  .filter((app) => app.status === column.id)
-                  .map((app) => (
-                    <motion.div
-                      layout
-                      key={app.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      whileHover={{ y: -2 }}
-                      className="group relative cursor-pointer rounded-lg border bg-card p-4 shadow-sm transition-colors hover:border-indigo-500/40"
-                      onClick={() => {
-                        setSelectedApp(app);
-                        setIsDetailModalOpen(true);
-                      }}
-                    >
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-start gap-2">
-                          <h4 className="font-bold text-sm leading-tight group-hover:text-indigo-500 transition-colors">
-                            {app.jobTitle}
-                          </h4>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <button className="text-muted-foreground/30 hover:text-foreground p-1 rounded-md hover:bg-muted transition-colors">
-                                <MoreVertical size={14} />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                className="gap-2 cursor-pointer"
-                                onClick={(e) => draftNetworkingOutreach(app, e)}
-                                disabled={networkingLoading === app.id}
-                              >
-                                {networkingLoading === app.id ? <Loader2 size={14} className="animate-spin" /> : <Network size={14} />}
-                                Draft Outreach
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 cursor-pointer"
-                                onClick={(e) => handleDeleteClick(app, e)}
-                              >
-                                <Trash2 size={14} />
-                                Delete Job
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-
-                        </div>
-
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Building2 size={12} className="shrink-0" />
-                          <span className="font-medium truncate">
-                            {app.company}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-2">
-                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/60 uppercase">
-                            <FileText size={10} />v{app.documentId.slice(-4)}
-                          </div>
-                          <div className="flex gap-1">
-                            {STATUS_COLUMNS.filter((c) => c.id !== app.status)
-                              .slice(0, 2)
-                              .map((c) => (
-                                <button
-                                  key={c.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    updateStatus(app.id, c.id);
-                                  }}
-                                  className="w-5 h-5 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all"
-                                >
-                                  <ChevronRight size={10} />
-                                </button>
-                              ))}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-              </AnimatePresence>
-            </div>
-          </div>
-        ))}
-      </div>
+      <KanbanBoard
+        applications={applications}
+        onStatusUpdate={updateStatus}
+        onAppClick={(app) => {
+          setSelectedApp(app);
+          setIsDetailModalOpen(true);
+        }}
+        onDeleteClick={handleDeleteClick}
+        onNetworkingClick={draftNetworkingOutreach}
+        networkingLoading={networkingLoading}
+      />
       </div>
 
       {/* Detail Modal / Cover Letter Generator */}
@@ -945,129 +819,6 @@ const JobTrackerPage = () => {
         jobTitle={appToDelete?.jobTitle || ""}
       />
     </PremiumPage>
-  );
-};
-
-
-const CoverLetterSection = ({ app }: { app: any }) => {
-  const [jd, setJd] = useState("");
-  const [tone, setTone] = useState("Confident");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedLetter, setGeneratedLetter] = useState("");
-
-  const handleGenerate = async () => {
-    if (!jd.trim()) {
-      toast({
-        title: "Job Description Required",
-        description: "Paste the JD to tailor your letter.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsGenerating(true);
-    try {
-      const res = await fetch("/api/application/generate-cover-letter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          documentId: app.documentId,
-          jobDescription: jd,
-          tone,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setGeneratedLetter(json.content);
-        toast({
-          title: "Letter Generated!",
-          description: "Tailored to your resume and the job.",
-        });
-      } else {
-        throw new Error(json.message || "Generation failed");
-      }
-    } catch (e: any) {
-      console.error(e);
-      toast({ title: "Generation Failed", description: e.message || "Could not generate cover letter.", variant: "destructive" });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-          <Sparkles size={16} className="text-indigo-500" />
-          AI Cover Letter Generator
-        </h3>
-        <div className="flex gap-2">
-          {["Confident", "Enthusiastic", "Formal", "Direct"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setTone(t)}
-              className={cn(
-                "px-2 py-1 rounded-md text-[10px] font-bold border transition-all",
-                tone === t
-                  ? "bg-indigo-500 border-indigo-500 text-white"
-                  : "border-border hover:bg-muted",
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {!generatedLetter ? (
-        <div className="space-y-4">
-          <textarea
-            className="w-full h-40 p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 focus:ring-2 ring-indigo-500/20 text-sm resize-none"
-            placeholder="Paste the job description here..."
-            value={jd}
-            onChange={(e) => setJd(e.target.value)}
-          />
-          <Button
-            className="w-full h-12 rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 gap-2"
-            onClick={handleGenerate}
-            disabled={isGenerating}
-          >
-            {isGenerating ? (
-              <Loader size={18} className="animate-spin" />
-            ) : (
-              <Sparkles size={18} />
-            )}
-            Generate Tailored Cover Letter
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="p-6 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-sm leading-relaxed whitespace-pre-wrap font-serif">
-            {generatedLetter}
-          </div>
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1 h-11 rounded-xl font-bold"
-              onClick={() => setGeneratedLetter("")}
-            >
-              Start Over
-            </Button>
-            <Button
-              className="flex-1 h-11 rounded-xl font-bold bg-indigo-600"
-              onClick={() => {
-                navigator.clipboard.writeText(generatedLetter);
-                toast({
-                  title: "Copied!",
-                  description: "Letter copied to clipboard.",
-                });
-              }}
-            >
-              Copy to Clipboard
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
   );
 };
 

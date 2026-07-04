@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { PremiumPage, PremiumPageHeader, PremiumPanel } from "@/components/ui/premium-page";
+import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 export default function SalarySimulator() {
   const [started, setStarted] = useState(false);
@@ -106,7 +108,12 @@ export default function SalarySimulator() {
       }
     } catch (error) {
       console.error(error);
-      setMessages([...newHistory, { role: "assistant", content: "Sorry, I'm having trouble connecting right now." }]);
+      toast({
+        title: "Connection Error",
+        description: "Failed to get AI response. The simulation will continue with offline mode.",
+        variant: "destructive",
+      });
+      setMessages([...newHistory, { role: "assistant", content: "Sorry, I'm having trouble connecting right now. You can still practice by writing your responses — I'll respond when I reconnect." }]);
     } finally {
       setLoading(false);
     }
@@ -114,6 +121,7 @@ export default function SalarySimulator() {
 
   return (
     <PremiumPage>
+      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Interview Prep"
         title="Salary Negotiation Simulator"

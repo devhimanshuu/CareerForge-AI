@@ -67,6 +67,9 @@ import {
   InterviewSessionManager,
   createSilenceDetector,
 } from "@/lib/webrtc-interview";
+import { PastSessions } from "./_components/PastSessions";
+import { ConfigSelect } from "./_components/ConfigSelect";
+import { ShortcutsPanel } from "./_components/ShortcutsPanel";
 
 type InterviewMode = "turn-based" | "live";
 
@@ -1419,52 +1422,11 @@ const InterviewLab = () => {
         action={
           step !== "setup" && (
             <div className="flex items-center gap-2">
-              <div className="relative" ref={shortcutsRef}>
-                <Button
-                  onClick={() => setShowShortcuts(!showShortcuts)}
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9 border-indigo-500/30 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
-                  title="Keyboard Shortcuts"
-                >
-                  <Keyboard size={16} />
-                </Button>
-                <AnimatePresence>
-                  {showShortcuts && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 z-50 w-64 sm:w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-border/50 bg-background shadow-xl p-4 space-y-3"
-                    >
-                      <p className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                        <Keyboard size={12} />
-                        Keyboard Shortcuts
-                      </p>
-                      <div className="space-y-2">
-                        {[
-                          { keys: "Enter", label: "Submit answer", mode: "Turn-based" },
-                          { keys: "Shift + Enter", label: "New line in answer", mode: "Turn-based" },
-                          { keys: "⌘ / Ctrl + Enter", label: "End session", mode: "Both modes" },
-                          { keys: "↑ ↓", label: "Scroll session logs", mode: "Interview" },
-                          { keys: "Escape", label: "Reset to setup", mode: "Any step" },
-                        ].map((s) => (
-                          <div key={s.keys} className="flex items-center justify-between gap-3">
-                            <span className="text-[11px] text-muted-foreground font-medium">{s.label}</span>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[9px] text-muted-foreground/50 font-medium">{s.mode}</span>
-                              <kbd className="text-[10px] font-mono bg-muted/60 border border-border/50 px-1.5 py-0.5 rounded text-foreground/80 whitespace-nowrap">
-                                {s.keys}
-                              </kbd>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <ShortcutsPanel
+                showShortcuts={showShortcuts}
+                setShowShortcuts={setShowShortcuts}
+                shortcutsRef={shortcutsRef}
+              />
               <Button
                 onClick={handleReset}
                 variant="outline"
@@ -1937,84 +1899,12 @@ const InterviewLab = () => {
               </div>
             </div>
 
-            {/* Interview History Section */}
-            {pastSessions.length > 0 && (
-              <div className="mt-6">
-                <PremiumPanel className="p-5 md:p-6 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-slate-500 to-gray-500" />
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-slate-500/10 flex items-center justify-center">
-                        <Clock size={14} className="text-slate-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-foreground">Past Sessions</p>
-                        <p className="text-[10px] text-muted-foreground">{pastSessions.length} completed interviews</p>
-                      </div>
-                    </div>
-                    {isLoadingSessions && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {pastSessions.slice(0, 6).map((session: any) => (
-                      <div
-                        key={session.id}
-                        className="p-4 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <p className="text-xs font-bold text-foreground truncate max-w-[70%]">
-                            {session.targetRole}
-                          </p>
-                          <span className={cn(
-                            "text-[9px] font-bold px-2 py-0.5 rounded-full",
-                            session.status === "completed"
-                              ? "bg-emerald-500/10 text-emerald-600"
-                              : "bg-amber-500/10 text-amber-600"
-                          )}>
-                            {session.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-muted-foreground">Delivery:</span>
-                            <span className="text-[10px] font-bold text-indigo-500">{session.deliveryScore ?? "--"}%</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-muted-foreground">Content:</span>
-                            <span className="text-[10px] font-bold text-emerald-500">{session.contentScore ?? "--"}%</span>
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          {session.interviewType} · {session.difficulty} · {new Date(session.createdAt).toLocaleDateString()}
-                        </p>
-                        {session.turns && session.turns.length > 0 && (
-                          <p className="text-[10px] text-muted-foreground/60 mt-1">
-                            {session.turns.length} turns completed
-                          </p>
-                        )}
-                        <div className="flex gap-2 mt-2">
-                          <button
-                            type="button"
-                            onClick={() => handleLoadPastSession(session)}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 transition-colors text-[10px] font-bold"
-                          >
-                            <ExternalLink size={10} />
-                            View Full Report
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setSessionToDelete(session)}
-                            className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                            title="Delete session"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </PremiumPanel>
-              </div>
-            )}
+            <PastSessions
+              sessions={pastSessions}
+              isLoading={isLoadingSessions}
+              onLoadSession={handleLoadPastSession}
+              onDeleteSession={(session) => setSessionToDelete(session)}
+            />
           </motion.div>
         )}
 
@@ -2569,32 +2459,5 @@ const InterviewLab = () => {
   );
 };
 
-const ConfigSelect = ({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: string[];
-  onChange: (value: string) => void;
-}) => (
-  <div className="space-y-1.5">
-    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-10 rounded-lg text-xs font-bold capitalize">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option} value={option} className="text-xs font-bold capitalize">
-            {option.replace("-", " ")}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
-);
 
 export default InterviewLab;
