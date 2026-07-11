@@ -38,10 +38,13 @@ export async function POST(request: Request) {
     const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
     let executablePath: string | undefined;
     let launchArgs = ['--no-sandbox', '--disable-setuid-sandbox'];
+    let headlessVal: any = true;
+
     if (isServerless) {
       const chromium = (await import("@sparticuz/chromium")).default;
       executablePath = await chromium.executablePath();
       launchArgs = [...chromium.args, ...launchArgs];
+      headlessVal = chromium.headless;
     } else {
       executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_PATH;
       if (!executablePath) {
@@ -52,7 +55,7 @@ export async function POST(request: Request) {
       }
     }
     const browser = await puppeteer.launch({
-      headless: true,
+      headless: headlessVal,
       executablePath,
       args: launchArgs,
     });

@@ -36,6 +36,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const url = new URL(request.url);
+  const limitVal = Math.max(1, Math.min(10, Number(url.searchParams.get("limit") || "1")));
+
   const due = await db
     .select()
     .from(automationConfigTable)
@@ -43,7 +46,7 @@ export async function GET(request: Request) {
       eq(automationConfigTable.enabled, true),
       lte(automationConfigTable.nextRunAt, new Date().toISOString()),
     ))
-    .limit(10);
+    .limit(limitVal);
 
   const results = [];
   for (const automation of due) {
@@ -254,7 +257,7 @@ export async function GET(request: Request) {
                 commonAnswers: packageData.commonAnswers,
                 matchScore: packageData.matchScore,
                 gaps: packageData.gaps,
-                status: "drafted",
+                status: "tailored",
               });
               stored++;
             } catch (error: any) {
@@ -268,7 +271,7 @@ export async function GET(request: Request) {
               company: job.company,
               jobUrl: job.url,
               jobDescription: job.description,
-              status: "drafted",
+              status: "tailored",
             });
             stored++;
           }

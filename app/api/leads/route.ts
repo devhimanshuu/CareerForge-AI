@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { documentTable, portfolioLeadTable } from "@/db/schema";
 import { trackPortfolioEvent } from "@/lib/analytics";
+import { notificationService } from "@/lib/notifications";
 
 // Simple in-memory rate limiter for lead capture
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -13,16 +14,16 @@ const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
 function checkRateLimit(identifier: string): boolean {
   const now = Date.now();
   const record = rateLimitMap.get(identifier);
-  
+
   if (!record || now > record.resetTime) {
     rateLimitMap.set(identifier, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
     return true;
   }
-  
+
   if (record.count >= RATE_LIMIT) {
     return false;
   }
-  
+
   record.count++;
   return true;
 }
@@ -37,10 +38,10 @@ const leadSchema = z.object({
 export async function POST(request: Request) {
   try {
     // Rate limiting based on IP
-    const ip = request.headers.get('x-forwarded-for') || 
-              request.headers.get('x-real-ip') || 
-              'unknown';
-    
+    const ip = request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+
     if (!checkRateLimit(ip)) {
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
@@ -71,6 +72,20 @@ export async function POST(request: Request) {
       linkedin: parsed.data.linkedin || null,
       message: parsed.data.message || null,
     });
+
+    try {
+      const email = parsed.data.email;
+      const msg = parsed.data.message ? ` Message: "${parsed.data.message}"` : "";
+      await notificationService.notify(doc.userId, {
+        type: "insight_generated",
+        title: "New Recruiter Lead Captured! 🎯",
+        body: `A recruiter (${email}) has connected with you on your portfolio.${msg}`,
+        email: doc.authorEmail || undefined,
+        metadata: { documentId: doc.documentId },
+      });
+    } catch (notificationError) {
+      console.error("Failed to notify user about new lead:", notificationError);
+    }
 
     await trackPortfolioEvent({
       documentId: parsed.data.documentId,

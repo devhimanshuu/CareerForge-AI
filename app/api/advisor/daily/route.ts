@@ -33,8 +33,9 @@ export async function GET(request: Request) {
       )
     });
 
-    const thisWeekPkgs = recentPackages.filter(p => p.createdAt >= oneWeekAgo && p.matchScore);
-    const lastWeekPkgs = recentPackages.filter(p => p.createdAt < oneWeekAgo && p.matchScore);
+    const oneWeekAgoTime = new Date(oneWeekAgo).getTime();
+    const thisWeekPkgs = recentPackages.filter(p => new Date(p.createdAt).getTime() >= oneWeekAgoTime && p.matchScore);
+    const lastWeekPkgs = recentPackages.filter(p => new Date(p.createdAt).getTime() < oneWeekAgoTime && p.matchScore);
 
     const avgThisWeek = thisWeekPkgs.length ? thisWeekPkgs.reduce((acc, p) => acc + (p.matchScore || 0), 0) / thisWeekPkgs.length : 0;
     const avgLastWeek = lastWeekPkgs.length ? lastWeekPkgs.reduce((acc, p) => acc + (p.matchScore || 0), 0) / lastWeekPkgs.length : 0;

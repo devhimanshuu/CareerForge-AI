@@ -1,11 +1,19 @@
 import { Liveblocks } from "@liveblocks/node";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
-const liveblocks = new Liveblocks({
-  secret: process.env.LIVEBLOCKS_SECRET_KEY!,
-});
+let liveblocksInstance: Liveblocks | null = null;
+
+function getLiveblocks() {
+  if (!liveblocksInstance) {
+    liveblocksInstance = new Liveblocks({
+      secret: process.env.LIVEBLOCKS_SECRET_KEY || "sk_dummy_secret",
+    });
+  }
+  return liveblocksInstance;
+}
 
 export async function POST(request: Request) {
+  const liveblocks = getLiveblocks();
   // If LIVEBLOCKS_SECRET_KEY is not configured, return a fallback anonymous session
   if (!process.env.LIVEBLOCKS_SECRET_KEY) {
     // Generate a pseudo-anonymous session so presence still works locally
