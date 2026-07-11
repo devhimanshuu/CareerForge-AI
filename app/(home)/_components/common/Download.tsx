@@ -14,7 +14,7 @@ const Download = (props: {
   const { title, status, isLoading } = props;
   const [loading, setLoading] = useState(false);
   const params = useParams();
-  const documentId = params.documentId as string;
+  const documentId = params?.documentId as string;
 
   const handleDownload = useCallback(async () => {
     setLoading(true);

@@ -47,7 +47,7 @@ const EditResume = () => {
   const searchParams = useSearchParams();
   const previewRef = useRef<HTMLDivElement>(null);
   const isCollabMode = searchParams?.get("collab") === "true";
-  const documentId = param.documentId as string;
+  const documentId = param?.documentId as string;
   const roomId = `document-${documentId}`;
 
   const shareLink =

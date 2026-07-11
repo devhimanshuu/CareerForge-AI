@@ -65,33 +65,33 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider
-      appearance={{
-        variables: {
-          colorPrimary: "#4F46E5",
-        },
-        elements: {
-          footer: "hidden",
-          userButtonPopoverFooter: "hidden",
-          logoBox: "flex items-center justify-center gap-2 after:content-['CareerForge_AI'] after:font-bold after:text-xl after:tracking-tight after:bg-gradient-to-r after:from-indigo-600 after:to-purple-600 after:bg-clip-text after:text-transparent",
-          logoImage: "w-8 h-8 rounded-lg shadow-lg shadow-indigo-500/25",
-        },
-        layout: {
-          logoImageUrl: "/CareerForge_ai_final.png",
-          helpPageUrl: "https://clerk.com",
-          logoPlacement: "inside",
-          socialButtonsPlacement: "bottom",
-          socialButtonsVariant: "iconButton",
-        },
-      }}
-    >
-      <html lang="en" suppressHydrationWarning>
-        <body
-          className={cn(
-            "bg-background min-h-screen font-sans antialiased overflow-x-hidden",
-            outfit.variable,
-            plusJakartaSans.variable
-          )}
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={cn(
+          "bg-background min-h-screen font-sans antialiased overflow-x-hidden",
+          outfit.variable,
+          plusJakartaSans.variable
+        )}
+      >
+        <ClerkProvider
+          appearance={{
+            variables: {
+              colorPrimary: "#4F46E5",
+            },
+            elements: {
+              footer: "hidden",
+              userButtonPopoverFooter: "hidden",
+              logoBox: "flex items-center justify-center gap-2 after:content-['CareerForge_AI'] after:font-bold after:text-xl after:tracking-tight after:bg-gradient-to-r after:from-indigo-600 after:to-purple-600 after:bg-clip-text after:text-transparent",
+              logoImage: "w-8 h-8 rounded-lg shadow-lg shadow-indigo-500/25",
+            },
+            layout: {
+              logoImageUrl: "/CareerForge_ai_final.png",
+              helpPageUrl: "https://clerk.com",
+              logoPlacement: "inside",
+              socialButtonsPlacement: "bottom",
+              socialButtonsVariant: "iconButton",
+            },
+          }}
         >
           <QueryProvider>
             <ThemeProvider
@@ -105,8 +105,8 @@ export default function RootLayout({
               <PWARegister />
             </ThemeProvider>
           </QueryProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 const isPublicRoute = createRouteMatcher([
   "/",
@@ -12,6 +13,28 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware((auth, request) => {
+  const url = request.nextUrl.clone();
+  const hostHeader = request.headers.get("host") || "";
+  const hostname = hostHeader.split(":")[0];
+
+  // Check custom domain rewrite
+  const primaryDomains = [
+    "localhost",
+    "careerforge.ai",
+    "www.careerforge.ai",
+    "career-forge-ai.vercel.app"
+  ];
+
+  const isCustomDomain = hostname && !primaryDomains.some((d) => hostname === d);
+
+  if (isCustomDomain) {
+    // Avoid rewriting api requests or assets
+    if (!url.pathname.startsWith("/api") && !url.pathname.startsWith("/_next") && !url.pathname.includes(".")) {
+      url.pathname = `/p/domain/${hostname}${url.pathname === "/" ? "" : url.pathname}`;
+      return NextResponse.rewrite(url);
+    }
+  }
+
   if (!isPublicRoute(request)) {
     auth().protect();
   }
