@@ -183,6 +183,61 @@ const InterviewLab = () => {
   useEffect(() => { jobDescriptionRef.current = jobDescription; }, [jobDescription]);
   useEffect(() => { interviewConfigRef.current = interviewConfig; }, [interviewConfig]);
 
+  // Browser Speech Recognition refs for fallback
+  const recognitionRef = useRef<any>(null);
+  const localTranscriptRef = useRef<string>("");
+  const cancelCurrentTTS = useRef<(() => void) | null>(null);
+
+  const startLocalSpeechRecognition = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch (err) {}
+    }
+
+    localTranscriptRef.current = "";
+    const rec = new SpeechRecognition();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-US";
+
+    rec.onresult = (event: any) => {
+      let finalTranscript = "";
+      let interimTranscript = "";
+      for (let i = 0; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      localTranscriptRef.current = (finalTranscript + " " + interimTranscript).trim();
+    };
+
+    rec.onerror = (event: any) => {
+      console.warn("Local speech recognition error:", event.error);
+    };
+
+    try {
+      rec.start();
+      recognitionRef.current = rec;
+    } catch (err) {
+      console.error("Failed to start local SpeechRecognition:", err);
+    }
+  }, []);
+
+  const stopLocalSpeechRecognition = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {}
+      recognitionRef.current = null;
+    }
+  }, []);
+
   // Load recent jobs from localStorage on mount
   useEffect(() => {
     try {
@@ -410,11 +465,12 @@ const InterviewLab = () => {
     if (mgr && !isCleaningUpRef.current) {
       try {
         mgr.startRecording();
+        startLocalSpeechRecognition();
       } catch (err) {
         console.error("Failed to restart recording:", err);
       }
     }
-  }, []);
+  }, [startLocalSpeechRecognition]);
 
   // ─── Live Mode: Cleanup ───────────────────────────────────────
   const cleanupLiveSession = useCallback(() => {
@@ -427,6 +483,12 @@ const InterviewLab = () => {
     silenceDetectorRef.current = null;
     isProcessingAnswerRef.current = false;
     hasSpokenRef.current = false;
+    stopLocalSpeechRecognition();
+
+    if (cancelCurrentTTS.current) {
+      cancelCurrentTTS.current();
+      cancelCurrentTTS.current = null;
+    }
 
     if (livePollingRef.current) {
       clearInterval(livePollingRef.current);
@@ -446,7 +508,7 @@ const InterviewLab = () => {
     setLiveUserAudioLevel(0);
     setLiveAIAudioLevel(0);
     setIsLiveListening(false);
-  }, []);
+  }, [stopLocalSpeechRecognition]);
 
   // ─── Live Mode: TTS for AI responses ──────────────────────────
   const speakLiveResponse = useCallback(
@@ -457,11 +519,24 @@ const InterviewLab = () => {
         return;
       }
 
+      if (cancelCurrentTTS.current) {
+        cancelCurrentTTS.current();
+      }
+
       window.speechSynthesis.cancel();
       liveTTSAudioRef.current?.pause();
 
       let objectUrl = "";
-      let cancelled = false;
+      let localCancelled = false;
+
+      cancelCurrentTTS.current = () => {
+        localCancelled = true;
+        if (objectUrl) {
+          try {
+            URL.revokeObjectURL(objectUrl);
+          } catch (e) {}
+        }
+      };
 
       setVideoPanelState("idle");
       isAISpeakingRef.current = true;
@@ -469,16 +544,20 @@ const InterviewLab = () => {
       try {
         // Try ElevenLabs first
         objectUrl = await createElevenLabsAudio(text, voiceConfig);
+        if (localCancelled) return;
+
         const audio = new Audio(objectUrl);
         liveTTSAudioRef.current = audio;
 
         // Track AI audio level for visualizer
         audio.onplay = () => {
-          setVideoPanelState("idle");
-          setLiveAIAudioLevel(0.7);
+          if (!localCancelled) {
+            setVideoPanelState("idle");
+            setLiveAIAudioLevel(0.7);
+          }
         };
         audio.onended = () => {
-          if (!cancelled) {
+          if (!localCancelled) {
             setLiveAIAudioLevel(0);
             setVideoPanelState("active");
             isAISpeakingRef.current = false;
@@ -488,7 +567,7 @@ const InterviewLab = () => {
           }
         };
         audio.onerror = () => {
-          if (!cancelled) {
+          if (!localCancelled) {
             setLiveAIAudioLevel(0);
             setVideoPanelState("active");
             isAISpeakingRef.current = false;
@@ -500,13 +579,18 @@ const InterviewLab = () => {
 
         await audio.play();
       } catch {
+        if (localCancelled) return;
         // Fallback to browser TTS
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = voiceConfig.speed;
 
-        utterance.onstart = () => setLiveAIAudioLevel(0.7);
+        utterance.onstart = () => {
+          if (!localCancelled) {
+            setLiveAIAudioLevel(0.7);
+          }
+        };
         utterance.onend = () => {
-          if (!cancelled) {
+          if (!localCancelled) {
             setLiveAIAudioLevel(0);
             setVideoPanelState("active");
             isAISpeakingRef.current = false;
@@ -516,7 +600,7 @@ const InterviewLab = () => {
           }
         };
         utterance.onerror = () => {
-          if (!cancelled) {
+          if (!localCancelled) {
             setLiveAIAudioLevel(0);
             setVideoPanelState("active");
             isAISpeakingRef.current = false;
@@ -528,11 +612,6 @@ const InterviewLab = () => {
 
         window.speechSynthesis.speak(utterance);
       }
-
-      return () => {
-        cancelled = true;
-        if (objectUrl) URL.revokeObjectURL(objectUrl);
-      };
     },
     [isLiveMuted, voiceConfig, restartRecordingForNextAnswer],
   );
@@ -554,6 +633,7 @@ const InterviewLab = () => {
     try {
       // Stop recording and get full audio
       manager.stopRecording();
+      stopLocalSpeechRecognition();
       const fullRecording = manager.getFullRecording();
 
       let answerText = "";
@@ -574,6 +654,15 @@ const InterviewLab = () => {
         } catch (err) {
           console.error("Transcription failed:", err);
         }
+      }
+
+      // Fallback to client-side SpeechRecognition if server fetch failed or returned empty
+      if (!answerText && localTranscriptRef.current.trim()) {
+        answerText = localTranscriptRef.current.trim();
+        toast({
+          title: "Speech Recognition Fallback",
+          description: "Server transcription failed. Used browser native speech recognition instead.",
+        });
       }
 
       if (!answerText) {
@@ -606,7 +695,7 @@ const InterviewLab = () => {
       setIsLiveListening(true);
       restartRecordingForNextAnswer();
     }
-  }, [restartRecordingForNextAnswer]);
+  }, [restartRecordingForNextAnswer, stopLocalSpeechRecognition]);
 
   // ─── Save completed session to database ────────────────────────
   const saveSessionToDb = useCallback(async (evalData: any, msgs: Message[]) => {
@@ -1030,6 +1119,7 @@ const InterviewLab = () => {
       recorder.start(200);
       setMediaRecorder(recorder);
       setIsRecording(true);
+      startLocalSpeechRecognition();
     } catch (e) {
       console.error(e);
       toast({
@@ -1045,6 +1135,7 @@ const InterviewLab = () => {
       mediaRecorder.stop();
       setIsRecording(false);
       mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+      stopLocalSpeechRecognition();
     }
   };
 
@@ -1071,11 +1162,20 @@ const InterviewLab = () => {
       }
     } catch (e: any) {
       console.error(e);
-      toast({
-        title: "Transcription Failed",
-        description: "Failed to transcribe audio. You can still type your answer instead.",
-        variant: "destructive",
-      });
+      if (localTranscriptRef.current.trim()) {
+        const fallbackText = localTranscriptRef.current.trim();
+        setUserAnswer((prev) => (prev ? prev + " " + fallbackText : fallbackText));
+        toast({
+          title: "Speech Recognition Fallback",
+          description: "Server transcription failed. Used browser native speech recognition instead.",
+        });
+      } else {
+        toast({
+          title: "Transcription Failed",
+          description: "Failed to transcribe audio. You can still type your answer instead.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setTranscribing(false);
     }
@@ -1217,6 +1317,16 @@ const InterviewLab = () => {
   // Handle step reset
   const handleReset = () => {
     cleanupLiveSession();
+
+    if (mediaRecorder) {
+      try {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+      } catch (err) {}
+      setMediaRecorder(null);
+      setIsRecording(false);
+    }
+
     setStep("setup");
     setMessages([]);
     setCurrentQuestion("");

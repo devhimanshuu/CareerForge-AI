@@ -596,6 +596,9 @@ Return the FULL updated resume JSON object matching the exact schema of the inpu
       ]);
       const text = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("AI failed to return valid JSON");
+      }
       return c.json(JSON.parse(jsonMatch[0]));
     } catch (error: any) {
       console.error("Resume Doctor Fix API Error:", error);

@@ -353,7 +353,7 @@ const documentRoute = new Hono()
     }
   )
   .patch(
-    "/retore/archive",
+    "/restore/archive",
     zValidator(
       "json",
       z.object({
@@ -410,7 +410,7 @@ const documentRoute = new Hono()
         return c.json(
           {
             success: false,
-            message: "Failed to retore document",
+            message: "Failed to restore document",
             error: error,
           },
           500
@@ -542,6 +542,71 @@ const documentRoute = new Hono()
           {
             success: false,
             message: "Failed to fetch portfolio",
+            error: error,
+          },
+          500
+        );
+      }
+    }
+  )
+  .get(
+    "/public/domain/:domain",
+    zValidator(
+      "param",
+      z.object({
+        domain: z.string(),
+      })
+    ),
+    async (c) => {
+      try {
+        const { domain } = c.req.valid("param");
+        const searchDomain = domain.toLowerCase().trim();
+        const searchDomainAlternative = searchDomain.startsWith("www.") 
+          ? searchDomain.replace(/^www\./, "") 
+          : `www.${searchDomain}`;
+
+        const documentData = await db.query.documentTable.findFirst({
+          where: and(
+            eq(documentTable.status, "public"),
+            or(
+              eq(documentTable.customDomain, searchDomain),
+              eq(documentTable.customDomain, searchDomainAlternative)
+            )
+          ),
+          with: {
+            personalInfo: true,
+            experiences: true,
+            educations: true,
+            skills: true,
+          },
+        });
+
+        if (!documentData) {
+          return c.json(
+            {
+              error: true,
+              message: "Portfolio not found",
+            },
+            404
+          );
+        }
+
+        await trackPortfolioEvent({
+          documentId: documentData.documentId,
+          eventType: "view",
+          request: c.req.raw,
+          source: "custom-domain",
+        });
+
+        return c.json({
+          success: true,
+          data: documentData,
+        });
+      } catch (error) {
+        return c.json(
+          {
+            success: false,
+            message: "Failed to fetch portfolio by domain",
             error: error,
           },
           500

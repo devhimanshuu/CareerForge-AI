@@ -19,7 +19,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 export default function PortfolioSettings() {
-  const { documentId } = useParams();
+  const params = useParams();
+  const documentId = params?.documentId as string | undefined;
   const router = useRouter();
   const { toast } = useToast();
 
@@ -59,13 +60,24 @@ export default function PortfolioSettings() {
 
   const handleSave = async () => {
     setSaving(true);
+    const sanitizedDomain = settings.customDomain
+      ? settings.customDomain
+          .replace(/^(https?:\/\/)?(www\.)?/, "")
+          .replace(/\/.*$/, "")
+          .toLowerCase()
+          .trim()
+      : "";
+
+    setSettings((prev) => ({ ...prev, customDomain: sanitizedDomain }));
+
     try {
       const res = await fetch("/api/portfolio/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           documentId,
-          ...settings
+          ...settings,
+          customDomain: sanitizedDomain
         })
       });
       const json = await res.json();
@@ -89,7 +101,9 @@ export default function PortfolioSettings() {
     );
   }
 
-  const portfolioUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/p/${settings.slug || doc?.slug}`;
+  const portfolioUrl = settings.customDomain
+    ? `http://${settings.customDomain}`
+    : `${typeof window !== "undefined" ? window.location.origin : ""}/p/${settings.slug || doc?.slug}`;
 
   return (
     <PremiumPage>
