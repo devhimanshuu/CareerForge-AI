@@ -5,10 +5,10 @@ import { toast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 type ResponseType = InferResponseType<
-  typeof api.document.retore.archive.$patch
+  typeof api.document.restore.archive.$patch
 >;
 type RequestType = InferRequestType<
-  typeof api.document.retore.archive.$patch
+  typeof api.document.restore.archive.$patch
 >["json"];
 
 const useRestoreDocument = () => {
@@ -16,7 +16,7 @@ const useRestoreDocument = () => {
 
   const mutation = useMutation<ResponseType, Error, RequestType>({
     mutationFn: async (json) => {
-      const response = await api.document.retore.archive.$patch({
+      const response = await api.document.restore.archive.$patch({
         json: json,
       });
       return await response.json();

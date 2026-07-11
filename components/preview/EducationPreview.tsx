@@ -2,6 +2,7 @@ import React, { FC } from "react";
 import SkeletonLoader from "@/components/skeleton-loader";
 import { INITIAL_THEME_COLOR } from "@/lib/helper";
 import { ResumeDataType } from "@/types/resume.type";
+import { sanitizeResumeHtml } from "@/lib/sanitize-html";
 
 interface PropsType {
   resumeInfo: ResumeDataType | undefined;
@@ -51,7 +52,13 @@ const EducationPreview: FC<PropsType> = ({ resumeInfo, isLoading }) => {
                 {education?.endDate}
               </span>
             </div>
-            <p className="text-[13px] my-2">{education?.description}</p>
+            <div
+              style={{ fontSize: "13px" }}
+              className="text-[13px] my-2 leading-[14.6px]"
+              dangerouslySetInnerHTML={{
+                __html: sanitizeResumeHtml(education?.description),
+              }}
+            />
           </div>
         ))}
       </div>

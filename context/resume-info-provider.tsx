@@ -23,7 +23,7 @@ export const ResumeInfoProvider: FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const param = useParams();
-  const documentId = param.documentId as string;
+  const documentId = param?.documentId as string;
 
   const { data, isSuccess, isLoading, isError, refetch } =
     useGetDocument(documentId);

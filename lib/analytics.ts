@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { analyticsEventTable, documentTable } from "@/db/schema";
+import { analyticsEventTable, documentTable, usageEventTable } from "@/db/schema";
 
 /* ------------------------------------------------------------------ */
 /*  Geo Detection with Fallback Chain & In-Memory LRU Cache          */
@@ -157,8 +157,31 @@ export const trackPortfolioEvent = async ({
     userAgent,
     device: getDevice(userAgent),
     country: geo.country === "Unknown" ? null : geo.country,
-    durationSeconds: durationSeconds ?? null,
   });
+
+  // Track recruiter telemetry for A/B testing
+  try {
+    const isExposure = eventType === "view";
+    const isConversion = eventType === "download" || eventType === "lead";
+
+    if (isExposure || isConversion) {
+      const variantName = doc.branchName || "Base";
+      await db.insert(usageEventTable).values({
+        userId: doc.userId,
+        featureId: `ab:${doc.documentId}`,
+        action: isExposure ? "exposure" : "conversion",
+        variant: variantName,
+        funnel: "resume_ab",
+        metadata: {
+          source: source || "portfolio",
+          device: getDevice(userAgent),
+          country: geo.country === "Unknown" ? null : geo.country,
+        },
+      });
+    }
+  } catch (err) {
+    console.error("Failed to track recruiter A/B test telemetry event:", err);
+  }
 
   const [aggregate] = await db
     .select({

@@ -72,7 +72,6 @@ const navItems = [
   { href: "/dashboard/culture-fit", label: "Culture Fit", icon: Building2 },
   { href: "/dashboard/offer-compare", label: "Offer Compare", icon: Scale },
   { href: "/dashboard/usage-metrics", label: "Usage Metrics", icon: Activity },
-  { href: "/dashboard/pricing", label: "Pricing", icon: Crown },
 ];
 
 /* ── Editor tool features (shown when on editor route) ── */
@@ -232,7 +231,7 @@ const AppSidebar = () => {
 
   useEffect(() => {
     setIsMounted(true);
-    setActivePath(pathname);
+    setActivePath(pathname || "");
     const check = () => setIsMobile(window.innerWidth < 1024);
     check();
     window.addEventListener("resize", check);
