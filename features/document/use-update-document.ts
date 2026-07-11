@@ -17,7 +17,7 @@ const useUpdateDocument = () => {
   const param = useParams();
   const queryClient = useQueryClient();
 
-  const documentId = param.documentId as string;
+  const documentId = param?.documentId as string;
 
   const mutation = useMutation<ResponseType, Error, RequestType>({
     mutationFn: async (json) => {

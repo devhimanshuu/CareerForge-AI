@@ -13,6 +13,7 @@
 
 import { ChatGroq } from "@langchain/groq";
 import { ChatOpenAI } from "@langchain/openai";
+import { Runnable } from "@langchain/core/runnables";
 
 // ── Groq (fallback) ──────────────────────────────────────────────────────────
 export const groqModel = new ChatGroq({
@@ -26,20 +27,21 @@ export const groqModel = new ChatGroq({
 const NVIDIA_MODEL = process.env.NVIDIA_KIMI_MODEL || "moonshotai/kimi-k2-instruct";
 const nvidiaPrimary = new ChatOpenAI({
   apiKey: process.env.NVIDIA_KIMI_KEY || "dummy",
-  openAIApiKey: process.env.NVIDIA_KIMI_KEY || "dummy",
   configuration: {
     baseURL: "https://integrate.api.nvidia.com/v1",
   },
-  modelName: NVIDIA_MODEL,
+  model: NVIDIA_MODEL,
   temperature: 0.4,
   maxTokens: 4096,
 });
 
 // ── Model with automatic fallback ────────────────────────────────────────────
-// Wrapper to support both regular chat completions and structured output
-// while handling the NVIDIA -> Groq fallback chain seamlessly.
-export const chatModel = {
-  invoke: async (input: any, options?: any) => {
+// Subclass Runnable to support both regular chat completions, streaming, structured output
+// and piping while handling the NVIDIA -> Groq fallback chain seamlessly.
+class FallbackChatModel extends Runnable<any, any> {
+  lc_namespace = ["langchain", "schema", "runnable"];
+
+  async invoke(input: any, options?: any) {
     const model =
       process.env.NVIDIA_KIMI_KEY && process.env.NVIDIA_KIMI_KEY !== "dummy"
         ? nvidiaPrimary.withFallbacks({
@@ -47,8 +49,19 @@ export const chatModel = {
           })
         : groqModel;
     return model.invoke(input, options);
-  },
-  withStructuredOutput: (schema: any, options?: any) => {
+  }
+
+  async stream(input: any, options?: any) {
+    const model =
+      process.env.NVIDIA_KIMI_KEY && process.env.NVIDIA_KIMI_KEY !== "dummy"
+        ? nvidiaPrimary.withFallbacks({
+            fallbacks: [groqModel],
+          })
+        : groqModel;
+    return model.stream(input, options);
+  }
+
+  withStructuredOutput(schema: any, options?: any) {
     if (process.env.NVIDIA_KIMI_KEY && process.env.NVIDIA_KIMI_KEY !== "dummy") {
       const primary = nvidiaPrimary.withStructuredOutput(schema, options);
       const fallback = groqModel.withStructuredOutput(schema, options);
@@ -57,8 +70,10 @@ export const chatModel = {
       });
     }
     return groqModel.withStructuredOutput(schema, options);
-  },
-} as any;
+  }
+}
+
+export const chatModel = new FallbackChatModel();
 
 // ── Groq-only model (for when we specifically need Groq, e.g. audio) ─────────
 export const groqOnly = groqModel;

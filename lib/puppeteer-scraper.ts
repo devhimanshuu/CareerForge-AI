@@ -86,10 +86,13 @@ export class JobScraper {
       "--window-size=1920,1080",
     ];
 
+    let headlessVal: any = true;
+
     if (isServerless) {
       const chromium = (await import("@sparticuz/chromium")).default;
       executablePath = await chromium.executablePath();
       args = [...chromium.args, ...args];
+      headlessVal = chromium.headless;
     } else {
       // Local dev: use system-installed Chrome / explicit path from env
       executablePath =
@@ -104,7 +107,7 @@ export class JobScraper {
     }
 
     this.browser = await puppeteer.launch({
-      headless: true,
+      headless: headlessVal,
       executablePath,
       args,
     });

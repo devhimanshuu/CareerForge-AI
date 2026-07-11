@@ -28,7 +28,8 @@ import DeveloperProof from "@/components/portfolio/DeveloperProof";
 
 
 const PublicPortfolio = () => {
-  const { slug } = useParams();
+  const params = useParams();
+  const slug = params?.slug as string | undefined;
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +83,42 @@ const PublicPortfolio = () => {
     };
   }, [data?.documentId]);
 
+  // Track recruiter reading depth using IntersectionObserver
+  useEffect(() => {
+    if (!data?.documentId) return;
+    
+    const trackedSections = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const sectionId = entry.target.id;
+            if (!trackedSections.has(sectionId)) {
+              trackedSections.add(sectionId);
+              fetch("/api/analytics/track", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  documentId: data.documentId,
+                  type: "click",
+                  source: `scroll_section_${sectionId}`,
+                }),
+              }).catch(() => {});
+            }
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+
+    const sections = document.querySelectorAll("section[id]");
+    sections.forEach((sec) => observer.observe(sec));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [data?.documentId]);
+
   if (loading) return <PortfolioSkeleton />;
   if (error || !data) return <PortfolioError message={error} />;
 
@@ -110,9 +147,24 @@ const PublicPortfolio = () => {
     }
   };
 
+  const handleSocialClick = async (platform: string) => {
+    try {
+      await fetch("/api/analytics/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: data.documentId,
+          type: "click",
+          source: `social_${platform}`,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to track social click:", err);
+    }
+  };
+
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
-    // show toast or feedback if possible, but for public page let's just copy
   };
 
   return (
@@ -286,6 +338,7 @@ const PublicPortfolio = () => {
                 <Button
                   variant="ghost"
                   className="justify-start gap-3 text-muted-foreground hover:text-white hover:bg-white/5"
+                  onClick={() => handleSocialClick("linkedin")}
                 >
                   <Linkedin size={18} />
                   LinkedIn Profile
@@ -294,6 +347,7 @@ const PublicPortfolio = () => {
                 <Button
                   variant="ghost"
                   className="justify-start gap-3 text-muted-foreground hover:text-white hover:bg-white/5"
+                  onClick={() => handleSocialClick("website")}
                 >
                   <Globe size={18} />
                   Personal Website
