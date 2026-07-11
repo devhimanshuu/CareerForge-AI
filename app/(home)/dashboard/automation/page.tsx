@@ -841,7 +841,7 @@ const AutomationHub = () => {
                         </div>
                       )}
                       <div className="flex gap-2">
-                        {pkg.status === "drafted" && <Button onClick={() => updatePackageStatus(pkg.id, "reviewed")} size="sm" className="gap-1 text-[10px] font-bold bg-emerald-600 text-white hover:bg-emerald-700"><Check size={12} /> Mark Reviewed</Button>}
+                        {(pkg.status === "drafted" || pkg.status === "tailored") && <Button onClick={() => updatePackageStatus(pkg.id, "reviewed")} size="sm" className="gap-1 text-[10px] font-bold bg-emerald-600 text-white hover:bg-emerald-700"><Check size={12} /> Mark Reviewed</Button>}
                         {pkg.status === "reviewed" && <Button onClick={() => updatePackageStatus(pkg.id, "applied")} size="sm" className="gap-1 text-[10px] font-bold bg-indigo-600 text-white hover:bg-indigo-700"><Check size={12} /> Mark Applied</Button>}
                         {pkg.status !== "rejected" && <Button onClick={() => updatePackageStatus(pkg.id, "rejected")} size="sm" variant="outline" className="gap-1 text-[10px] font-bold text-rose-500"><X size={12} /> Reject</Button>}
                       </div>

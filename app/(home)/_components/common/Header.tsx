@@ -67,6 +67,7 @@ const Header = () => {
   const { setTheme } = useTheme();
   const { user, isLoaded } = useUser();
   const pathname = usePathname();
+  const currentPath = pathname || "";
   const [agentAlerts, setAgentAlerts] = useState(0);
 
   useEffect(() => {
@@ -117,8 +118,8 @@ const Header = () => {
           <nav className="hidden md:flex items-center gap-0.5 overflow-x-auto min-w-0 scrollbar-none py-1">
             {navItems.map((item) => {
               const isActive =
-                pathname === item.href ||
-                (item.href !== "/dashboard" && pathname?.startsWith(item.href));
+                currentPath === item.href ||
+                (item.href !== "/dashboard" && currentPath.startsWith(item.href));
               const Icon = item.icon;
               return (
                 <Link

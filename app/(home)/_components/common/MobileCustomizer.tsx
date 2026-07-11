@@ -51,6 +51,7 @@ import { useResumeContext, ResumeInfoContext } from "@/context/resume-info-provi
 
 const MobileCustomizer = () => {
   const pathname = usePathname();
+  const currentPath = pathname || "";
   const context = React.useContext(ResumeInfoContext);
   const resumeInfo = context?.resumeInfo;
   const { setTheme } = useTheme();
@@ -64,7 +65,7 @@ const MobileCustomizer = () => {
   }, []);
 
   // Only show certain tools if we are on an edit page
-  const isEditPage = pathname.includes("/edit");
+  const isEditPage = currentPath.includes("/edit");
 
   if (!isMounted) {
     return null;
@@ -140,97 +141,97 @@ const MobileCustomizer = () => {
                     href="/dashboard"
                     icon={<LayoutDashboard size={16} />}
                     label="Dashboard"
-                    active={pathname === "/dashboard"}
+                    active={currentPath === "/dashboard"}
                   />
                   <MobileNavItem
                     href="/dashboard/applications"
                     icon={<Briefcase size={16} />}
                     label="Job Tracker"
-                    active={pathname === "/dashboard/applications" || pathname?.startsWith("/dashboard/applications")}
+                    active={currentPath === "/dashboard/applications" || currentPath.startsWith("/dashboard/applications")}
                   />
                   <MobileNavItem
                     href="/dashboard/interview"
                     icon={<Mic size={16} />}
                     label="Interview Lab"
-                    active={pathname === "/dashboard/interview" || pathname?.startsWith("/dashboard/interview") || pathname === "/dashboard/interview-coach"}
+                    active={currentPath === "/dashboard/interview" || currentPath.startsWith("/dashboard/interview") || currentPath === "/dashboard/interview-coach"}
                   />
                   <MobileNavItem
                     href="/dashboard/market"
                     icon={<Globe size={16} />}
                     label="Market Data"
-                    active={pathname === "/dashboard/market" || pathname?.startsWith("/dashboard/market")}
+                    active={currentPath === "/dashboard/market" || currentPath.startsWith("/dashboard/market")}
                   />
                   <MobileNavItem
                     href="/dashboard/roadmap"
                     icon={<Map size={16} />}
                     label="Roadmap"
-                    active={pathname === "/dashboard/roadmap" || pathname?.startsWith("/dashboard/roadmap")}
+                    active={currentPath === "/dashboard/roadmap" || currentPath.startsWith("/dashboard/roadmap")}
                   />
                   <MobileNavItem
                     href="/dashboard/analytics"
                     icon={<BarChart3 size={16} />}
                     label="Analytics"
-                    active={pathname === "/dashboard/analytics" || pathname?.startsWith("/dashboard/analytics")}
+                    active={currentPath === "/dashboard/analytics" || currentPath.startsWith("/dashboard/analytics")}
                   />
                   <MobileNavItem
                     href="/dashboard/automation"
                     icon={<Bot size={16} />}
                     label="Agent Hub"
-                    active={pathname === "/dashboard/automation" || pathname?.startsWith("/dashboard/automation")}
+                    active={currentPath === "/dashboard/automation" || currentPath.startsWith("/dashboard/automation")}
                   />
                   <MobileNavItem
                     href="/dashboard/advisor"
                     icon={<Compass size={16} />}
                     label="Career Advisor"
-                    active={pathname === "/dashboard/advisor" || pathname?.startsWith("/dashboard/advisor")}
+                    active={currentPath === "/dashboard/advisor" || currentPath.startsWith("/dashboard/advisor")}
                   />
                   <MobileNavItem
                     href="/dashboard/linkedin-optimizer"
                     icon={<Linkedin size={16} />}
                     label="LinkedIn Optimizer"
-                    active={pathname === "/dashboard/linkedin-optimizer" || pathname?.startsWith("/dashboard/linkedin-optimizer")}
+                    active={currentPath === "/dashboard/linkedin-optimizer" || currentPath.startsWith("/dashboard/linkedin-optimizer")}
                   />
                   <MobileNavItem
                     href="/dashboard/salary-simulator"
                     icon={<DollarSign size={16} />}
                     label="Salary Simulator"
-                    active={pathname === "/dashboard/salary-simulator" || pathname?.startsWith("/dashboard/salary-simulator")}
+                    active={currentPath === "/dashboard/salary-simulator" || currentPath.startsWith("/dashboard/salary-simulator")}
                   />
                   <MobileNavItem
                     href="/dashboard/portfolio-settings"
                     icon={<Globe size={16} />}
                     label="Portfolio Sites"
-                    active={pathname === "/dashboard/portfolio-settings" || pathname?.startsWith("/dashboard/portfolio-settings")}
+                    active={currentPath === "/dashboard/portfolio-settings" || currentPath.startsWith("/dashboard/portfolio-settings")}
                   />
                   <MobileNavItem
                     href="/dashboard/ab-testing"
                     icon={<SplitSquareHorizontal size={16} />}
                     label="A/B Testing"
-                    active={pathname === "/dashboard/ab-testing" || pathname?.startsWith("/dashboard/ab-testing")}
+                    active={currentPath === "/dashboard/ab-testing" || currentPath.startsWith("/dashboard/ab-testing")}
                   />
                   <MobileNavItem
                     href="/dashboard/pipeline"
                     icon={<Workflow size={16} />}
                     label="Job Pipeline"
-                    active={pathname === "/dashboard/pipeline" || pathname?.startsWith("/dashboard/pipeline")}
+                    active={currentPath === "/dashboard/pipeline" || currentPath.startsWith("/dashboard/pipeline")}
                   />
                   <MobileNavItem
                     href="/dashboard/culture-fit"
                     icon={<Building2 size={16} />}
                     label="Culture Fit"
-                    active={pathname === "/dashboard/culture-fit" || pathname?.startsWith("/dashboard/culture-fit")}
+                    active={currentPath === "/dashboard/culture-fit" || currentPath.startsWith("/dashboard/culture-fit")}
                   />
                   <MobileNavItem
                     href="/dashboard/offer-compare"
                     icon={<Scale size={16} />}
                     label="Offer Compare"
-                    active={pathname === "/dashboard/offer-compare" || pathname?.startsWith("/dashboard/offer-compare")}
+                    active={currentPath === "/dashboard/offer-compare" || currentPath.startsWith("/dashboard/offer-compare")}
                   />
                   <MobileNavItem
                     href="/dashboard/usage-metrics"
                     icon={<Activity size={16} />}
                     label="Usage Metrics"
-                    active={pathname === "/dashboard/usage-metrics" || pathname?.startsWith("/dashboard/usage-metrics")}
+                    active={currentPath === "/dashboard/usage-metrics" || currentPath.startsWith("/dashboard/usage-metrics")}
                   />
                 </div>
               </div>

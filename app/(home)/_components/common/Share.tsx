@@ -35,7 +35,7 @@ import React, { useCallback, useState } from "react";
 
 const Share = () => {
   const param = useParams();
-  const documentId = param.documentId || "";
+  const documentId = (param?.documentId as string) || "";
 
   const { resumeInfo, onUpdate, isLoading } = useResumeContext();
   const { mutateAsync, isPending } = useUpdateDocument();
@@ -46,6 +46,14 @@ const Share = () => {
   const [slug, setSlug] = useState(resumeInfo?.slug || "");
   const [template, setTemplate] = useState(resumeInfo?.template || "modern");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sync state with dynamic resume context once loaded
+  React.useEffect(() => {
+    if (resumeInfo) {
+      setSlug(resumeInfo.slug || "");
+      setTemplate(resumeInfo.template || "modern");
+    }
+  }, [resumeInfo]);
 
   // Fallback to internal preview link if no slug is set, otherwise use the public portfolio link
   const publicUrl = resumeInfo?.slug
