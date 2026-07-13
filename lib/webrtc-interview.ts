@@ -61,17 +61,18 @@ export class InterviewSessionManager {
   }
 
   /**
-   * Start recording audio in chunks of `intervalMs` milliseconds.
-   * Each chunk is passed to the `onChunk` callback.
+   * Start recording audio with a timeslice so data is available incrementally.
+   * Chunks are accumulated and accessible via getFullRecording() after
+   * the async stopRecording() resolves.
    */
   startRecording(): void {
     if (!this.mediaStream) {
       throw new Error("No active media stream. Call startSession() first.");
     }
 
-    // If already recording, stop first
+    // If already recording, stop first (synchronously reset state)
     if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
-      this.mediaRecorder.stop();
+      try { this.mediaRecorder.stop(); } catch {}
     }
 
     this.chunks = [];
@@ -96,17 +97,46 @@ export class InterviewSessionManager {
       this.isRecordingActive = false;
     };
 
-    this.mediaRecorder.start();
+    // Use a timeslice (200ms) so ondataavailable fires periodically.
+    // This ensures getFullRecording() can combine the chunks even
+    // immediately after stopRecording() is called.
+    this.mediaRecorder.start(200);
   }
 
   /**
-   * Stop recording audio.
+   * Stop recording audio and return a Promise that resolves when
+   * the MediaRecorder has fully stopped and all chunks are collected.
    */
   stopRecording(): void {
     if (this.mediaRecorder && this.isRecordingActive) {
       this.mediaRecorder.stop();
       this.isRecordingActive = false;
     }
+  }
+
+  /**
+   * Async version of stopRecording(). Returns a Promise that resolves
+   * once the MediaRecorder's onstop event has fired, ensuring all
+   * audio chunks are collected before getFullRecording() is called.
+   */
+  stopRecordingAsync(): Promise<void> {
+    return new Promise((resolve) => {
+      if (!this.mediaRecorder || !this.isRecordingActive) {
+        resolve();
+        return;
+      }
+
+      const originalOnStop = this.mediaRecorder.onstop;
+      this.mediaRecorder.onstop = () => {
+        this.isRecordingActive = false;
+        if (originalOnStop) {
+          (originalOnStop as (this: MediaRecorder, ev: Event) => void).call(this.mediaRecorder!, new Event("stop"));
+        }
+        resolve();
+      };
+
+      this.mediaRecorder.stop();
+    });
   }
 
   /**
