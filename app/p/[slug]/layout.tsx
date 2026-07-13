@@ -1,15 +1,29 @@
 import { Metadata } from "next";
+import { db } from "@/db";
+import { documentTable } from "@/db/schema/document";
+import { and, eq } from "drizzle-orm";
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   try {
-    const url = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const response = await fetch(`${url}/api/document/public/slug/${params.slug}`, {
-      cache: "no-store"
+    if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
+      return {
+        title: "Portfolio",
+        description: "Personal Portfolio Website",
+      };
+    }
+
+    const documentData = await db.query.documentTable.findFirst({
+      where: and(
+        eq(documentTable.status, "public"),
+        eq(documentTable.slug, params.slug)
+      ),
+      with: {
+        personalInfo: true,
+      },
     });
-    const result = await response.json();
     
-    if (result.success && result.data) {
-      const { personalInfo, summary, analyticsId } = result.data;
+    if (documentData) {
+      const { personalInfo, summary } = documentData;
       const name = `${personalInfo?.firstName || ""} ${personalInfo?.lastName || ""}`.trim();
       const title = `${name} - ${personalInfo?.jobTitle || "Portfolio"}`;
       
@@ -21,8 +35,6 @@ export async function generateMetadata({ params }: { params: { slug: string } })
           description: summary || `Professional portfolio for ${name}`,
           type: "website",
         },
-        // We could also inject custom scripts via metadata or custom layout, 
-        // but Next.js usually injects GA via next/third-parties
       };
     }
   } catch (error) {
@@ -38,3 +50,4 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default function PortfolioLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
+
