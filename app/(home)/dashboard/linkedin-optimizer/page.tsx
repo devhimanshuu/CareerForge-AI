@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { PremiumPage, PremiumPageHeader, PremiumPanel } from "@/components/ui/premium-page";
-import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
@@ -80,7 +79,6 @@ export default function LinkedinOptimizer() {
 
   return (
     <PremiumPage>
-      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Profile Growth"
         title="LinkedIn Optimizer"
