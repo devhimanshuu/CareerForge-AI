@@ -753,9 +753,7 @@ You must output a structured JSON response matching the schema details.`,
       if (!sessionId) {
         return c.json({ error: "sessionId is required" }, 400);
       }
-      // Delete turns first (foreign key cascade should handle this, but be explicit)
-      await db.delete(interviewTurnTable).where(eq(interviewTurnTable.sessionId, sessionId));
-      // Delete the session
+      // Delete the session (turns cascade automatically via FK onDelete: cascade)
       await db.delete(interviewSessionTable).where(
         and(
           eq(interviewSessionTable.id, sessionId),

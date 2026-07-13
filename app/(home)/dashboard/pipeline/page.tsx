@@ -18,7 +18,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PremiumPage, PremiumPageHeader, PremiumPanel } from "@/components/ui/premium-page";
-import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import useGetDocuments from "@/features/document/use-get-document";
 import { toast } from "@/hooks/use-toast";
 
@@ -151,7 +150,6 @@ export default function PipelineDashboard() {
 
   return (
     <PremiumPage>
-      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Set & Forget"
         title="Job Pipeline"

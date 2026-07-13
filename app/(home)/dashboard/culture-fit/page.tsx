@@ -6,7 +6,6 @@ import {
   PremiumPageHeader,
   PremiumPanel,
 } from "@/components/ui/premium-page";
-import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -100,7 +99,6 @@ export default function CultureFitPage() {
 
   return (
     <PremiumPage>
-      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Culture Fit"
         title="Company Culture Fit Analyzer"

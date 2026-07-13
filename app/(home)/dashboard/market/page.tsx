@@ -5,12 +5,11 @@ import { Globe, TrendingUp, DollarSign, Briefcase, MapPin, ArrowUpRight, BarChar
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { PremiumPage, PremiumPageHeader, PremiumPanel, PremiumStatCard } from "@/components/ui/premium-page";
-import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import useGetDocuments from "@/features/document/use-get-document";
 import { toast } from "@/hooks/use-toast";
 
 const MarketData = () => {
-  const { data: resumeData, isLoading: isResumesLoading } = useGetDocuments();
+  const { data: resumeData } = useGetDocuments();
   const resumes = resumeData?.data || [];
 
   const [selectedResumeId, setSelectedResumeId] = useState("");
@@ -110,7 +109,6 @@ const MarketData = () => {
   };
 
   return (      <PremiumPage>
-      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Market Intelligence"
         title="Career Market Data"

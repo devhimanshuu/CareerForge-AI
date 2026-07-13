@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { PremiumPage, PremiumPageHeader, PremiumPanel } from "@/components/ui/premium-page";
-import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -121,7 +120,6 @@ export default function SalarySimulator() {
 
   return (
     <PremiumPage>
-      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Interview Prep"
         title="Salary Negotiation Simulator"

@@ -4,13 +4,12 @@ import React, { useState, useEffect } from "react";
 import { Flag, Sparkles, Target, Star, ChevronRight, Briefcase, GraduationCap, Map, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PremiumPage, PremiumPageHeader, PremiumPanel } from "@/components/ui/premium-page";
-import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import useGetDocuments from "@/features/document/use-get-document";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 
 const CareerRoadmap = () => {
-  const { data: resumeData, isLoading: isResumesLoading } = useGetDocuments();
+  const { data: resumeData } = useGetDocuments();
   const resumes = resumeData?.data || [];
 
   const [selectedResumeId, setSelectedResumeId] = useState("");
@@ -111,7 +110,6 @@ const CareerRoadmap = () => {
   };
 
   return (      <PremiumPage>
-      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Trajectory Planner"
         title="Career Roadmap"

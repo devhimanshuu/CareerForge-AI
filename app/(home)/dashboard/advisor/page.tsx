@@ -15,7 +15,6 @@ import {
   Award,
 } from "lucide-react";
 import { PremiumPage, PremiumPageHeader, PremiumPanel } from "@/components/ui/premium-page";
-import { ApiKeyBanner } from "@/components/ui/api-key-banner";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -48,7 +47,6 @@ export default function AdvisorDashboard() {
   if (loading) {
     return (
     <PremiumPage>
-      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Daily Feed"
         title="AI Career Advisor"
@@ -70,7 +68,6 @@ export default function AdvisorDashboard() {
 
   return (
     <PremiumPage>
-      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Daily Discover Feed"
         title="AI Career Advisor"

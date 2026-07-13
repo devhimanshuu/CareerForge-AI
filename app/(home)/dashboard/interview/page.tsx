@@ -1,25 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React from "react";
 import {
   Mic,
-  Video,
-  Sparkles,
-  Trophy,
-  MessageSquare,
   Play,
-  Gauge,
-  ClipboardCheck,
-  StopCircle,
   Loader2,
-  HelpCircle,
   Volume2,
-  VolumeX,
   RefreshCw,
-  User,
-  CheckCircle,
-  ChevronRight,
-  AlertCircle,
   Radio,
   MessageCircle,
   Link as LinkIcon,
@@ -30,9 +17,6 @@ import {
   Clock,
   X,
   ExternalLink,
-  Trash2,
-  AlertTriangle,
-  Keyboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,1482 +32,133 @@ import {
   PremiumPage,
   PremiumPageHeader,
   PremiumPanel,
-  PremiumStatCard,
 } from "@/components/ui/premium-page";
-import { ApiKeyBanner } from "@/components/ui/api-key-banner";
-import { toast } from "@/hooks/use-toast";
-import useGetDocuments from "@/features/document/use-get-document";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import VoiceStudio, {
-  createElevenLabsAudio,
-  defaultVoiceStudioConfig,
-  VoiceStudioConfig,
-} from "@/components/audio/VoiceStudio";
-import AudioVisualizer from "@/components/audio/AudioVisualizer";
-import VideoPanel from "@/components/interview/VideoPanel";
-import LiveTranscript, { TranscriptEntry } from "@/components/interview/LiveTranscript";
-import {
-  InterviewSessionManager,
-  createSilenceDetector,
-} from "@/lib/webrtc-interview";
+import VoiceStudio from "@/components/audio/VoiceStudio";
+import { useInterviewLab } from "@/hooks/use-interview-lab";
 import { PastSessions } from "./_components/PastSessions";
 import { ConfigSelect } from "./_components/ConfigSelect";
 import { ShortcutsPanel } from "./_components/ShortcutsPanel";
-
-type InterviewMode = "turn-based" | "live";
-
-interface Message {
-  role: "assistant" | "user";
-  content: string;
-}
+import { StatsBanner } from "./_components/StatsBanner";
+import { TurnBasedInterviewPanel } from "./_components/TurnBasedInterviewPanel";
+import { LiveInterviewPanel } from "./_components/LiveInterviewPanel";
+import { FeedbackPanel } from "./_components/FeedbackPanel";
+import { DeleteSessionModal } from "./_components/DeleteSessionModal";
 
 const InterviewLab = () => {
-  // Resumes list
-  const { data: resumeData, isLoading: isResumesLoading } = useGetDocuments();
-  const resumes = resumeData?.data || [];
-
-  // Setup state
-  const [selectedResumeId, setSelectedResumeId] = useState("");
-  const [targetRole, setTargetRole] = useState("");
-  const [jobDescription, setJobDescription] = useState("");
-  const [jobUrl, setJobUrl] = useState("");
-  const [isFetchingJob, setIsFetchingJob] = useState(false);
-  const [jobFetched, setJobFetched] = useState(false);
-  const [recentJobs, setRecentJobs] = useState<Array<{ url: string; title: string; company: string; timestamp: number }>>([]);
-  const [showRecentJobs, setShowRecentJobs] = useState(false);
-  const recentJobsRef = useRef<HTMLDivElement>(null);
-  const shortcutsRef = useRef<HTMLDivElement>(null);
-  const [selectedResumeInfo, setSelectedResumeInfo] = useState<any>(null);
-  const [interviewConfig, setInterviewConfig] = useState({
-    interviewType: "mixed",
-    difficulty: "adaptive",
-    feedbackStyle: "supportive",
-    questionCount: 4,
-  });
-
-  // Mode state
-  const [interviewMode, setInterviewMode] = useState<InterviewMode>("turn-based");
-
-  // Dropdown state for setup panels (accordion: only one open at a time)
-  const [designOpen, setDesignOpen] = useState(true);
-  const [voiceOpen, setVoiceOpen] = useState(false);
-
-  // Session state
-  const [step, setStep] = useState<"setup" | "interviewing" | "feedback">("setup");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState("");
-  const [userAnswer, setUserAnswer] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  // Audio recording state
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [transcribing, setTranscribing] = useState(false);
-  const audioChunks = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Final evaluation state
-  const [evaluation, setEvaluation] = useState<any>(null);
-
-  // Recruiter voice synthesis
-  const [isMuted, setIsMuted] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceConfig, setVoiceConfig] = useState<VoiceStudioConfig>(defaultVoiceStudioConfig);
-  const recruiterAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  // ─── Interview History State ────────────────────────────────────
-  const [pastSessions, setPastSessions] = useState<any[]>([]);
-  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
-  const [sessionToDelete, setSessionToDelete] = useState<any>(null);
-  const [isDeletingSession, setIsDeletingSession] = useState(false);
-  const [showShortcuts, setShowShortcuts] = useState(false);
-  const [canScrollUp, setCanScrollUp] = useState(false);
-  const [canScrollDown, setCanScrollDown] = useState(false);
-
-  // ─── Live Mode State ────────────────────────────────────────────
-  const [isLiveSession, setIsLiveSession] = useState(false);
-  const [liveMediaStream, setLiveMediaStream] = useState<MediaStream | null>(null);
-  const [isVideoOff, setIsVideoOff] = useState(false);
-  const [isLiveMuted, setIsLiveMuted] = useState(false);
-  const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
-  const [isLiveListening, setIsLiveListening] = useState(false);
-  const [isProcessingAnswer, setIsProcessingAnswer] = useState(false);
-  const [liveUserAudioLevel, setLiveUserAudioLevel] = useState(0);
-  const [liveAIAudioLevel, setLiveAIAudioLevel] = useState(0);
-  const [videoPanelState, setVideoPanelState] = useState<"idle" | "active" | "speaking">("idle");
-
-  const sessionManagerRef = useRef<InterviewSessionManager | null>(null);
-  const silenceDetectorRef = useRef<ReturnType<typeof createSilenceDetector> | null>(null);
-  const livePollingRef = useRef<NodeJS.Timeout | null>(null);
-  const isProcessingAnswerRef = useRef(false);
-  const hasSpokenRef = useRef(false);
-  const liveTTSAudioRef = useRef<HTMLAudioElement | null>(null);
-  const isAISpeakingRef = useRef(false);
-  const isCleaningUpRef = useRef(false);
-  const sendLiveToAIRef = useRef<((msgs: Message[]) => Promise<void>) | null>(null);
-  const messagesRef = useRef<Message[]>([]);
-  const targetRoleRef = useRef(targetRole);
-  const selectedResumeInfoRef = useRef(selectedResumeInfo);
-  const jobDescriptionRef = useRef(jobDescription);
-  const interviewConfigRef = useRef(interviewConfig);
-
-  // Refs for keyboard shortcut handlers to avoid stale closures
-  const handleEndSessionRef = useRef<(() => void) | null>(null);
-  const handleTurnBasedEndSessionRef = useRef<(() => void) | null>(null);
-  const handleSubmitAnswerRef = useRef<(() => void) | null>(null);
-  const handleResetRef = useRef<(() => void) | null>(null);
-  const sessionLogsRef = useRef<HTMLDivElement>(null);
-
-  // Keep refs in sync with latest state
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
-  useEffect(() => { targetRoleRef.current = targetRole; }, [targetRole]);
-  useEffect(() => { selectedResumeInfoRef.current = selectedResumeInfo; }, [selectedResumeInfo]);
-  useEffect(() => { jobDescriptionRef.current = jobDescription; }, [jobDescription]);
-  useEffect(() => { interviewConfigRef.current = interviewConfig; }, [interviewConfig]);
-
-  // Browser Speech Recognition refs for fallback
-  const recognitionRef = useRef<any>(null);
-  const localTranscriptRef = useRef<string>("");
-  const cancelCurrentTTS = useRef<(() => void) | null>(null);
-
-  const startLocalSpeechRecognition = useCallback(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.abort();
-      } catch (err) {}
-    }
-
-    localTranscriptRef.current = "";
-    const rec = new SpeechRecognition();
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = "en-US";
-
-    rec.onresult = (event: any) => {
-      let finalTranscript = "";
-      let interimTranscript = "";
-      for (let i = 0; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
-        }
-      }
-      localTranscriptRef.current = (finalTranscript + " " + interimTranscript).trim();
-    };
-
-    rec.onerror = (event: any) => {
-      console.warn("Local speech recognition error:", event.error);
-    };
-
-    try {
-      rec.start();
-      recognitionRef.current = rec;
-    } catch (err) {
-      console.error("Failed to start local SpeechRecognition:", err);
-    }
-  }, []);
-
-  const stopLocalSpeechRecognition = useCallback(() => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (err) {}
-      recognitionRef.current = null;
-    }
-  }, []);
-
-  // Load recent jobs from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("careerforge_recent_jobs");
-      if (stored) {
-        setRecentJobs(JSON.parse(stored));
-      }
-    } catch {
-      // Ignore parse errors
-    }
-  }, []);
-
-  // Fetch past interview sessions on mount
-  useEffect(() => {
-    const fetchSessions = async () => {
-      setIsLoadingSessions(true);
-      try {
-        const res = await fetch("/api/ai/interview-sessions");
-        const data = await res.json();
-        if (data.success) {
-          setPastSessions(data.sessions || []);
-        }
-      } catch {
-        // Ignore errors silently
-      } finally {
-        setIsLoadingSessions(false);
-      }
-    };
-    fetchSessions();
-  }, []);
-
-  // Close recent jobs dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (recentJobsRef.current && !recentJobsRef.current.contains(event.target as Node)) {
-        setShowRecentJobs(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // ─── Update scroll indicators visibility ────────────────
-  useEffect(() => {
-    const container = sessionLogsRef.current;
-    if (!container) return;
-    const update = () => {
-      setCanScrollUp(container.scrollTop > 4);
-      setCanScrollDown(container.scrollTop < container.scrollHeight - container.clientHeight - 4);
-    };
-    update();
-    container.addEventListener("scroll", update, { passive: true });
-    return () => container.removeEventListener("scroll", update);
-  }, []);
-
-  // Close shortcuts panel when clicking outside or pressing Escape
-  useEffect(() => {
-    if (!showShortcuts) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      if (shortcutsRef.current && !shortcutsRef.current.contains(event.target as Node)) {
-        setShowShortcuts(false);
-      }
-    };
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setShowShortcuts(false);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [showShortcuts]);
-
-  const voiceState = loading
-    ? "thinking"
-    : isRecording || transcribing
-      ? "listening"
-      : isSpeaking
-        ? "speaking"
-        : "idle";
-
-  // ─── Existing TTS Effect (turn-based) ──────────────────────────
-  useEffect(() => {
-    if (!currentQuestion || isMuted || typeof window === "undefined" || step !== "interviewing") return;
-    if (interviewMode === "live") return; // Live mode has its own TTS
-
-    window.speechSynthesis.cancel();
-    recruiterAudioRef.current?.pause();
-    let objectUrl = "";
-    let cancelled = false;
-
-    const speak = async () => {
-      setIsSpeaking(true);
-      try {
-        objectUrl = await createElevenLabsAudio(currentQuestion, voiceConfig);
-        const audio = new Audio(objectUrl);
-        recruiterAudioRef.current = audio;
-        audio.onended = () => !cancelled && setIsSpeaking(false);
-        audio.onerror = () => !cancelled && setIsSpeaking(false);
-        await audio.play();
-      } catch {
-        const utterance = new SpeechSynthesisUtterance(currentQuestion);
-        utterance.rate = voiceConfig.speed;
-        utterance.onend = () => !cancelled && setIsSpeaking(false);
-        utterance.onerror = () => !cancelled && setIsSpeaking(false);
-        window.speechSynthesis.speak(utterance);
-      }
-    };
-    speak();
-
-    return () => {
-      cancelled = true;
-      setIsSpeaking(false);
-      recruiterAudioRef.current?.pause();
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      window.speechSynthesis.cancel();
-    };
-  }, [currentQuestion, isMuted, step, voiceConfig, interviewMode]);
-
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined") {
-        recruiterAudioRef.current?.pause();
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (step === "feedback" || step === "setup") {
-      if (typeof window !== "undefined") {
-        window.speechSynthesis.cancel();
-        recruiterAudioRef.current?.pause();
-      }
-    }
-  }, [step]);
-
-  // Pre-populate target role when resume is selected
-  useEffect(() => {
-    if (!selectedResumeId) return;
-
-    const fetchResumeDetail = async () => {
-      try {
-        const res = await fetch(`/api/document/${selectedResumeId}`);
-        const json = await res.json();
-        if (json.success) {
-          setSelectedResumeInfo(json.data);
-          if (json.data.personalInfo?.jobTitle) {
-            setTargetRole(json.data.personalInfo.jobTitle);
-          }
-        }
-      } catch (e) {
-        console.error("Failed to load resume details:", e);
-      }
-    };
-
-    fetchResumeDetail();
-  }, [selectedResumeId]);
-
-  // Audio timer
-  useEffect(() => {
-    if (isRecording) {
-      timerRef.current = setInterval(() => {
-        setRecordingTime((t) => t + 1);
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-      setRecordingTime(0);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isRecording]);
-
-  // ─── Cleanup on unmount ────────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      cleanupLiveSession();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ─── Live Mode: Audio Level Polling ────────────────────────────
-  useEffect(() => {
-    if (!isLiveSession || step !== "interviewing") return;      const pollAudioLevel = () => {
-      const manager = sessionManagerRef.current;
-      if (!manager) return;
-
-      const level = manager.getAudioLevel();
-      setLiveUserAudioLevel(level);
-
-      // Track if user has spoken at all (skip when AI is speaking)
-      if (level > 0.1 && !isAISpeakingRef.current) {
-        hasSpokenRef.current = true;
-        setVideoPanelState("speaking");
-      } else if (isLiveSession && !isAISpeakingRef.current) {
-        setVideoPanelState("active");
-      }
-
-      // Silence detection — skip when AI is speaking or already processing
-      if (silenceDetectorRef.current && !isProcessingAnswerRef.current && !isAISpeakingRef.current) {
-        const silenceDetected = silenceDetectorRef.current.check(level);
-        if (silenceDetected && hasSpokenRef.current) {
-          handleLiveAnswerComplete();
-        }
-      }
-    };
-
-    livePollingRef.current = setInterval(pollAudioLevel, 150);
-
-    return () => {
-      if (livePollingRef.current) {
-        clearInterval(livePollingRef.current);
-        livePollingRef.current = null;
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLiveSession, step]);
-
-  // ─── Live Mode: Helper to restart recording for next answer ──────
-  const restartRecordingForNextAnswer = useCallback(() => {
-    hasSpokenRef.current = false;
-    const mgr = sessionManagerRef.current;
-    if (mgr && !isCleaningUpRef.current) {
-      try {
-        mgr.startRecording();
-        startLocalSpeechRecognition();
-      } catch (err) {
-        console.error("Failed to restart recording:", err);
-      }
-    }
-  }, [startLocalSpeechRecognition]);
-
-  // ─── Live Mode: Cleanup ───────────────────────────────────────
-  const cleanupLiveSession = useCallback(() => {
-    // Guard against double-cleanup
-    if (isCleaningUpRef.current) return;
-    isCleaningUpRef.current = true;
-
-    sessionManagerRef.current?.cleanup();
-    sessionManagerRef.current = null;
-    silenceDetectorRef.current = null;
-    isProcessingAnswerRef.current = false;
-    hasSpokenRef.current = false;
-    stopLocalSpeechRecognition();
-
-    if (cancelCurrentTTS.current) {
-      cancelCurrentTTS.current();
-      cancelCurrentTTS.current = null;
-    }
-
-    if (livePollingRef.current) {
-      clearInterval(livePollingRef.current);
-      livePollingRef.current = null;
-    }
-
-    liveTTSAudioRef.current?.pause();
-    liveTTSAudioRef.current = null;
-
-    if (typeof window !== "undefined") {
-      window.speechSynthesis.cancel();
-    }
-
-    setLiveMediaStream(null);
-    setIsLiveSession(false);
-    setVideoPanelState("idle");
-    setLiveUserAudioLevel(0);
-    setLiveAIAudioLevel(0);
-    setIsLiveListening(false);
-  }, [stopLocalSpeechRecognition]);
-
-  // ─── Live Mode: TTS for AI responses ──────────────────────────
-  const speakLiveResponse = useCallback(
-    async (text: string) => {
-      if (isLiveMuted || typeof window === "undefined") {
-        // Even when muted, restart recording for next answer
-        restartRecordingForNextAnswer();
-        return;
-      }
-
-      if (cancelCurrentTTS.current) {
-        cancelCurrentTTS.current();
-      }
-
-      window.speechSynthesis.cancel();
-      liveTTSAudioRef.current?.pause();
-
-      let objectUrl = "";
-      let localCancelled = false;
-
-      cancelCurrentTTS.current = () => {
-        localCancelled = true;
-        if (objectUrl) {
-          try {
-            URL.revokeObjectURL(objectUrl);
-          } catch (e) {}
-        }
-      };
-
-      setVideoPanelState("idle");
-      isAISpeakingRef.current = true;
-
-      try {
-        // Try ElevenLabs first
-        objectUrl = await createElevenLabsAudio(text, voiceConfig);
-        if (localCancelled) return;
-
-        const audio = new Audio(objectUrl);
-        liveTTSAudioRef.current = audio;
-
-        // Track AI audio level for visualizer
-        audio.onplay = () => {
-          if (!localCancelled) {
-            setVideoPanelState("idle");
-            setLiveAIAudioLevel(0.7);
-          }
-        };
-        audio.onended = () => {
-          if (!localCancelled) {
-            setLiveAIAudioLevel(0);
-            setVideoPanelState("active");
-            isAISpeakingRef.current = false;
-            silenceDetectorRef.current?.reset();
-            setIsLiveListening(true);
-            restartRecordingForNextAnswer();
-          }
-        };
-        audio.onerror = () => {
-          if (!localCancelled) {
-            setLiveAIAudioLevel(0);
-            setVideoPanelState("active");
-            isAISpeakingRef.current = false;
-            silenceDetectorRef.current?.reset();
-            setIsLiveListening(true);
-            restartRecordingForNextAnswer();
-          }
-        };
-
-        await audio.play();
-      } catch {
-        if (localCancelled) return;
-        // Fallback to browser TTS
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = voiceConfig.speed;
-
-        utterance.onstart = () => {
-          if (!localCancelled) {
-            setLiveAIAudioLevel(0.7);
-          }
-        };
-        utterance.onend = () => {
-          if (!localCancelled) {
-            setLiveAIAudioLevel(0);
-            setVideoPanelState("active");
-            isAISpeakingRef.current = false;
-            silenceDetectorRef.current?.reset();
-            setIsLiveListening(true);
-            restartRecordingForNextAnswer();
-          }
-        };
-        utterance.onerror = () => {
-          if (!localCancelled) {
-            setLiveAIAudioLevel(0);
-            setVideoPanelState("active");
-            isAISpeakingRef.current = false;
-            silenceDetectorRef.current?.reset();
-            setIsLiveListening(true);
-            restartRecordingForNextAnswer();
-          }
-        };
-
-        window.speechSynthesis.speak(utterance);
-      }
-    },
-    [isLiveMuted, voiceConfig, restartRecordingForNextAnswer],
-  );
-
-  // ─── Live Mode: Transcribe accumulated audio and send to AI ──────
-  const handleLiveAnswerComplete = useCallback(async () => {
-    if (isProcessingAnswerRef.current) return;
-
-    const manager = sessionManagerRef.current;
-    if (!manager) return;
-
-    isProcessingAnswerRef.current = true;
-    setIsProcessingAnswer(true);
-    silenceDetectorRef.current?.reset();
-    hasSpokenRef.current = false;
-    setIsLiveListening(false);
-    setVideoPanelState("idle");
-
-    try {
-      // Stop recording and get full audio
-      manager.stopRecording();
-      stopLocalSpeechRecognition();
-      const fullRecording = manager.getFullRecording();
-
-      let answerText = "";
-
-      // Transcribe the complete audio blob (has proper headers)
-      if (fullRecording && fullRecording.size > 500) {
-        const currentTargetRole = targetRoleRef.current;
-        const currentSkills = selectedResumeInfoRef.current?.skills || [];
-        const keyterms = [currentTargetRole, ...currentSkills.map((s: any) => s.name)]
-          .filter(Boolean)
-          .join(",");
-
-        try {
-          const result = await manager.transcribeChunk(fullRecording, keyterms);
-          if (result.success && result.text.trim()) {
-            answerText = result.text.trim();
-          }
-        } catch (err) {
-          console.error("Transcription failed:", err);
-        }
-      }
-
-      // Fallback to client-side SpeechRecognition if server fetch failed or returned empty
-      if (!answerText && localTranscriptRef.current.trim()) {
-        answerText = localTranscriptRef.current.trim();
-        toast({
-          title: "Speech Recognition Fallback",
-          description: "Server transcription failed. Used browser native speech recognition instead.",
-        });
-      }
-
-      if (!answerText) {
-        // No answer captured — restart recording and wait for user
-        isProcessingAnswerRef.current = false;
-        setIsProcessingAnswer(false);
-        setIsLiveListening(true);
-        restartRecordingForNextAnswer();
-        return;
-      }
-
-      // Add user entry to transcript
-      const userEntry: TranscriptEntry = {
-        id: `user-${Date.now()}`,
-        speaker: "user",
-        text: answerText,
-        timestamp: new Date(),
-      };
-      setTranscriptEntries((prev) => [...prev, userEntry]);
-
-      // Update messages for AI context
-      const userMsg: Message = { role: "user", content: answerText };
-      const updatedMessages = [...messagesRef.current, userMsg];
-      setMessages(updatedMessages);
-      sendLiveToAIRef.current?.(updatedMessages);
-    } catch (err) {
-      console.error("Error in handleLiveAnswerComplete:", err);
-      isProcessingAnswerRef.current = false;
-      setIsProcessingAnswer(false);
-      setIsLiveListening(true);
-      restartRecordingForNextAnswer();
-    }
-  }, [restartRecordingForNextAnswer, stopLocalSpeechRecognition]);
-
-  // ─── Save completed session to database ────────────────────────
-  const saveSessionToDb = useCallback(async (evalData: any, msgs: Message[]) => {
-    try {
-      const turns: { questionText: string; answerText?: string }[] = [];
-      for (let i = 0; i < msgs.length; i++) {
-        if (msgs[i].role === "assistant") {
-          const nextUser = msgs[i + 1];
-          turns.push({
-            questionText: msgs[i].content,
-            answerText: nextUser?.role === "user" ? nextUser.content : undefined,
-          });
-        }
-      }
-
-      await fetch("/api/ai/interview-sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          documentId: selectedResumeId || null,
-          targetRole,
-          jobDescription,
-          interviewType: interviewConfig.interviewType,
-          difficulty: interviewConfig.difficulty,
-          deliveryScore: evalData.deliveryScore,
-          contentScore: evalData.contentScore,
-          totalScore: Math.round((evalData.deliveryScore + evalData.contentScore) / 2),
-          evaluationData: {
-            findings: evalData.findings || [],
-            actionItems: evalData.actionItems || [],
-            summary: evalData.summary || "",
-          },
-          turns,
-        }),
-      });
-      // Refresh the history list
-      const res = await fetch("/api/ai/interview-sessions");
-      const data = await res.json();
-      if (data.success) setPastSessions(data.sessions || []);
-    } catch {
-      // Non-critical: don't show error to user
-    }
-  }, [selectedResumeId, targetRole, jobDescription, interviewConfig]);
-
-  // ─── Live Mode: End Session handler ─────────────────────────
-  const handleEndSession = useCallback(async () => {
-    if (loading) return;
-
-    // Stop recording
-    const manager = sessionManagerRef.current;
-    if (manager) {
-      try { manager.stopRecording(); } catch {}
-    }
-    silenceDetectorRef.current?.reset();
-    hasSpokenRef.current = false;
-    setIsLiveListening(false);
-    setVideoPanelState("idle");
-
-    if (messagesRef.current.length === 0) {
-      cleanupLiveSession();
-      setStep("setup");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const endMessages = [
-        ...messagesRef.current,
-        { role: "user" as const, content: "[END_SESSION] Please provide your final evaluation and scorecard now." },
-      ];
-
-      const res = await fetch("/api/ai/interview-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resumeData: selectedResumeInfoRef.current || {},
-          jobDescription: jobDescriptionRef.current,
-          targetRole: targetRoleRef.current,
-          messages: endMessages,
-          config: interviewConfigRef.current,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to get evaluation");
-      const data = await res.json();
-
-      if (data.type === "evaluation") {
-        setEvaluation(data);
-        setMessages(endMessages);
-        setStep("feedback");
-        saveSessionToDb(data, endMessages);
-        cleanupLiveSession();
-        toast({
-          title: "Session Completed!",
-          description: "Your interview is complete. View your scorecard below.",
-        });
-      } else if (data.type === "question") {
-        toast({
-          title: "Session Ending",
-          description: "The AI provided a follow-up. Please answer it or try ending again.",
-        });
-        const restoredMessages = [...endMessages, { role: "assistant" as const, content: data.text || "" }];
-        setMessages(restoredMessages);
-        messagesRef.current = restoredMessages;
-      } else {
-        cleanupLiveSession();
-        throw new Error(`Unexpected end-session response: ${JSON.stringify(data).slice(0, 200)}`);
-      }
-    } catch (e: any) {
-      console.error(e);
-      toast({
-        title: "Session Error",
-        description: e.message || "Failed to end session.",
-        variant: "destructive",
-      });
-      cleanupLiveSession();
-      setStep("setup");
-    } finally {
-      setLoading(false);
-    }
-  }, [loading, cleanupLiveSession, saveSessionToDb]);
-
-  // ─── Live Mode: Manual "Done Speaking" handler ─────────────────
-  const handleDoneSpeaking = useCallback(() => {
-    if (isProcessingAnswerRef.current) return;
-    if (!hasSpokenRef.current) {
-      toast({
-        title: "Nothing to submit",
-        description: "Please speak your answer before submitting.",
-        variant: "destructive",
-      });
-      return;
-    }
-    handleLiveAnswerComplete();
-  }, [handleLiveAnswerComplete]);
-
-  // ─── Live Mode: Send transcript to AI ─────────────────────────
-  const sendLiveToAI = useCallback(
-    async (currentMessages: Message[]) => {
-      setLoading(true);
-
-      try {
-        const res = await fetch("/api/ai/interview-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            resumeData: selectedResumeInfoRef.current || {},
-            jobDescription: jobDescriptionRef.current,
-            targetRole: targetRoleRef.current,
-            messages: currentMessages,
-            config: interviewConfigRef.current,
-          }),
-        });
-
-        if (!res.ok) throw new Error("Failed to get AI response");
-        const data = await res.json();
-
-        if (data.type === "question") {
-          setCurrentQuestion(data.text);
-          setMessages((prev) => [...prev, { role: "assistant", content: data.text }]);
-
-          const aiEntry: TranscriptEntry = {
-            id: `ai-${Date.now()}`,
-            speaker: "interviewer",
-            text: data.text,
-            timestamp: new Date(),
-          };
-          setTranscriptEntries((prev) => [...prev, aiEntry]);
-
-          // Speak the AI response
-          await speakLiveResponse(data.text);
-        } else if (data.type === "evaluation") {
-          setEvaluation(data);
-          setStep("feedback");
-          saveSessionToDb(data, currentMessages);
-          cleanupLiveSession();
-          toast({
-            title: "Session Completed!",
-            description: "Your interview is complete. View your scorecard below.",
-          });
-        } else {
-          throw new Error(`Unexpected AI response type: ${JSON.stringify(data).slice(0, 200)}`);
-        }
-      } catch (e: any) {
-        console.error(e);
-        toast({
-          title: "Session Error",
-          description: e.message || "Failed to get AI response. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-        isProcessingAnswerRef.current = false;
-        setIsProcessingAnswer(false);
-      }
-    },
-    [speakLiveResponse, cleanupLiveSession, saveSessionToDb],
-  );
-
-  // Keep the ref in sync with the latest sendLiveToAI
-  useEffect(() => {
-    sendLiveToAIRef.current = sendLiveToAI;
-  }, [sendLiveToAI]);
-
-  // ─── Live Mode: Start live session ────────────────────────────
-  const startLiveSession = useCallback(async () => {
-    if (!targetRole.trim()) {
-      toast({
-        title: "Setup Required",
-        description: "Please specify your target role.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    setMessages([]);
-    setUserAnswer("");
-    setEvaluation(null);
-    setTranscriptEntries([]);
-    isProcessingAnswerRef.current = false;
-    hasSpokenRef.current = false;
-    isCleaningUpRef.current = false;
-
-    try {
-      // Initialize WebRTC session
-      const manager = new InterviewSessionManager();
-      sessionManagerRef.current = manager;
-
-      const stream = await manager.startSession({ audio: true, video: true });
-      setLiveMediaStream(stream);
-      setIsLiveSession(true);
-      setVideoPanelState("active");
-
-      // Initialize silence detector
-      silenceDetectorRef.current = createSilenceDetector(0.08, 2000);
-
-      // Start continuous audio recording (batch transcription on silence/done)
-      manager.startRecording();
-      setIsLiveListening(true);
-
-      // Get the first question from AI
-      const res = await fetch("/api/ai/interview-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resumeData: selectedResumeInfo || {},
-          jobDescription,
-          targetRole,
-          messages: [],
-          config: interviewConfig,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to initialize session");
-      const data = await res.json();
-
-      if (data.type === "question") {
-        setCurrentQuestion(data.text);
-        setMessages([{ role: "assistant", content: data.text }]);
-        setStep("interviewing");
-
-        const aiEntry: TranscriptEntry = {
-          id: `ai-${Date.now()}`,
-          speaker: "interviewer",
-          text: data.text,
-          timestamp: new Date(),
-        };
-        setTranscriptEntries([aiEntry]);
-
-        // Speak the first question
-        setTimeout(() => speakLiveResponse(data.text), 500);
-      } else {
-        cleanupLiveSession();
-        throw new Error(`Unexpected API response: ${JSON.stringify(data).slice(0, 200)}`);
-      }
-    } catch (e: any) {
-      console.error(e);
-      let description = e.message || "Failed to start live interview.";
-      if (e.name === "NotAllowedError" || e.message?.includes("permission")) {
-        description = "Camera/microphone access was denied. Please allow permissions and try again.";
-      } else if (e.name === "NotFoundError") {
-        description = "No camera or microphone found. Please connect a device and try again.";
-      } else if (e.name === "NotReadableError") {
-        description = "Camera/microphone is already in use by another application.";
-      }
-      toast({
-        title: "Live Session Failed",
-        description,
-        variant: "destructive",
-      });
-      cleanupLiveSession();
-    } finally {
-      setLoading(false);
-    }
-  }, [targetRole, selectedResumeInfo, jobDescription, interviewConfig, speakLiveResponse, cleanupLiveSession]);
-
-  // ─── Existing: Turn-based session start ────────────────────────
-  const handleStartSession = async () => {
-    if (!targetRole.trim()) {
-      toast({
-        title: "Setup Required",
-        description: "Please specify your target role.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    setMessages([]);
-    setUserAnswer("");
-    setEvaluation(null);
-
-    try {
-      const res = await fetch("/api/ai/interview-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resumeData: selectedResumeInfo || {},
-          jobDescription,
-          targetRole,
-          messages: [],
-          config: interviewConfig,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to initialize session");
-      const data = await res.json();
-
-      if (data.type === "question") {
-        setCurrentQuestion(data.text);
-        setMessages([{ role: "assistant", content: data.text }]);
-        setStep("interviewing");
-      } else {
-        throw new Error(`Unexpected API response: ${JSON.stringify(data).slice(0, 200)}`);
-      }
-    } catch (e: any) {
-      console.error(e);
-      toast({
-        title: "Session Failed",
-        description: e.message || "Failed to start interview session. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ─── Existing: Submit answer (turn-based) ─────────────────────
-  const handleSubmitAnswer = async () => {
-    if (!userAnswer.trim()) {
-      toast({
-        title: "Answer Required",
-        description: "Please speak or type your answer before submitting.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    const userMsg: Message = { role: "user", content: userAnswer };
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
-    setUserAnswer("");
-
-    try {
-      const res = await fetch("/api/ai/interview-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resumeData: selectedResumeInfo || {},
-          jobDescription,
-          targetRole,
-          messages: updatedMessages,
-          config: interviewConfig,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to process answer");
-      const data = await res.json();
-
-      if (data.type === "question") {
-        setCurrentQuestion(data.text);
-        setMessages((prev) => [...prev, { role: "assistant", content: data.text }]);
-      } else if (data.type === "evaluation") {
-        setEvaluation(data);
-        setStep("feedback");
-        saveSessionToDb(data, updatedMessages);
-        toast({
-          title: "Session Completed!",
-          description: "Your interview is complete. View your scorecard below.",
-        });
-      } else {
-        throw new Error(`Unexpected AI response: ${JSON.stringify(data).slice(0, 200)}`);
-      }
-    } catch (e: any) {
-      console.error(e);
-      toast({
-        title: "Session Error",
-        description: e.message || "Failed to get AI response. Please try submitting again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Recording triggers (turn-based)
-  const startRecording = async () => {
-    audioChunks.current = [];
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunks.current.push(e.data);
-      };
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks.current, { type: "audio/wav" });
-        await transcribeAudio(audioBlob);
-      };
-      recorder.start(200);
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-      startLocalSpeechRecognition();
-    } catch (e) {
-      console.error(e);
-      toast({
-        title: "Microphone Access Failed",
-        description: "Could not access microphone. Please ensure permissions are granted.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-      mediaRecorder.stream.getTracks().forEach((track) => track.stop());
-      stopLocalSpeechRecognition();
-    }
-  };
-
-  const transcribeAudio = async (blob: Blob) => {
-    setTranscribing(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", blob, "answer.wav");
-      formData.append("keyterms", [
-        targetRole,
-        ...(selectedResumeInfo?.skills || []).map((skill: any) => skill.name),
-      ].filter(Boolean).join(","));
-
-      const response = await fetch("/api/audio/transcribe", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await response.json();
-      if (data.success && data.text) {
-        setUserAnswer((prev) => (prev ? prev + " " + data.text : data.text));
-      } else {
-        throw new Error(data.message || "Could not transcribe audio");
-      }
-    } catch (e: any) {
-      console.error(e);
-      if (localTranscriptRef.current.trim()) {
-        const fallbackText = localTranscriptRef.current.trim();
-        setUserAnswer((prev) => (prev ? prev + " " + fallbackText : fallbackText));
-        toast({
-          title: "Speech Recognition Fallback",
-          description: "Server transcription failed. Used browser native speech recognition instead.",
-        });
-      } else {
-        toast({
-          title: "Transcription Failed",
-          description: "Failed to transcribe audio. You can still type your answer instead.",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setTranscribing(false);
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  // Helper to count questions asked
-  const questionIndex = messages.filter((m) => m.role === "assistant").length;
-
-  // ─── Turn-based: End Session handler ────────────────────────
-  const handleTurnBasedEndSession = async () => {
-    if (loading) return;
-    if (messages.length === 0) {
-      setStep("setup");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const endMessages = [
-        ...messages,
-        { role: "user" as const, content: "[END_SESSION] Please provide your final evaluation and scorecard now." },
-      ];
-
-      const res = await fetch("/api/ai/interview-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resumeData: selectedResumeInfo || {},
-          jobDescription,
-          targetRole,
-          messages: endMessages,
-          config: interviewConfig,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to get evaluation");
-      const data = await res.json();
-
-      if (data.type === "evaluation") {
-        setEvaluation(data);
-        setMessages(endMessages);
-        setStep("feedback");
-        saveSessionToDb(data, endMessages);
-        toast({
-          title: "Session Completed!",
-          description: "Your interview is complete. View your scorecard below.",
-        });
-      } else if (data.type === "question") {
-        toast({
-          title: "Session Ending",
-          description: "The AI provided a follow-up. Please answer it or try ending again.",
-        });
-        setMessages([...endMessages, { role: "assistant" as const, content: data.text || "" }]);
-      } else {
-        throw new Error(`Unexpected end-session response: ${JSON.stringify(data).slice(0, 200)}`);
-      }
-    } catch (e: any) {
-      console.error(e);
-      toast({
-        title: "Session Error",
-        description: e.message || "Failed to end session.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ─── Keyboard Shortcuts ───────────────────────────────────
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (sessionToDelete) return;
-
-      const isMod = e.metaKey || e.ctrlKey;
-
-      // Escape → Close shortcuts panel or reset to setup
-      if (e.key === "Escape") {
-        if (showShortcuts) {
-          setShowShortcuts(false);
-          return;
-        }
-        if (step !== "setup") {
-          e.preventDefault();
-          handleResetRef.current?.();
-          return;
-        }
-      }
-
-      // Arrow Up/Down → Scroll session logs panel
-      if ((e.key === "ArrowUp" || e.key === "ArrowDown") && step === "interviewing" && !isMod) {
-        const target = e.target as HTMLElement;
-        // Don't intercept if user is in an input/textarea
-        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-        const container = sessionLogsRef.current;
-        if (container) {
-          e.preventDefault();
-          const scrollAmount = 60;
-          container.scrollBy({ top: e.key === "ArrowDown" ? scrollAmount : -scrollAmount, behavior: "smooth" });
-        }
-        return;
-      }
-
-      // Only active during the interviewing step for remaining shortcuts
-      if (step !== "interviewing") return;
-
-      // Cmd/Ctrl+Enter → End session (both modes)
-      if (isMod && e.key === "Enter") {
-        e.preventDefault();
-        if (interviewMode === "live") {
-          handleEndSessionRef.current?.();
-        } else {
-          handleTurnBasedEndSessionRef.current?.();
-        }
-        return;
-      }
-
-      // Enter (without Shift) → Submit answer (turn-based only)
-      // Shift+Enter is allowed for newlines in the textarea
-      if (e.key === "Enter" && !isMod && !e.shiftKey && interviewMode === "turn-based") {
-        const target = e.target as HTMLElement;
-        const isAnswerTextarea = target.tagName === "TEXTAREA" && target.closest(".space-y-3");
-        if (!isAnswerTextarea) return;
-
-        e.preventDefault();
-        handleSubmitAnswerRef.current?.();
-      }
-    };
-
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [step, interviewMode, sessionToDelete, showShortcuts]);
-
-  // Handle step reset
-  const handleReset = () => {
-    cleanupLiveSession();
-
-    if (mediaRecorder) {
-      try {
-        mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach((track) => track.stop());
-      } catch (err) {}
-      setMediaRecorder(null);
-      setIsRecording(false);
-    }
-
-    setStep("setup");
-    setMessages([]);
-    setCurrentQuestion("");
-    setUserAnswer("");
-    setEvaluation(null);
-    setJobUrl("");
-    setJobFetched(false);
-    setIsFetchingJob(false);
-    setShowRecentJobs(false);
-  };
-
-  // ─── Auto-fill job from URL ──────────────────────────────────
-  const handleAutoFillJob = async () => {
-    if (!jobUrl.trim()) return;
-    setIsFetchingJob(true);
-    try {
-      // Validate URL format
-      let parsedUrl: URL;
-      try {
-        parsedUrl = new URL(jobUrl.trim());
-      } catch {
-        throw new Error("Please enter a valid URL (e.g. https://linkedin.com/jobs/...)"
-        );
-      }
-      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-        throw new Error("Only http and https URLs are supported");
-      }
-
-      // Step 1: Fetch raw text from URL
-      const fetchRes = await fetch("/api/fetch-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: jobUrl.trim() }),
-      });
-      if (!fetchRes.ok) throw new Error("Failed to fetch URL content");
-      const fetchData = await fetchRes.json();
-      if (!fetchData.text) throw new Error("No content extracted from URL");
-
-      // Step 2: AI extract structured job details
-      const extractRes = await fetch("/api/ai/extract-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: fetchData.text }),
-      });
-      if (!extractRes.ok) throw new Error("Failed to extract job details");
-      const extractData = await extractRes.json();
-
-      // Step 3: Auto-fill form fields
-      if (extractData.jobTitle) setTargetRole(extractData.jobTitle);
-      if (extractData.jobDescription) setJobDescription(extractData.jobDescription);
-      setJobFetched(true);
-
-      // Step 4: Save to recent jobs
-      const newJob = {
-        url: jobUrl.trim(),
-        title: extractData.jobTitle || "Unknown Position",
-        company: extractData.company || "Unknown Company",
-        timestamp: Date.now(),
-      };
-      setRecentJobs((prev) => {
-        const filtered = prev.filter((j) => j.url !== newJob.url);
-        const updated = [newJob, ...filtered].slice(0, 10);
-        localStorage.setItem("careerforge_recent_jobs", JSON.stringify(updated));
-        return updated;
-      });
-
-      toast({
-        title: "Job Details Extracted",
-        description: extractData.company
-          ? `Auto-filled from ${extractData.company}${extractData.location ? ` (${extractData.location})` : ""}`
-          : "Job details have been auto-filled successfully.",
-      });
-    } catch (err: any) {
-      console.error(err);
-      toast({
-        title: "Extraction Failed",
-        description: err.message || "Could not extract job details. Try pasting the description manually.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsFetchingJob(false);
-    }
-  };
-
-  // Select a recent job to auto-fill
-  const handleSelectRecentJob = (job: { url: string; title: string; company: string }) => {
-    setJobUrl(job.url);
-    setTargetRole(job.title);
-    setJobFetched(false);
-    setShowRecentJobs(false);
-    toast({
-      title: "Job Selected",
-      description: `Loaded ${job.title} from ${job.company}`,
-    });
-  };
-
-  // Remove a recent job
-  const handleRemoveRecentJob = (url: string) => {
-    setRecentJobs((prev) => {
-      const updated = prev.filter((j) => j.url !== url);
-      localStorage.setItem("careerforge_recent_jobs", JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  // Clear all recent jobs
-  const handleClearRecentJobs = () => {
-    setRecentJobs([]);
-    localStorage.removeItem("careerforge_recent_jobs");
-  };
-
-  // ─── Delete a past session ──────────────────────────────────
-  const handleDeleteSession = async (sessionId: string) => {
-    setIsDeletingSession(true);
-    try {
-      const res = await fetch("/api/ai/interview-sessions", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setPastSessions((prev) => prev.filter((s) => s.id !== sessionId));
-        toast({
-          title: "Session Deleted",
-          description: "The interview session has been removed.",
-        });
-      } else {
-        throw new Error(data.error || "Failed to delete session");
-      }
-    } catch (e: any) {
-      toast({
-        title: "Delete Failed",
-        description: e.message || "Could not delete the session.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeletingSession(false);
-      setSessionToDelete(null);
-    }
-  };
-
-  // ─── Load a past session into the feedback view ────────────────
-  const handleLoadPastSession = (session: any) => {
-    // Reconstruct messages from turns
-    const reconstructedMessages: Message[] = [];
-    if (session.turns && session.turns.length > 0) {
-      for (const turn of session.turns) {
-        reconstructedMessages.push({ role: "assistant", content: turn.questionText });
-        if (turn.answerText) {
-          reconstructedMessages.push({ role: "user", content: turn.answerText });
-        }
-      }
-    }
-
-    // Reconstruct evaluation from DB fields + stored evaluationData
-    let evalData;
-    try {
-      const stored = session.evaluationData ? JSON.parse(session.evaluationData) : null;
-      evalData = {
-        type: "evaluation",
-        deliveryScore: session.deliveryScore ?? 0,
-        contentScore: session.contentScore ?? 0,
-        findings: stored?.findings || ["Session completed. Detailed findings were not saved for this session."],
-        actionItems: stored?.actionItems || ["Practice more mock interviews to generate detailed action items."],
-        summary: stored?.summary || `${session.targetRole} interview (${session.interviewType}, ${session.difficulty}). Delivered ${session.deliveryScore ?? 0}% on delivery and ${session.contentScore ?? 0}% on content across ${session.turns?.length ?? 0} turns.`,
-      };
-    } catch {
-      evalData = {
-        type: "evaluation",
-        deliveryScore: session.deliveryScore ?? 0,
-        contentScore: session.contentScore ?? 0,
-        findings: ["Session completed."],
-        actionItems: ["Practice more mock interviews."],
-        summary: `${session.targetRole} interview completed on ${new Date(session.createdAt).toLocaleDateString()}.`,
-      };
-    }
-
-    setEvaluation(evalData);
-    setMessages(reconstructedMessages);
-    setStep("feedback");
-
-    toast({
-      title: "Session Loaded",
-      description: `Viewing ${session.targetRole} interview from ${new Date(session.createdAt).toLocaleDateString()}.`,
-    });
-  };
-
-  // ─── Sync keyboard shortcut refs ─────────────────────────
-  handleEndSessionRef.current = handleEndSession;
-  handleTurnBasedEndSessionRef.current = handleTurnBasedEndSession;
-  handleSubmitAnswerRef.current = handleSubmitAnswer;
-  handleResetRef.current = handleReset;
+  const {
+    // Setup state
+    selectedResumeId,
+    setSelectedResumeId,
+    targetRole,
+    setTargetRole,
+    jobDescription,
+    setJobDescription,
+    jobUrl,
+    setJobUrl,
+    isFetchingJob,
+    jobFetched,
+    setJobFetched,
+    recentJobs,
+    showRecentJobs,
+    setShowRecentJobs,
+    recentJobsRef,
+    shortcutsRef,
+    selectedResumeInfo,
+    interviewConfig,
+    setInterviewConfig,
+
+    // Mode
+    interviewMode,
+    setInterviewMode,
+
+    // Dropdowns
+    designOpen,
+    setDesignOpen,
+    voiceOpen,
+    setVoiceOpen,
+
+    // Session
+    step,
+    messages,
+    currentQuestion,
+    userAnswer,
+    setUserAnswer,
+    loading,
+
+    // Audio recording (turn-based)
+    isRecording,
+    recordingTime,
+    transcribing,
+
+    // Evaluation
+    evaluation,
+
+    // TTS
+    isMuted,
+    setIsMuted,
+    isTTSGenerating,
+    voiceConfig,
+    setVoiceConfig,
+
+    // Past sessions
+    pastSessions,
+    isLoadingSessions,
+    sessionToDelete,
+    setSessionToDelete,
+    isDeletingSession,
+    showShortcuts,
+    setShowShortcuts,
+    canScrollUp,
+    canScrollDown,
+
+    // Live mode
+    isLiveSession,
+    liveMediaStream,
+    isVideoOff,
+    setIsVideoOff,
+    isLiveMuted,
+    setIsLiveMuted,
+    transcriptEntries,
+    isLiveListening,
+    isProcessingAnswer,
+    liveUserAudioLevel,
+    liveAIAudioLevel,
+    videoPanelState,
+
+    // Refs
+    sessionLogsRef,
+    liveTTSAudioRef,
+
+    // Derived
+    questionIndex,
+    voiceState,
+
+    // Resumes
+    resumes,
+
+    // Actions
+    handleStartSession,
+    startLiveSession,
+    handleSubmitAnswer,
+    handleTurnBasedEndSession,
+    handleEndSession,
+    handleDoneSpeaking,
+    startRecording,
+    stopRecording,
+    handleReset,
+    handleAutoFillJob,
+    handleSelectRecentJob,
+    handleRemoveRecentJob,
+    handleClearRecentJobs,
+    handleDeleteSession,
+    handleLoadPastSession,
+    formatTime,
+  } = useInterviewLab();
 
   return (
     <PremiumPage>
-      <ApiKeyBanner className="mb-6" />
       <PremiumPageHeader
         eyebrow="Practice Studio"
         title="Interview Lab"
@@ -1550,37 +185,7 @@ const InterviewLab = () => {
         }
       />
 
-      {/* Dynamic Stats Banner */}
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <PremiumStatCard
-          icon={<Gauge size={18} />}
-          label="Delivery Score"
-          value={evaluation ? `${evaluation.deliveryScore}%` : "--"}
-          detail={evaluation ? "Communication clarity" : "Awaiting session"}
-          tone="indigo"
-        />
-        <PremiumStatCard
-          icon={<Trophy size={18} />}
-          label="Content Score"
-          value={evaluation ? `${evaluation.contentScore}%` : "--"}
-          detail={evaluation ? "STAR method structured" : "Not measured"}
-          tone="emerald"
-        />
-        <PremiumStatCard
-          icon={<ClipboardCheck size={18} />}
-          label="Action Items"
-          value={evaluation ? String(evaluation.actionItems.length) : "0"}
-          detail={evaluation ? "Recommendations" : "Clean slate"}
-          tone="amber"
-        />
-        <PremiumStatCard
-          icon={<Radio size={18} />}
-          label="Interview Mode"
-          value={interviewMode === "live" ? "Live" : "Turn"}
-          detail={interviewMode === "live" ? "Real-time conversation" : "Record & submit"}
-          tone="slate"
-        />
-      </div>
+      <StatsBanner evaluation={evaluation} interviewMode={interviewMode} />
 
       <AnimatePresence mode="wait">
         {/* ─── SETUP STEP ────────────────────────────────────────── */}
@@ -2020,554 +625,76 @@ const InterviewLab = () => {
 
         {/* ─── INTERVIEWING STEP (Turn-based) ──────────────────── */}
         {step === "interviewing" && interviewMode === "turn-based" && (
-          <motion.div
-            key="interviewing"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="w-full"
-          >
-            {/* Landscape interviewing layout: video + question on left, answer + logs on right */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-              {/* Left: Video feed + Question (wider) */}
-              <div className="xl:col-span-8 flex flex-col gap-5">
-                {/* Video / Visualizer - landscape aspect ratio */}
-                <PremiumPanel className="flex flex-col relative overflow-hidden">
-                  <div className="w-full aspect-video lg:aspect-[16/7] relative bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-violet-500/10" />
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.08),transparent_70%)]" />
-
-                    {/* Top bar */}
-                    <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-20">
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/10">
-                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-white">Question {questionIndex} of {interviewConfig.questionCount}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/20 backdrop-blur-md border border-indigo-500/30">
-                          <Sparkles size={10} className="text-indigo-400" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300">AI Recruiter</span>
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => setIsMuted(!isMuted)}
-                        variant="ghost"
-                        size="icon"
-                        className="w-8 h-8 rounded-lg bg-slate-900/80 backdrop-blur-md border border-white/10 hover:bg-slate-800 text-white hover:text-white"
-                      >
-                        {isMuted ? (
-                          <VolumeX size={14} className="text-red-400" />
-                        ) : (
-                          <Volume2 size={14} className="text-emerald-400" />
-                        )}
-                      </Button>
-                    </div>
-
-                    {/* Center visualizer */}
-                    <div className="relative z-10 flex flex-col items-center justify-center">
-                      <motion.div
-                        animate={{
-                          scale: voiceState !== "idle" ? [1, 1.15, 1] : 1,
-                          opacity: voiceState !== "idle" ? [0.3, 0.7, 0.3] : 0.4,
-                        }}
-                        transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                        className="absolute h-36 w-36 rounded-full bg-indigo-500 blur-3xl"
-                      />
-                      <motion.div
-                        animate={{
-                          scale: voiceState !== "idle" ? [1, 1.08, 1] : 1,
-                          opacity: voiceState !== "idle" ? [0.2, 0.5, 0.2] : 0.3,
-                        }}
-                        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut", delay: 0.3 }}
-                        className="absolute h-48 w-48 rounded-full bg-violet-500 blur-3xl"
-                      />
-                      <div className="relative rounded-3xl border border-white/10 bg-slate-900/80 px-10 py-7 shadow-xl shadow-indigo-500/20 backdrop-blur-md">
-                        <AudioVisualizer state={voiceState} />
-                      </div>
-                    </div>
-
-                    {/* Bottom bar */}
-                    <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center z-20">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20">
-                          <span className="text-[10px] font-bold text-emerald-400">STAR Format</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/30 backdrop-blur-md border border-border/30">
-                          <span className="text-[10px] font-bold text-muted-foreground capitalize">{interviewConfig.difficulty} Difficulty</span>
-                        </div>
-                      </div>
-                      {isRecording && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/20 backdrop-blur-md border border-red-500/30 animate-pulse">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                          <span className="text-[10px] font-black text-red-400 tracking-wider">REC {formatTime(recordingTime)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </PremiumPanel>
-
-                {/* Question + Answer zone */}
-                <PremiumPanel className="p-5 md:p-6 flex flex-col gap-5 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500" />
-                  {/* Current question display */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                        <Sparkles size={13} className="text-indigo-500" />
-                      </div>
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-500">AI Recruiter</h3>
-                    </div>
-                    <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-sm leading-relaxed font-bold text-slate-800 dark:text-slate-100">
-                      {currentQuestion}
-                    </div>
-                  </div>
-
-                  {/* Answer textarea */}
-                  <div className="space-y-3 flex-1">
-                    <div className="relative">
-                      <Textarea
-                        placeholder="Type your structured STAR answer here (Shift+Enter for newline, Enter to submit)..."
-                        value={userAnswer}
-                        onChange={(e) => setUserAnswer(e.target.value)}
-                        disabled={loading || transcribing}
-                        className="min-h-[100px] rounded-2xl pr-12 focus-visible:ring-indigo-500/30 border-border/70 resize-none text-sm font-medium leading-relaxed"
-                      />
-                      {transcribing && (
-                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-2xl flex items-center justify-center gap-2">
-                          <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
-                          <span className="text-xs font-bold text-indigo-600 animate-pulse">Transcribing your voice...</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      {isRecording ? (
-                        <Button
-                          onClick={stopRecording}
-                          className="sm:flex-1 h-11 bg-red-600 hover:bg-red-700 text-white rounded-xl gap-2 font-bold transition-all shadow-md shadow-red-500/10"
-                        >
-                          <StopCircle size={16} />
-                          Stop Recording
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={startRecording}
-                          disabled={loading || transcribing}
-                          variant="outline"
-                          className="sm:flex-1 h-11 rounded-xl gap-2 border-indigo-500/30 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold"
-                        >
-                          <Mic size={16} />
-                          Record Audio
-                        </Button>
-                      )}
-                      <Button
-                        onClick={handleSubmitAnswer}
-                        disabled={loading || transcribing || !userAnswer.trim()}
-                        className="sm:flex-1 h-11 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold gap-2 text-sm shadow-lg shadow-indigo-500/15"
-                        title="Submit answer (Enter)"
-                      >
-                        {loading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <>
-                            Submit Answer
-                            <ChevronRight size={16} />
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        onClick={handleTurnBasedEndSession}
-                        disabled={loading || messages.length === 0}
-                        variant="outline"
-                        className="sm:flex-1 h-11 rounded-xl gap-2 border-red-500/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 font-bold text-sm"
-                        title="End session (⌘+Enter / Ctrl+Enter)"
-                      >
-                        <StopCircle size={16} />
-                        End Session
-                        <kbd className="hidden sm:inline text-[8px] font-mono bg-red-500/10 px-1.5 py-0.5 rounded ml-1">⌘↵</kbd>
-                      </Button>
-                    </div>
-                  </div>
-                </PremiumPanel>
-              </div>
-
-              {/* Right: Session Logs */}
-              <PremiumPanel className="xl:col-span-4 p-5 flex flex-col min-h-[400px] max-h-[700px] relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
-                <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 border-b pb-3">
-                  <MessageSquare size={14} />
-                  Session Logs
-                  <span className="ml-auto text-[9px] font-bold bg-muted/50 px-2 py-0.5 rounded-full">
-                    {messages.filter(m => m.role === "assistant").length} Q&apos;s
-                  </span>
-                </h3>
-                <div className="relative flex-1 min-h-0">
-                  {/* Scroll fade overlays */}
-                  <div
-                    className={cn(
-                      "pointer-events-none absolute top-0 left-0 right-0 h-6 z-10 bg-gradient-to-b from-background to-transparent transition-opacity duration-200",
-                      canScrollUp ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <div
-                    className={cn(
-                      "pointer-events-none absolute bottom-0 left-0 right-0 h-6 z-10 bg-gradient-to-t from-background to-transparent transition-opacity duration-200",
-                      canScrollDown ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <div ref={sessionLogsRef} className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin max-h-[580px]">
-                  {messages.map((m, idx) => (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      className={cn(
-                        "p-4 rounded-2xl text-xs leading-relaxed font-semibold",
-                        m.role === "assistant"
-                          ? "bg-indigo-500/5 text-indigo-700 dark:text-indigo-300 border border-indigo-500/10"
-                          : "bg-muted text-muted-foreground ml-6"
-                      )}
-                    >
-                      <span className="block font-black text-[9px] uppercase tracking-widest opacity-60 mb-1">
-                        {m.role === "assistant" ? "Interviewer" : "Candidate"}
-                      </span>
-                      {m.content}
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-              </PremiumPanel>
-            </div>
-          </motion.div>
+          <TurnBasedInterviewPanel
+            currentQuestion={currentQuestion}
+            questionIndex={questionIndex}
+            interviewConfig={interviewConfig}
+            messages={messages}
+            canScrollUp={canScrollUp}
+            canScrollDown={canScrollDown}
+            sessionLogsRef={sessionLogsRef}
+            userAnswer={userAnswer}
+            onUserAnswerChange={setUserAnswer}
+            loading={loading}
+            transcribing={transcribing}
+            isRecording={isRecording}
+            recordingTime={recordingTime}
+            isTTSGenerating={isTTSGenerating}
+            voiceState={voiceState}
+            isMuted={isMuted}
+            onToggleMute={() => setIsMuted(!isMuted)}
+            onStartRecording={startRecording}
+            onStopRecording={stopRecording}
+            onSubmitAnswer={handleSubmitAnswer}
+            onEndSession={handleTurnBasedEndSession}
+            formatTime={formatTime}
+          />
         )}
 
         {/* ─── LIVE INTERVIEWING STEP ───────────────────────────── */}
         {step === "interviewing" && interviewMode === "live" && (
-          <motion.div
-            key="live-interviewing"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="w-full"
-          >
-            {/* Landscape live interview layout */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-              {/* Left: Video + AI Visualizer (wider) */}
-              <div className="xl:col-span-8 flex flex-col gap-5">
-                {/* Video panel - landscape aspect ratio */}
-                <PremiumPanel className="p-2 relative overflow-hidden">
-                  <VideoPanel
-                    mediaStream={liveMediaStream}
-                    state={videoPanelState}
-                    isMuted={isLiveMuted}
-                    onToggleMute={() => {
-                      setIsLiveMuted(!isLiveMuted);
-                      if (!isLiveMuted) {
-                        window.speechSynthesis.cancel();
-                        liveTTSAudioRef.current?.pause();
-                      }
-                    }}
-                    isVideoOff={isVideoOff}
-                    onToggleVideo={() => setIsVideoOff(!isVideoOff)}
-                    isLive={isLiveSession}
-                  />
-                </PremiumPanel>
-
-                {/* AI visualizer + current question */}
-                <PremiumPanel className="p-5 md:p-6 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                      <Sparkles size={13} className="text-violet-500" />
-                    </div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-violet-500">AI Interviewer</h3>
-                    {loading && (
-                      <div className="ml-auto flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                        <Loader2 size={12} className="animate-spin text-amber-500" />
-                        <span className="text-[10px] font-bold text-amber-500">Processing...</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <AudioVisualizer
-                    state={
-                      loading
-                        ? "thinking"
-                        : liveAIAudioLevel > 0
-                          ? "speaking"
-                          : isLiveListening
-                            ? "listening"
-                            : "idle"
-                    }
-                    mode="live"
-                    userAudioLevel={liveUserAudioLevel}
-                    aiAudioLevel={liveAIAudioLevel}
-                  />
-
-                  {currentQuestion && (
-                    <div className="mt-4 p-4 rounded-2xl bg-violet-500/5 border border-violet-500/10">
-                      <p className="text-sm leading-relaxed font-bold text-slate-800 dark:text-slate-100">
-                        {currentQuestion}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Live status bar + Done Speaking */}
-                  <div className="mt-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">
-                        Question {questionIndex} of {interviewConfig.questionCount}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        onClick={handleDoneSpeaking}
-                        disabled={loading || isProcessingAnswer}
-                        size="sm"
-                        className="h-8 rounded-lg px-3 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-bold shadow-md shadow-violet-500/20"
-                      >
-                        <CheckCircle2 size={12} />
-                        Done Speaking
-                      </Button>
-                      <Button
-                        onClick={handleEndSession}
-                        disabled={loading}
-                        size="sm"
-                        variant="outline"
-                        className="h-8 rounded-lg px-3 gap-1.5 border-red-500/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-[10px] font-bold"
-                        title="End session (⌘+Enter / Ctrl+Enter)"
-                      >
-                        <StopCircle size={12} />
-                        End Session
-                        <kbd className="hidden sm:inline text-[8px] font-mono bg-red-500/10 px-1 py-0.5 rounded ml-1">⌘↵</kbd>
-                      </Button>
-                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20">
-                        <span className="text-[10px] font-bold text-emerald-400">Live</span>
-                      </div>
-                    </div>
-                  </div>
-                </PremiumPanel>
-              </div>
-
-              {/* Right: Live Transcript */}
-              <PremiumPanel className="xl:col-span-4 p-5 flex flex-col min-h-[400px] max-h-[700px] relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-fuchsia-500" />
-                <LiveTranscript
-                  entries={transcriptEntries}
-                  isListening={isLiveListening && !loading}
-                />
-              </PremiumPanel>
-            </div>
-          </motion.div>
+          <LiveInterviewPanel
+            liveMediaStream={liveMediaStream}
+            videoPanelState={videoPanelState}
+            isLiveMuted={isLiveMuted}
+            onToggleMute={() => {
+              setIsLiveMuted(!isLiveMuted);
+              if (!isLiveMuted) {
+                window.speechSynthesis.cancel();
+                liveTTSAudioRef.current?.pause();
+              }
+            }}
+            isVideoOff={isVideoOff}
+            onToggleVideo={() => setIsVideoOff(!isVideoOff)}
+            isLiveSession={isLiveSession}
+            loading={loading}
+            liveAIAudioLevel={liveAIAudioLevel}
+            isLiveListening={isLiveListening}
+            liveUserAudioLevel={liveUserAudioLevel}
+            currentQuestion={currentQuestion}
+            questionIndex={questionIndex}
+            interviewConfig={interviewConfig}
+            isProcessingAnswer={isProcessingAnswer}
+            onDoneSpeaking={handleDoneSpeaking}
+            onEndSession={handleEndSession}
+            transcriptEntries={transcriptEntries}
+          />
         )}
 
         {/* ─── FEEDBACK STEP ─────────────────────────────────────── */}
         {step === "feedback" && evaluation && (
-          <motion.div
-            key="feedback"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            className="w-full"
-          >
-            {/* Score summary banner */}
-            <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-4">
-              <PremiumPanel className="p-5 text-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent" />
-                <div className="relative">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Delivery</p>
-                  <p className="text-3xl font-black text-indigo-500 mt-1">{evaluation.deliveryScore}%</p>
-                </div>
-              </PremiumPanel>
-              <PremiumPanel className="p-5 text-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent" />
-                <div className="relative">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Content</p>
-                  <p className="text-3xl font-black text-emerald-500 mt-1">{evaluation.contentScore}%</p>
-                </div>
-              </PremiumPanel>
-              <PremiumPanel className="p-5 text-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent" />
-                <div className="relative">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Overall</p>
-                  <p className="text-3xl font-black text-violet-500 mt-1">{Math.round((evaluation.deliveryScore + evaluation.contentScore) / 2)}%</p>
-                </div>
-              </PremiumPanel>
-              <PremiumPanel className="p-5 text-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent" />
-                <div className="relative">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Action Items</p>
-                  <p className="text-3xl font-black text-amber-500 mt-1">{evaluation.actionItems.length}</p>
-                </div>
-              </PremiumPanel>
-            </div>
-
-            {/* Landscape feedback layout */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-              {/* Scorecard Analysis (wider) */}
-              <PremiumPanel className="xl:col-span-8 p-6 md:p-8 space-y-8 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
-                <div className="flex items-center gap-3 border-b pb-4">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                    <Trophy size={20} />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-foreground">AI Grading Report</h2>
-                    <p className="text-xs text-muted-foreground">Comprehensive performance metrics and analytics.</p>
-                  </div>
-                </div>
-
-                {/* Summary */}
-                <div className="space-y-3 p-5 rounded-2xl bg-muted/30 border">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-indigo-500">Executive Summary</h3>
-                  <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200 font-medium">
-                    {evaluation.summary}
-                  </p>
-                </div>
-
-                {/* Key Findings */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <CheckCircle size={14} className="text-emerald-500" />
-                    Key Strengths & Observations
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {evaluation.findings.map((item: string, idx: number) => (
-                      <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                        className="flex gap-3 text-sm font-semibold p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10"
-                      >
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 shrink-0" />
-                        {item}
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Action Items */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <AlertCircle size={14} className="text-amber-500" />
-                    Actionable Improvement Areas
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {evaluation.actionItems.map((item: string, idx: number) => (
-                      <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                        className="flex gap-3 text-sm font-semibold p-4 rounded-xl bg-amber-500/5 border border-amber-500/10"
-                      >
-                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 shrink-0" />
-                        {item}
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </PremiumPanel>
-
-              {/* Conversation Logs recap */}
-              <PremiumPanel className="xl:col-span-4 p-5 flex flex-col max-h-[600px] relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-slate-500 to-gray-500" />
-                <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 border-b pb-3">
-                  <MessageSquare size={14} />
-                  Session Recap
-                  <span className="ml-auto text-[9px] font-bold bg-muted/50 px-2 py-0.5 rounded-full">
-                    {messages.length} msgs
-                  </span>
-                </h3>
-                <div className="overflow-y-auto space-y-3 flex-1">
-                  {messages.map((m, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">
-                        {m.role === "assistant" ? "Interviewer" : "Candidate"}
-                      </span>
-                      <p className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-relaxed bg-muted/30 p-3 rounded-xl">
-                        {m.content}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </PremiumPanel>
-            </div>
-          </motion.div>
+          <FeedbackPanel evaluation={evaluation} messages={messages} />
         )}
       </AnimatePresence>
 
-      {/* ─── DELETE CONFIRMATION DIALOG ────────────────────────── */}
-      <AnimatePresence>
-        {sessionToDelete && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-            onClick={() => !isDeletingSession && setSessionToDelete(null)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.2 }}
-              className="w-full max-w-md rounded-2xl border border-border/50 bg-background shadow-xl p-6 space-y-5"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
-                  <AlertTriangle size={20} className="text-destructive" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">Delete Interview Session</h3>
-                  <p className="text-xs text-muted-foreground">This action cannot be undone.</p>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Are you sure you want to delete the <span className="font-bold text-foreground">{sessionToDelete.targetRole}</span> interview session from {new Date(sessionToDelete.createdAt).toLocaleDateString()}?
-              </p>
-              <div className="flex items-center gap-3 justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSessionToDelete(null)}
-                  disabled={isDeletingSession}
-                  className="rounded-xl"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDeleteSession(sessionToDelete.id)}
-                  disabled={isDeletingSession}
-                  className="rounded-xl gap-2"
-                >
-                  {isDeletingSession ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 size={14} />
-                      Delete Session
-                    </>
-                  )}
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <DeleteSessionModal
+        sessionToDelete={sessionToDelete}
+        isDeletingSession={isDeletingSession}
+        onClose={() => setSessionToDelete(null)}
+        onConfirm={handleDeleteSession}
+      />
     </PremiumPage>
   );
 };
-
 
 export default InterviewLab;
