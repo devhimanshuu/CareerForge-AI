@@ -25,7 +25,9 @@ export default clerkMiddleware((auth, request) => {
     "career-forge-ai.vercel.app"
   ];
 
-  const isCustomDomain = hostname && !primaryDomains.some((d) => hostname === d);
+  const isCustomDomain = hostname && 
+    !primaryDomains.some((d) => hostname === d) && 
+    !hostname.endsWith(".vercel.app");
 
   if (isCustomDomain) {
     // Avoid rewriting api requests or assets
